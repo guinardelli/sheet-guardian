@@ -2,13 +2,6 @@ import JSZip from 'jszip';
 
 const VBA_FILENAME = 'xl/vbaProject.bin';
 
-// VBA protection patterns - matching the Python implementation
-const PATTERNS = [
-  /CMG="([^"]*)"/g,  // Project protection key
-  /DPB="([^"]*)"/g,  // Binary protection data
-  /GC="([^"]*)"/g    // General verification code
-];
-
 export interface ProcessingResult {
   success: boolean;
   modifiedFile: Blob | null;
@@ -27,32 +20,58 @@ export interface LogEntry {
   type: 'info' | 'success' | 'warning' | 'error';
 }
 
-function textToBytes(text: string): Uint8Array {
-  return new TextEncoder().encode(text);
-}
+// Binary patterns to search for (matching Python implementation)
+const BINARY_PATTERNS = [
+  { prefix: [67, 77, 71, 61, 34], name: 'CMG' },  // CMG="
+  { prefix: [68, 80, 66, 61, 34], name: 'DPB' },  // DPB="
+  { prefix: [71, 67, 61, 34], name: 'GC' }        // GC="
+];
 
-function bytesToText(bytes: Uint8Array): string {
-  return new TextDecoder('latin1').decode(bytes);
-}
+const QUOTE_BYTE = 34; // "
+const F_BYTE = 70;     // F
 
 function modifyVbaContent(content: Uint8Array): { modified: Uint8Array; patternsFound: number } {
-  let textContent = bytesToText(content);
+  // Work directly with bytes to avoid encoding issues
+  const result = new Uint8Array(content);
   let patternsFound = 0;
-
-  for (const pattern of PATTERNS) {
-    // Reset the regex lastIndex
-    pattern.lastIndex = 0;
-    
-    textContent = textContent.replace(pattern, (match, group) => {
-      patternsFound++;
-      const replacement = 'F'.repeat(group.length);
-      const patternName = match.split('=')[0];
-      return `${patternName}="${replacement}"`;
-    });
+  
+  for (const pattern of BINARY_PATTERNS) {
+    let i = 0;
+    while (i < result.length - pattern.prefix.length) {
+      // Check if we found the pattern prefix
+      let found = true;
+      for (let j = 0; j < pattern.prefix.length; j++) {
+        if (result[i + j] !== pattern.prefix[j]) {
+          found = false;
+          break;
+        }
+      }
+      
+      if (found) {
+        // Find the closing quote
+        const valueStart = i + pattern.prefix.length;
+        let valueEnd = valueStart;
+        
+        while (valueEnd < result.length && result[valueEnd] !== QUOTE_BYTE) {
+          valueEnd++;
+        }
+        
+        if (valueEnd < result.length) {
+          // Replace the value with 'F's (same length)
+          for (let k = valueStart; k < valueEnd; k++) {
+            result[k] = F_BYTE;
+          }
+          patternsFound++;
+          i = valueEnd + 1;
+          continue;
+        }
+      }
+      i++;
+    }
   }
 
   return {
-    modified: textToBytes(textContent),
+    modified: result,
     patternsFound
   };
 }
