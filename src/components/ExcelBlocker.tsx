@@ -1,7 +1,9 @@
 import { useState, useCallback } from 'react';
-import { Play, RotateCcw, Download } from 'lucide-react';
+import { Play, RotateCcw, Download, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Card, CardContent } from '@/components/ui/card';
 import { FileDropzone } from './FileDropzone';
 import { ProcessingLog } from './ProcessingLog';
 import { StatisticsCard } from './StatisticsCard';
@@ -13,6 +15,9 @@ import {
   ProcessingResult 
 } from '@/lib/excel-vba-modifier';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
+import { useSubscription, PLAN_LIMITS } from '@/hooks/useSubscription';
+import { useNavigate } from 'react-router-dom';
 
 export function ExcelBlocker() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -22,13 +27,35 @@ export function ExcelBlocker() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [result, setResult] = useState<ProcessingResult | null>(null);
 
+  const { user } = useAuth();
+  const { subscription, canProcessSheet, incrementUsage } = useSubscription();
+  const navigate = useNavigate();
+
   const handleFileSelect = useCallback((file: File) => {
+    if (!user) {
+      toast.error('Login necessário', {
+        description: 'Faça login para processar planilhas.'
+      });
+      navigate('/auth');
+      return;
+    }
+
+    const fileSizeKB = file.size / 1024;
+    const { allowed, reason } = canProcessSheet(fileSizeKB);
+    
+    if (!allowed) {
+      toast.error('Limite atingido', {
+        description: reason
+      });
+      return;
+    }
+
     setSelectedFile(file);
     setOriginalFile(file);
     setResult(null);
     setLogs([]);
     setProgress(0);
-  }, []);
+  }, [user, canProcessSheet, navigate]);
 
   const handleClearFile = useCallback(() => {
     setSelectedFile(null);
@@ -43,7 +70,17 @@ export function ExcelBlocker() {
   }, []);
 
   const handleProcess = useCallback(async () => {
-    if (!selectedFile) return;
+    if (!selectedFile || !user) return;
+
+    const fileSizeKB = selectedFile.size / 1024;
+    const { allowed, reason } = canProcessSheet(fileSizeKB);
+    
+    if (!allowed) {
+      toast.error('Limite atingido', {
+        description: reason
+      });
+      return;
+    }
 
     setIsProcessing(true);
     setLogs([]);
@@ -60,6 +97,8 @@ export function ExcelBlocker() {
     setIsProcessing(false);
 
     if (processingResult.success && processingResult.modifiedFile) {
+      await incrementUsage();
+      
       toast.success('Arquivo processado com sucesso!', {
         description: `${processingResult.patternsModified} padrão(ões) modificado(s)`,
         action: {
@@ -75,7 +114,7 @@ export function ExcelBlocker() {
         description: processingResult.error
       });
     }
-  }, [selectedFile, handleLog]);
+  }, [selectedFile, user, canProcessSheet, handleLog, incrementUsage]);
 
   const handleDownload = useCallback(() => {
     if (result?.modifiedFile) {
@@ -91,22 +130,22 @@ export function ExcelBlocker() {
     }
   }, [originalFile]);
 
+  const planLimits = subscription ? PLAN_LIMITS[subscription.plan] : null;
+
   return (
     <div className="flex flex-col w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 gap-8">
       {/* Header */}
-      <header className="flex items-center justify-between border-b border-border pb-4">
-        <div className="flex items-center gap-4">
-          <ExcelIcon className="w-8 h-8 text-primary" />
-          <h1 className="text-xl font-bold text-foreground">
-            Bloqueador de Planilhas Excel
-          </h1>
-        </div>
+      <header className="flex items-center justify-center gap-4">
+        <ExcelIcon className="w-10 h-10 text-primary" />
+        <h1 className="text-2xl font-bold text-foreground">
+          Bloqueador de Planilhas Excel
+        </h1>
       </header>
 
       {/* Main Content */}
       <main className="flex flex-col gap-8">
         {/* Title Section */}
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 text-center">
           <h2 className="text-3xl sm:text-4xl font-black text-foreground tracking-tight">
             Bloqueador de Planilhas
           </h2>
@@ -115,12 +154,61 @@ export function ExcelBlocker() {
           </p>
         </div>
 
+        {/* Auth Alert */}
+        {!user && (
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Login necessário</AlertTitle>
+            <AlertDescription>
+              <Button variant="link" className="p-0 h-auto" onClick={() => navigate('/auth')}>
+                Faça login
+              </Button>
+              {' '}para processar planilhas.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Usage Info */}
+        {user && subscription && (
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex flex-wrap justify-center gap-4 text-sm">
+                {planLimits?.sheetsPerMonth !== null && (
+                  <div>
+                    <span className="text-muted-foreground">Uso mensal: </span>
+                    <span className="font-medium">
+                      {subscription.sheets_used_month}/{planLimits.sheetsPerMonth}
+                    </span>
+                  </div>
+                )}
+                {planLimits?.sheetsPerDay !== null && (
+                  <div>
+                    <span className="text-muted-foreground">Uso diário: </span>
+                    <span className="font-medium">
+                      {subscription.sheets_used_today}/{planLimits.sheetsPerDay}
+                    </span>
+                  </div>
+                )}
+                {planLimits?.maxFileSizeKB !== null && (
+                  <div>
+                    <span className="text-muted-foreground">Tamanho máximo: </span>
+                    <span className="font-medium">{planLimits.maxFileSizeKB} KB</span>
+                  </div>
+                )}
+                {subscription.plan === 'premium' && (
+                  <div className="text-primary font-medium">✨ Sem limitações</div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* File Dropzone */}
         <FileDropzone
           onFileSelect={handleFileSelect}
           selectedFile={selectedFile}
           onClearFile={handleClearFile}
-          disabled={isProcessing}
+          disabled={isProcessing || !user}
         />
 
         {/* Progress Bar */}
@@ -139,7 +227,7 @@ export function ExcelBlocker() {
           <Button
             size="lg"
             onClick={handleProcess}
-            disabled={!selectedFile || isProcessing}
+            disabled={!selectedFile || isProcessing || !user}
             className="min-w-[200px]"
           >
             <Play className="w-4 h-4 mr-2" />
