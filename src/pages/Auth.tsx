@@ -10,6 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { ExcelIcon } from '@/components/ExcelIcon';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
+import { useRateLimit } from '@/hooks/useRateLimit';
+import { sanitizeEmail } from '@/lib/sanitize';
 
 const authSchema = z.object({
   email: z.string().trim().email({ message: "Email inválido" }).max(255),
@@ -24,6 +26,7 @@ const Auth = () => {
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { checkRateLimit, recordAttempt, isLocked, remainingTime, getRemainingAttempts } = useRateLimit('auth');
 
   useEffect(() => {
     if (user) {
@@ -51,19 +54,33 @@ const Auth = () => {
     e.preventDefault();
     if (!validateForm()) return;
     
+    const rateLimitCheck = checkRateLimit();
+    if (!rateLimitCheck.allowed) {
+      toast({
+        title: "Limite de tentativas",
+        description: rateLimitCheck.message,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setLoading(true);
-    const { error } = await signIn(email, password);
+    const sanitizedEmail = sanitizeEmail(email);
+    const { error } = await signIn(sanitizedEmail, password);
     setLoading(false);
 
     if (error) {
+      recordAttempt(false);
+      const remaining = getRemainingAttempts();
       toast({
         title: "Erro ao entrar",
         description: error.message === 'Invalid login credentials' 
-          ? 'Email ou senha incorretos' 
+          ? `Email ou senha incorretos. ${remaining > 0 ? `${remaining} tentativas restantes.` : ''}`
           : error.message,
         variant: "destructive",
       });
     } else {
+      recordAttempt(true);
       navigate('/dashboard');
     }
   };
@@ -72,11 +89,23 @@ const Auth = () => {
     e.preventDefault();
     if (!validateForm()) return;
 
+    const rateLimitCheck = checkRateLimit();
+    if (!rateLimitCheck.allowed) {
+      toast({
+        title: "Limite de tentativas",
+        description: rateLimitCheck.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
-    const { error } = await signUp(email, password);
+    const sanitizedEmail = sanitizeEmail(email);
+    const { error } = await signUp(sanitizedEmail, password);
     setLoading(false);
 
     if (error) {
+      recordAttempt(false);
       let message = error.message;
       if (error.message.includes('already registered')) {
         message = 'Este email já está cadastrado. Tente fazer login.';
@@ -87,6 +116,7 @@ const Auth = () => {
         variant: "destructive",
       });
     } else {
+      recordAttempt(true);
       toast({
         title: "Conta criada!",
         description: "Você já pode acessar o sistema.",
@@ -190,8 +220,8 @@ const Auth = () => {
                     {resetLoading ? 'Enviando...' : 'Recuperar Senha'}
                   </Button>
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Entrando...' : 'Entrar'}
+                <Button type="submit" className="w-full" disabled={loading || isLocked}>
+                  {isLocked ? `Aguarde ${remainingTime}s` : loading ? 'Entrando...' : 'Entrar'}
                 </Button>
               </form>
             </TabsContent>
@@ -220,8 +250,8 @@ const Auth = () => {
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Cadastrando...' : 'Criar Conta'}
+                <Button type="submit" className="w-full" disabled={loading || isLocked}>
+                  {isLocked ? `Aguarde ${remainingTime}s` : loading ? 'Cadastrando...' : 'Criar Conta'}
                 </Button>
               </form>
             </TabsContent>
