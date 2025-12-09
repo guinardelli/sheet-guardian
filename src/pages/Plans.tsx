@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useSubscription, PLAN_LIMITS, PLAN_PRICES, SubscriptionPlan } from '@/hooks/useSubscription';
+import { useSubscription, PLAN_LIMITS, SubscriptionPlan } from '@/hooks/useSubscription';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,16 +11,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 
-const PLAN_INFO: Record<SubscriptionPlan, { name: string; description: string; features: string[] }> = {
-  free: {
-    name: 'Gratuito',
-    description: 'Para testes simples',
-    features: [
-      '1 planilha por mês',
-      'Tamanho máximo: 100 KB',
-      'Apenas para testes',
-    ],
-  },
+const PLAN_INFO: Record<'professional' | 'premium', { 
+  name: string; 
+  description: string; 
+  features: string[];
+  currentPrice: number;
+  originalPrice: number;
+}> = {
   professional: {
     name: 'Profissional',
     description: 'Para uso regular',
@@ -29,6 +26,8 @@ const PLAN_INFO: Record<SubscriptionPlan, { name: string; description: string; f
       'Tamanho máximo: 1.000 KB',
       'Suporte prioritário',
     ],
+    currentPrice: 23,
+    originalPrice: 36,
   },
   premium: {
     name: 'Premium',
@@ -39,8 +38,12 @@ const PLAN_INFO: Record<SubscriptionPlan, { name: string; description: string; f
       'Suporte VIP',
       'Processamento prioritário',
     ],
+    currentPrice: 38,
+    originalPrice: 65,
   },
 };
+
+const AVAILABLE_PLANS: Array<'professional' | 'premium'> = ['professional', 'premium'];
 
 const Plans = () => {
   const { user } = useAuth();
@@ -52,30 +55,14 @@ const Plans = () => {
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [processing, setProcessing] = useState(false);
 
-  const handleSelectPlan = (plan: SubscriptionPlan) => {
+  const handleSelectPlan = (plan: 'professional' | 'premium') => {
     if (!user) {
       navigate('/auth');
       return;
     }
 
-    if (plan === 'free') {
-      handleFreePlan();
-      return;
-    }
-
     setSelectedPlan(plan);
     setShowPaymentDialog(true);
-  };
-
-  const handleFreePlan = async () => {
-    setProcessing(true);
-    await updatePlan('free');
-    setProcessing(false);
-    toast({
-      title: "Plano atualizado",
-      description: "Você está agora no plano Gratuito.",
-    });
-    navigate('/');
   };
 
   const handlePayment = async () => {
@@ -92,9 +79,9 @@ const Plans = () => {
     
     toast({
       title: "Pagamento confirmado!",
-      description: `Você agora é assinante do plano ${PLAN_INFO[selectedPlan].name}.`,
+      description: `Você agora é assinante do plano ${PLAN_INFO[selectedPlan as keyof typeof PLAN_INFO]?.name || selectedPlan}.`,
     });
-    navigate('/');
+    navigate('/dashboard');
   };
 
   if (subLoading) {
@@ -107,10 +94,10 @@ const Plans = () => {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <Button 
           variant="ghost" 
-          onClick={() => navigate('/')}
+          onClick={() => navigate(-1)}
           className="mb-6"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -126,33 +113,39 @@ const Plans = () => {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
-          {(Object.keys(PLAN_INFO) as SubscriptionPlan[]).map((plan) => {
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          {AVAILABLE_PLANS.map((plan) => {
             const info = PLAN_INFO[plan];
-            const price = PLAN_PRICES[plan];
             const isCurrentPlan = subscription?.plan === plan;
+            const isPremium = plan === 'premium';
 
             return (
               <Card 
                 key={plan} 
-                className={`relative ${plan === 'professional' ? 'border-primary shadow-lg' : ''}`}
+                className={`relative ${isPremium ? 'border-primary shadow-lg' : ''}`}
               >
-                {plan === 'professional' && (
+                {isPremium && (
                   <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary">
-                    Mais Popular
+                    Recomendado
                   </Badge>
                 )}
                 
                 <CardHeader className="text-center">
                   <CardTitle className="text-xl">{info.name}</CardTitle>
                   <CardDescription>{info.description}</CardDescription>
-                  <div className="mt-4">
-                    <span className="text-4xl font-bold text-foreground">
-                      {price === 0 ? 'Grátis' : `R$ ${price}`}
-                    </span>
-                    {price > 0 && (
+                  <div className="mt-4 flex flex-col items-center gap-1">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-4xl font-bold text-foreground">
+                        R$ {info.currentPrice}
+                      </span>
                       <span className="text-muted-foreground">/mês</span>
-                    )}
+                    </div>
+                    <span className="text-lg text-muted-foreground line-through">
+                      R$ {info.originalPrice}
+                    </span>
+                    <Badge variant="secondary" className="mt-2">
+                      {Math.round((1 - info.currentPrice / info.originalPrice) * 100)}% OFF
+                    </Badge>
                   </div>
                 </CardHeader>
                 
@@ -191,12 +184,9 @@ const Plans = () => {
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
               <CreditCard className="h-5 w-5" />
-              <span>Cartão de Crédito (físico)</span>
+              <span>Cartão de Crédito</span>
             </div>
           </div>
-          <p className="text-sm text-muted-foreground mt-4">
-            * Não aceitamos cartões virtuais
-          </p>
         </div>
       </div>
 
@@ -205,7 +195,9 @@ const Plans = () => {
           <DialogHeader>
             <DialogTitle>Finalizar Pagamento</DialogTitle>
             <DialogDescription>
-              {selectedPlan && `Plano ${PLAN_INFO[selectedPlan].name} - R$ ${PLAN_PRICES[selectedPlan]}/mês`}
+              {selectedPlan && PLAN_INFO[selectedPlan as keyof typeof PLAN_INFO] && (
+                `Plano ${PLAN_INFO[selectedPlan as keyof typeof PLAN_INFO].name} - R$ ${PLAN_INFO[selectedPlan as keyof typeof PLAN_INFO].currentPrice}/mês`
+              )}
             </DialogDescription>
           </DialogHeader>
           
@@ -227,13 +219,10 @@ const Plans = () => {
                   <RadioGroupItem value="credit_card" id="credit_card" />
                   <Label htmlFor="credit_card" className="flex items-center gap-2 cursor-pointer flex-1">
                     <CreditCard className="h-5 w-5" />
-                    Cartão de Crédito (físico)
+                    Cartão de Crédito
                   </Label>
                 </div>
               </RadioGroup>
-              <p className="text-xs text-muted-foreground">
-                * Cartões virtuais não são aceitos
-              </p>
             </div>
 
             {paymentMethod === 'pix' && (
