@@ -1,9 +1,9 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
 import { Button } from '@/components/ui/button';
 import { ExcelIcon } from '@/components/ExcelIcon';
-import { LogOut, CreditCard, User } from 'lucide-react';
+import { LogOut, CreditCard, User, LayoutDashboard } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 const PLAN_NAMES: Record<string, string> = {
@@ -16,11 +16,14 @@ export const Header = () => {
   const { user, signOut } = useAuth();
   const { subscription } = useSubscription();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/');
   };
+
+  const isOnDashboard = location.pathname === '/dashboard';
 
   return (
     <header className="border-b bg-card">
@@ -39,6 +42,12 @@ export const Header = () => {
                 <Badge variant={subscription.plan === 'premium' ? 'default' : 'secondary'}>
                   {PLAN_NAMES[subscription.plan]}
                 </Badge>
+              )}
+              {!isOnDashboard && (
+                <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
+                  <LayoutDashboard className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Dashboard</span>
+                </Button>
               )}
               <Button variant="ghost" size="sm" onClick={() => navigate('/plans')}>
                 <CreditCard className="h-4 w-4 mr-2" />

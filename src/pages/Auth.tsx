@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { ExcelIcon } from '@/components/ExcelIcon';
 import { z } from 'zod';
+import { supabase } from '@/integrations/supabase/client';
 
 const authSchema = z.object({
   email: z.string().trim().email({ message: "Email inválido" }).max(255),
@@ -19,13 +20,14 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
     if (user) {
-      navigate('/');
+      navigate('/dashboard');
     }
   }, [user, navigate]);
 
@@ -62,7 +64,7 @@ const Auth = () => {
         variant: "destructive",
       });
     } else {
-      navigate('/');
+      navigate('/dashboard');
     }
   };
 
@@ -89,7 +91,48 @@ const Auth = () => {
         title: "Conta criada!",
         description: "Você já pode acessar o sistema.",
       });
-      navigate('/');
+      navigate('/dashboard');
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      toast({
+        title: "Email necessário",
+        description: "Digite seu email para recuperar a senha.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      z.string().email().parse(email);
+    } catch {
+      toast({
+        title: "Email inválido",
+        description: "Digite um email válido.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setResetLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth`,
+    });
+    setResetLoading(false);
+
+    if (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível enviar o email de recuperação.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Email enviado!",
+        description: "Verifique sua caixa de entrada para redefinir a senha.",
+      });
     }
   };
 
@@ -135,6 +178,17 @@ const Auth = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                   />
+                </div>
+                <div className="text-right">
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="p-0 h-auto text-sm text-muted-foreground hover:text-primary"
+                    onClick={handleForgotPassword}
+                    disabled={resetLoading}
+                  >
+                    {resetLoading ? 'Enviando...' : 'Recuperar Senha'}
+                  </Button>
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Entrando...' : 'Entrar'}
