@@ -1,7 +1,9 @@
 import { useCallback, useState } from 'react';
-import { Upload, FileSpreadsheet, X } from 'lucide-react';
+import { Upload, FileSpreadsheet, X, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { MAX_FILE_SIZE_BYTES, LARGE_FILE_WARNING_BYTES } from '@/lib/constants';
+import { toast } from 'sonner';
 
 interface FileDropzoneProps {
   onFileSelect: (file: File) => void;
@@ -28,28 +30,52 @@ export function FileDropzone({
     setIsDragging(false);
   }, []);
 
+  const validateAndSelectFile = useCallback((file: File) => {
+    // Validate file extension
+    if (!file.name.toLowerCase().endsWith('.xlsm')) {
+      toast.error('Tipo de arquivo inválido', {
+        description: 'Apenas arquivos .xlsm são aceitos.'
+      });
+      return;
+    }
+
+    // Validate file size (hard limit)
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      toast.error('Arquivo muito grande', {
+        description: `O tamanho máximo permitido é ${MAX_FILE_SIZE_BYTES / (1024 * 1024)} MB.`
+      });
+      return;
+    }
+
+    // Warn about large files
+    if (file.size > LARGE_FILE_WARNING_BYTES) {
+      toast.warning('Arquivo grande detectado', {
+        description: 'O processamento pode levar mais tempo. Por favor, aguarde.'
+      });
+    }
+
+    onFileSelect(file);
+  }, [onFileSelect]);
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     if (disabled) return;
 
     const files = e.dataTransfer.files;
     if (files.length > 0) {
-      const file = files[0];
-      if (file.name.toLowerCase().endsWith('.xlsm')) {
-        onFileSelect(file);
-      }
+      validateAndSelectFile(files[0]);
     }
-  }, [onFileSelect, disabled]);
+  }, [validateAndSelectFile, disabled]);
 
   const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      onFileSelect(files[0]);
+      validateAndSelectFile(files[0]);
     }
     e.target.value = '';
-  }, [onFileSelect]);
+  }, [validateAndSelectFile]);
 
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;

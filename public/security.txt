@@ -1,0 +1,19 @@
+Contact: security@sheetguardian.com
+Preferred-Languages: pt-BR, en
+Canonical: https://sheetguardian.com/.well-known/security.txt
+
+# Security Policy
+
+If you discover a security vulnerability, please report it to us at security@sheetguardian.com
+
+Please include:
+- Description of the vulnerability
+- Steps to reproduce
+- Potential impact
+- Your contact information (optional)
+
+We take security seriously and will respond to all valid reports within 48 hours.
+
+# Bug Bounty
+Currently, we do not have a formal bug bounty program, but we appreciate responsible disclosure
+and will acknowledge security researchers who report valid vulnerabilities.
