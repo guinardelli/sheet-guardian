@@ -8,12 +8,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { ExcelIcon } from '@/components/ExcelIcon';
+import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 
 const authSchema = z.object({
   email: z.string().trim().email({ message: "Email inválido" }).max(255),
-  password: z.string().min(6, { message: "Senha deve ter no mínimo 6 caracteres" }).max(100),
+  password: z
+    .string()
+    .min(8, { message: "Senha deve ter no mínimo 8 caracteres" })
+    .max(100, { message: "Senha não pode exceder 100 caracteres" })
+    .regex(/[A-Z]/, { message: "Senha deve conter pelo menos uma letra maiúscula" })
+    .regex(/[a-z]/, { message: "Senha deve conter pelo menos uma letra minúscula" })
+    .regex(/[0-9]/, { message: "Senha deve conter pelo menos um número" })
+    .regex(/[^A-Za-z0-9]/, { message: "Senha deve conter pelo menos um caractere especial (!@#$%^&*)" }),
 });
 
 const Auth = () => {
@@ -117,23 +125,21 @@ const Auth = () => {
     }
 
     setResetLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+
+    // Call password reset - note: we don't check for errors to prevent email enumeration
+    // Always show success message regardless of whether email exists
+    await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth`,
     });
+
     setResetLoading(false);
 
-    if (error) {
-      toast({
-        title: "Erro",
-        description: "Não foi possível enviar o email de recuperação.",
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Email enviado!",
-        description: "Verifique sua caixa de entrada para redefinir a senha.",
-      });
-    }
+    // Always show success to prevent email enumeration attack
+    // If email doesn't exist, user won't receive email but attacker can't tell
+    toast({
+      title: "Email enviado!",
+      description: "Se o email existir em nossa base, você receberá instruções para redefinir sua senha.",
+    });
   };
 
   return (
@@ -219,6 +225,7 @@ const Auth = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                   />
+                  <PasswordStrengthIndicator password={password} />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Cadastrando...' : 'Criar Conta'}
