@@ -293,12 +293,12 @@ const Dashboard = () => {
         )}
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap justify-center gap-3">
+        <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-3">
           <Button
             size="lg"
             onClick={handleProcess}
             disabled={!selectedFile || isProcessing || !user}
-            className="min-w-[200px]"
+            className="w-full sm:w-auto sm:min-w-[200px]"
           >
             <Play className="w-4 h-4 mr-2" />
             {isProcessing ? 'Processando...' : 'Iniciar Processamento'}
@@ -309,7 +309,7 @@ const Dashboard = () => {
               size="lg"
               variant="outline"
               onClick={handleDownload}
-              className="min-w-[200px] animate-fade-in"
+              className="w-full sm:w-auto sm:min-w-[200px] animate-fade-in"
             >
               <Download className="w-4 h-4 mr-2" />
               Baixar Arquivo
@@ -321,7 +321,7 @@ const Dashboard = () => {
               size="lg"
               variant="secondary"
               onClick={handleRestore}
-              className="min-w-[200px]"
+              className="w-full sm:w-auto sm:min-w-[200px]"
             >
               <RotateCcw className="w-4 h-4 mr-2" />
               Restaurar Original
