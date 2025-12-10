@@ -11,14 +11,25 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 
-const PLAN_INFO: Record<'professional' | 'premium', { 
+const PLAN_INFO: Record<'free' | 'professional' | 'premium', { 
   name: string; 
   description: string; 
   features: string[];
   extras: string[];
   currentPrice: number;
-  originalPrice: number;
+  originalPrice: number | null;
 }> = {
+  free: {
+    name: 'Free',
+    description: 'Para experimentar',
+    features: [
+      '1 processamento por mês',
+      'Tamanho máximo: 1 MB',
+    ],
+    extras: [],
+    currentPrice: 0,
+    originalPrice: null,
+  },
   professional: {
     name: 'Profissional',
     description: 'Para uso regular',
@@ -48,7 +59,7 @@ const PLAN_INFO: Record<'professional' | 'premium', {
   },
 };
 
-const AVAILABLE_PLANS: Array<'professional' | 'premium'> = ['professional', 'premium'];
+const AVAILABLE_PLANS: Array<'free' | 'professional' | 'premium'> = ['free', 'professional', 'premium'];
 
 const Plans = () => {
   const { user } = useAuth();
@@ -60,9 +71,20 @@ const Plans = () => {
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [processing, setProcessing] = useState(false);
 
-  const handleSelectPlan = (plan: 'professional' | 'premium') => {
+  const handleSelectPlan = (plan: 'free' | 'professional' | 'premium') => {
     if (!user) {
       navigate('/auth');
+      return;
+    }
+
+    if (plan === 'free') {
+      // Free plan - just update directly
+      updatePlan('free');
+      toast({
+        title: "Plano atualizado!",
+        description: "Você está no plano Free.",
+      });
+      navigate('/dashboard');
       return;
     }
 
@@ -118,11 +140,12 @@ const Plans = () => {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {AVAILABLE_PLANS.map((plan) => {
             const info = PLAN_INFO[plan];
             const isCurrentPlan = subscription?.plan === plan;
             const isPremium = plan === 'premium';
+            const isFree = plan === 'free';
 
             return (
               <Card 
@@ -139,18 +162,28 @@ const Plans = () => {
                   <CardTitle className="text-xl">{info.name}</CardTitle>
                   <CardDescription>{info.description}</CardDescription>
                   <div className="mt-4 flex flex-col items-center gap-1">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-bold text-foreground">
-                        R$ {info.currentPrice}
-                      </span>
-                      <span className="text-muted-foreground">/mês</span>
-                    </div>
-                    <span className="text-lg text-muted-foreground line-through">
-                      R$ {info.originalPrice}
-                    </span>
-                    <Badge variant="secondary" className="mt-2">
-                      {Math.round((1 - info.currentPrice / info.originalPrice) * 100)}% OFF
-                    </Badge>
+                    {isFree ? (
+                      <span className="text-4xl font-bold text-foreground">Grátis</span>
+                    ) : (
+                      <>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-4xl font-bold text-foreground">
+                            R$ {info.currentPrice}
+                          </span>
+                          <span className="text-muted-foreground">/mês</span>
+                        </div>
+                        {info.originalPrice && (
+                          <span className="text-lg text-muted-foreground line-through">
+                            R$ {info.originalPrice}
+                          </span>
+                        )}
+                        {info.originalPrice && (
+                          <Badge variant="secondary" className="mt-2">
+                            {Math.round((1 - info.currentPrice / info.originalPrice) * 100)}% OFF
+                          </Badge>
+                        )}
+                      </>
+                    )}
                   </div>
                 </CardHeader>
                 
@@ -166,17 +199,19 @@ const Plans = () => {
                       ))}
                     </ul>
                   </div>
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-2 uppercase">Adicionais</p>
-                    <ul className="space-y-2">
-                      {info.extras.map((extra, index) => (
-                        <li key={index} className="flex items-center gap-2">
-                          <Check className="h-4 w-4 text-primary flex-shrink-0" />
-                          <span className="text-sm text-foreground">{extra}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                  {info.extras.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2 uppercase">Adicionais</p>
+                      <ul className="space-y-2">
+                        {info.extras.map((extra, index) => (
+                          <li key={index} className="flex items-center gap-2">
+                            <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                            <span className="text-sm text-foreground">{extra}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </CardContent>
                 
                 <CardFooter>
