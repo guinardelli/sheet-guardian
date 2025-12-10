@@ -241,18 +241,18 @@ const Dashboard = () => {
                     </span>
                   </div>
                 )}
-                {planLimits?.sheetsPerDay !== null && (
+                {planLimits?.sheetsPerWeek !== null && (
                   <div>
-                    <span className="text-muted-foreground">Uso diário: </span>
+                    <span className="text-muted-foreground">Uso semanal: </span>
                     <span className="font-medium">
-                      {subscription.sheets_used_today}/{planLimits.sheetsPerDay}
+                      {subscription.sheets_used_today}/{planLimits.sheetsPerWeek}
                     </span>
                   </div>
                 )}
-                {planLimits?.maxFileSizeKB !== null && (
+                {planLimits?.maxFileSizeMB !== null && (
                   <div>
                     <span className="text-muted-foreground">Tamanho máximo: </span>
-                    <span className="font-medium">{planLimits.maxFileSizeKB} KB</span>
+                    <span className="font-medium">{planLimits.maxFileSizeMB} MB</span>
                   </div>
                 )}
                 {subscription.plan === 'premium' && (

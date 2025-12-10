@@ -15,6 +15,7 @@ const PLAN_INFO: Record<'professional' | 'premium', {
   name: string; 
   description: string; 
   features: string[];
+  extras: string[];
   currentPrice: number;
   originalPrice: number;
 }> = {
@@ -22,24 +23,28 @@ const PLAN_INFO: Record<'professional' | 'premium', {
     name: 'Profissional',
     description: 'Para uso regular',
     features: [
-      '5 planilhas por dia',
-      'Tamanho máximo: 1.000 KB',
-      'Suporte prioritário',
+      '5 arquivos por semana',
+      'Tamanho máximo: 1 MB',
     ],
-    currentPrice: 23,
-    originalPrice: 36,
+    extras: [
+      'Funcionalidades nativas',
+    ],
+    currentPrice: 32,
+    originalPrice: 38,
   },
   premium: {
     name: 'Premium',
     description: 'Sem limitações',
     features: [
-      'Planilhas ilimitadas',
+      'Processamentos ilimitados',
       'Sem limite de tamanho',
+    ],
+    extras: [
       'Suporte VIP',
       'Processamento prioritário',
     ],
     currentPrice: 38,
-    originalPrice: 65,
+    originalPrice: 76,
   },
 };
 
@@ -149,15 +154,29 @@ const Plans = () => {
                   </div>
                 </CardHeader>
                 
-                <CardContent>
-                  <ul className="space-y-3">
-                    {info.features.map((feature, index) => (
-                      <li key={index} className="flex items-center gap-2">
-                        <Check className="h-5 w-5 text-primary flex-shrink-0" />
-                        <span className="text-sm text-foreground">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
+                <CardContent className="space-y-4">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2 uppercase">Limites</p>
+                    <ul className="space-y-2">
+                      {info.features.map((feature, index) => (
+                        <li key={index} className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                          <span className="text-sm text-foreground">{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2 uppercase">Adicionais</p>
+                    <ul className="space-y-2">
+                      {info.extras.map((extra, index) => (
+                        <li key={index} className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                          <span className="text-sm text-foreground">{extra}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </CardContent>
                 
                 <CardFooter>

@@ -16,21 +16,21 @@ interface Subscription {
 }
 
 interface PlanLimits {
-  sheetsPerDay: number | null;
+  sheetsPerWeek: number | null;
   sheetsPerMonth: number | null;
-  maxFileSizeKB: number | null;
+  maxFileSizeMB: number | null;
 }
 
 export const PLAN_LIMITS: Record<SubscriptionPlan, PlanLimits> = {
-  free: { sheetsPerDay: null, sheetsPerMonth: 1, maxFileSizeKB: 100 },
-  professional: { sheetsPerDay: 5, sheetsPerMonth: null, maxFileSizeKB: 1000 },
-  premium: { sheetsPerDay: null, sheetsPerMonth: null, maxFileSizeKB: null },
+  free: { sheetsPerWeek: null, sheetsPerMonth: 1, maxFileSizeMB: 1 },
+  professional: { sheetsPerWeek: 5, sheetsPerMonth: null, maxFileSizeMB: 1 },
+  premium: { sheetsPerWeek: null, sheetsPerMonth: null, maxFileSizeMB: null },
 };
 
 export const PLAN_PRICES: Record<SubscriptionPlan, number> = {
   free: 0,
-  professional: 23,
-  premium: 30,
+  professional: 32,
+  premium: 38,
 };
 
 export const useSubscription = () => {
@@ -62,46 +62,59 @@ export const useSubscription = () => {
     setLoading(false);
   };
 
+  const getWeekNumber = (date: Date): string => {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return `${d.getUTCFullYear()}-W${weekNo}`;
+  };
+
   const canProcessSheet = (fileSizeKB: number): { allowed: boolean; reason?: string } => {
     if (!subscription) {
       return { allowed: false, reason: 'Você precisa estar logado para processar planilhas.' };
     }
 
     const limits = PLAN_LIMITS[subscription.plan];
+    const fileSizeMB = fileSizeKB / 1024;
 
     // Check file size limit
-    if (limits.maxFileSizeKB && fileSizeKB > limits.maxFileSizeKB) {
+    if (limits.maxFileSizeMB && fileSizeMB > limits.maxFileSizeMB) {
       return { 
         allowed: false, 
-        reason: `Arquivo muito grande. Limite do seu plano: ${limits.maxFileSizeKB} KB` 
+        reason: `Arquivo muito grande. Limite do seu plano: ${limits.maxFileSizeMB} MB` 
       };
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const currentWeek = getWeekNumber(today);
 
-    // Check daily limit
-    if (limits.sheetsPerDay !== null) {
-      const isToday = subscription.last_sheet_date === today;
-      const usedToday = isToday ? subscription.sheets_used_today : 0;
+    // Check weekly limit
+    if (limits.sheetsPerWeek !== null && subscription.last_sheet_date) {
+      const lastDate = new Date(subscription.last_sheet_date);
+      const lastWeek = getWeekNumber(lastDate);
+      const usedThisWeek = lastWeek === currentWeek ? subscription.sheets_used_today : 0;
       
-      if (usedToday >= limits.sheetsPerDay) {
+      if (usedThisWeek >= limits.sheetsPerWeek) {
         return { 
           allowed: false, 
-          reason: `Limite diário atingido (${limits.sheetsPerDay} planilhas/dia)` 
+          reason: `Limite semanal atingido (${limits.sheetsPerWeek} arquivos/semana)` 
         };
       }
     }
 
     // Check monthly limit
     if (limits.sheetsPerMonth !== null) {
-      const currentMonth = today.substring(0, 7);
+      const currentMonth = todayStr.substring(0, 7);
       const lastResetMonth = subscription.last_reset_date?.substring(0, 7);
       const usedMonth = lastResetMonth === currentMonth ? subscription.sheets_used_month : 0;
       
       if (usedMonth >= limits.sheetsPerMonth) {
         return { 
           allowed: false, 
-          reason: `Limite mensal atingido (${limits.sheetsPerMonth} planilha/mês)` 
+          reason: `Limite mensal atingido (${limits.sheetsPerMonth} processamento/mês)` 
         };
       }
     }
