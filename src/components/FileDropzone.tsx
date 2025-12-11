@@ -117,22 +117,22 @@ export function FileDropzone({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={cn(
-        'flex flex-col items-center gap-6 rounded-xl border-2 border-dashed px-6 py-14 transition-all duration-200',
+        'flex flex-col items-center gap-6 rounded-2xl border-2 border-dashed px-6 py-16 transition-all duration-300',
         isDragging
-          ? 'border-primary bg-primary/5'
-          : 'border-border bg-card/50',
+          ? 'border-primary bg-primary/5 shadow-soft-lg'
+          : 'border-border/70 bg-card/30',
         disabled && 'opacity-50 cursor-not-allowed',
-        !disabled && !selectedFile && 'hover:border-primary/50 hover:bg-card/80'
+        !disabled && !selectedFile && 'hover:border-primary/50 hover:bg-card/50 hover:shadow-soft'
       )}
     >
       {selectedFile ? (
-        <div className="flex flex-col items-center gap-4 animate-fade-in">
-          <div className="flex items-center justify-center w-16 h-16 rounded-full bg-primary/10">
-            <FileSpreadsheet className="w-8 h-8 text-primary" />
+        <div className="flex flex-col items-center gap-5 animate-fade-in">
+          <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-primary/10 shadow-soft">
+            <FileSpreadsheet className="w-10 h-10 text-primary" />
           </div>
-          <div className="flex flex-col items-center gap-1">
-            <p className="text-foreground font-bold text-lg">{selectedFile.name}</p>
-            <p className="text-muted-foreground text-sm">
+          <div className="flex flex-col items-center gap-1.5">
+            <p className="text-foreground font-bold text-lg tracking-tight">{selectedFile.name}</p>
+            <p className="text-muted-foreground text-sm font-medium">
               {formatFileSize(selectedFile.size)}
             </p>
           </div>
@@ -141,7 +141,7 @@ export function FileDropzone({
               variant="ghost"
               size="sm"
               onClick={onClearFile}
-              className="text-muted-foreground hover:text-destructive"
+              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
             >
               <X className="w-4 h-4 mr-2" />
               Remover arquivo
@@ -150,11 +150,11 @@ export function FileDropzone({
         </div>
       ) : (
         <>
-          <div className="flex items-center justify-center w-16 h-16 rounded-full bg-muted">
-            <Upload className="w-8 h-8 text-muted-foreground" />
+          <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-muted/80">
+            <Upload className="w-10 h-10 text-muted-foreground" />
           </div>
-          <div className="flex flex-col items-center gap-2 max-w-md text-center">
-            <p className="text-foreground text-lg font-bold">
+          <div className="flex flex-col items-center gap-2.5 max-w-md text-center">
+            <p className="text-foreground text-lg font-bold tracking-tight">
               Arraste e solte seu arquivo Excel aqui
             </p>
             <p className="text-muted-foreground text-sm">
@@ -172,7 +172,7 @@ export function FileDropzone({
             />
             <Button
               variant="secondary"
-              className="pointer-events-none"
+              className="pointer-events-none h-10 px-6"
               disabled={disabled}
             >
               Selecionar Arquivo

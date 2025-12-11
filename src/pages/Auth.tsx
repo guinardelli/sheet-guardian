@@ -143,28 +143,33 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <ExcelIcon className="w-16 h-16 text-primary" />
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 sm:p-6 lg:p-8 relative">
+      {/* Background decoration */}
+      <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent pointer-events-none" />
+
+      <Card className="w-full max-w-md shadow-soft-lg border-border/50 relative">
+        <CardHeader className="text-center pb-2">
+          <div className="flex justify-center mb-5">
+            <div className="p-3 rounded-2xl bg-primary/10">
+              <ExcelIcon className="w-12 h-12 text-primary" />
+            </div>
           </div>
-          <CardTitle className="text-2xl">Excel VBA Blocker</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-2xl font-bold tracking-tight">Excel VBA Blocker</CardTitle>
+          <CardDescription className="text-base mt-2">
             Faça login ou crie uma conta para continuar
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Entrar</TabsTrigger>
-              <TabsTrigger value="register">Cadastrar</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="login" className="font-medium">Entrar</TabsTrigger>
+              <TabsTrigger value="register" className="font-medium">Cadastrar</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="login">
-              <form onSubmit={handleSignIn} className="space-y-4 mt-4">
+              <form onSubmit={handleSignIn} className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="login-email">Email</Label>
+                  <Label htmlFor="login-email" className="text-sm font-medium">Email</Label>
                   <Input
                     id="login-email"
                     type="email"
@@ -172,10 +177,11 @@ const Auth = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    className="h-11"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="login-password">Senha</Label>
+                  <Label htmlFor="login-password" className="text-sm font-medium">Senha</Label>
                   <Input
                     id="login-password"
                     type="password"
@@ -183,6 +189,7 @@ const Auth = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    className="h-11"
                   />
                 </div>
                 <div className="text-right">
@@ -193,19 +200,19 @@ const Auth = () => {
                     onClick={handleForgotPassword}
                     disabled={resetLoading}
                   >
-                    {resetLoading ? 'Enviando...' : 'Recuperar Senha'}
+                    {resetLoading ? 'Enviando...' : 'Esqueceu a senha?'}
                   </Button>
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full h-11 shadow-soft" disabled={loading}>
                   {loading ? 'Entrando...' : 'Entrar'}
                 </Button>
               </form>
             </TabsContent>
-            
+
             <TabsContent value="register">
-              <form onSubmit={handleSignUp} className="space-y-4 mt-4">
+              <form onSubmit={handleSignUp} className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="register-email">Email</Label>
+                  <Label htmlFor="register-email" className="text-sm font-medium">Email</Label>
                   <Input
                     id="register-email"
                     type="email"
@@ -213,10 +220,11 @@ const Auth = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    className="h-11"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="register-password">Senha</Label>
+                  <Label htmlFor="register-password" className="text-sm font-medium">Senha</Label>
                   <Input
                     id="register-password"
                     type="password"
@@ -224,10 +232,11 @@ const Auth = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    className="h-11"
                   />
                   <PasswordStrengthIndicator password={password} />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full h-11 shadow-soft" disabled={loading}>
                   {loading ? 'Cadastrando...' : 'Criar Conta'}
                 </Button>
               </form>

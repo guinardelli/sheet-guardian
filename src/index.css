@@ -117,4 +117,57 @@
       transform: translateY(0);
     }
   }
+
+  /* Smooth scale animation for interactive elements */
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* Gradient text utility */
+  .text-gradient-primary {
+    @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
+  }
+
+  /* Enhanced shadow utilities */
+  .shadow-soft {
+    box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.08), 0 4px 16px -4px rgba(0, 0, 0, 0.06);
+  }
+
+  .shadow-soft-lg {
+    box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.1), 0 8px 32px -8px rgba(0, 0, 0, 0.08);
+  }
+
+  .dark .shadow-soft {
+    box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.3), 0 4px 16px -4px rgba(0, 0, 0, 0.25);
+  }
+
+  .dark .shadow-soft-lg {
+    box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.4), 0 8px 32px -8px rgba(0, 0, 0, 0.35);
+  }
+
+  /* Glass morphism utility */
+  .glass {
+    @apply bg-background/80 backdrop-blur-md;
+  }
+
+  /* Section spacing utility */
+  .section-padding {
+    @apply py-16 md:py-24 lg:py-32;
+  }
+
+  /* Refined focus ring */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
 }
