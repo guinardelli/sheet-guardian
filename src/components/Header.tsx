@@ -4,12 +4,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
 import { Button } from '@/components/ui/button';
 import { ExcelIcon } from '@/components/ExcelIcon';
-import { LogOut, CreditCard, User, LayoutDashboard, Menu, X } from 'lucide-react';
+import { LogOut, CreditCard, User, LayoutDashboard, Menu, UserCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 const PLAN_NAMES: Record<string, string> = {
-  free: 'Free',
+  free: 'Gratuito',
   professional: 'Profissional',
   premium: 'Premium',
 };
@@ -49,18 +49,27 @@ export const Header = () => {
               Dashboard
             </Button>
           )}
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => { navigate('/plans'); setMobileMenuOpen(false); }}
             className={mobile ? 'w-full justify-start' : ''}
           >
             <CreditCard className="h-4 w-4 mr-2" />
             Planos
           </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => { navigate('/account'); setMobileMenuOpen(false); }}
+            className={mobile ? 'w-full justify-start' : ''}
+          >
+            <UserCircle className="h-4 w-4 mr-2" />
+            Minha Conta
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleSignOut}
             className={mobile ? 'w-full justify-start' : ''}
           >

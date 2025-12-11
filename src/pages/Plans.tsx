@@ -11,16 +11,16 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 
-const PLAN_INFO: Record<'free' | 'professional' | 'premium', { 
-  name: string; 
-  description: string; 
+const PLAN_INFO: Record<'free' | 'professional' | 'premium', {
+  name: string;
+  description: string;
   features: string[];
   extras: string[];
   currentPrice: number;
   originalPrice: number | null;
 }> = {
   free: {
-    name: 'Free',
+    name: 'Gratuito',
     description: 'Para experimentar',
     features: [
       '1 processamento por mês',
@@ -73,6 +73,10 @@ const Plans = () => {
 
   const handleSelectPlan = (plan: 'free' | 'professional' | 'premium') => {
     if (!user) {
+      toast({
+        title: "Crie sua conta",
+        description: `Crie uma conta gratuita para ${plan === 'free' ? 'começar a usar' : 'assinar o plano ' + PLAN_INFO[plan].name}.`,
+      });
       navigate('/auth');
       return;
     }
@@ -82,7 +86,7 @@ const Plans = () => {
       updatePlan('free');
       toast({
         title: "Plano atualizado!",
-        description: "Você está no plano Free.",
+        description: "Você está no plano Gratuito.",
       });
       navigate('/dashboard');
       return;
@@ -215,13 +219,19 @@ const Plans = () => {
                 </CardContent>
                 
                 <CardFooter>
-                  <Button 
-                    className="w-full" 
+                  <Button
+                    className="w-full"
                     variant={isCurrentPlan ? 'outline' : 'default'}
                     disabled={isCurrentPlan || processing}
                     onClick={() => handleSelectPlan(plan)}
                   >
-                    {isCurrentPlan ? 'Plano Atual' : 'Selecionar'}
+                    {isCurrentPlan
+                      ? 'Plano Atual'
+                      : !user
+                        ? (isFree ? 'Criar Conta Grátis' : 'Criar Conta')
+                        : (subscription && subscription.plan !== 'free' && plan !== 'free')
+                          ? 'Trocar Plano'
+                          : (plan === 'free' ? 'Mudar para Gratuito' : 'Fazer Upgrade')}
                   </Button>
                 </CardFooter>
               </Card>
