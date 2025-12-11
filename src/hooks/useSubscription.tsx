@@ -101,8 +101,11 @@ export const useSubscription = () => {
   };
 
   const canProcessSheet = (fileSizeKB: number): { allowed: boolean; reason?: string; suggestUpgrade?: boolean } => {
+    if (loading) {
+      return { allowed: false, reason: 'Carregando informações da assinatura...', suggestUpgrade: false };
+    }
     if (!subscription) {
-      return { allowed: false, reason: 'Você precisa estar logado para processar planilhas.', suggestUpgrade: false };
+      return { allowed: false, reason: 'Não foi possível carregar sua assinatura. Tente recarregar a página.', suggestUpgrade: false };
     }
 
     const limits = PLAN_LIMITS[subscription.plan];

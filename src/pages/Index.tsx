@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/Header';
 import { ExcelIcon } from '@/components/ExcelIcon';
-import { Shield, Zap, Lock, FileSpreadsheet, CheckCircle, ArrowRight } from 'lucide-react';
+import { Shield, Zap, Lock, FileSpreadsheet, CheckCircle, ArrowRight, Home } from 'lucide-react';
 
 const Index = () => {
   const { user } = useAuth();
@@ -42,13 +42,27 @@ const Index = () => {
               </p>
               
               <div className="flex flex-wrap gap-4">
-                <Button size="lg" onClick={handleGetStarted} className="gap-2">
-                  Começar Agora
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-                <Button size="lg" variant="outline" onClick={() => navigate('/plans')}>
-                  Ver Planos
-                </Button>
+                {user ? (
+                  <>
+                    <Button size="lg" onClick={() => navigate('/dashboard')} className="gap-2">
+                      <Home className="w-4 h-4" />
+                      Ir para Início
+                    </Button>
+                    <Button size="lg" variant="outline" onClick={() => navigate('/plans')}>
+                      Ver Planos
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button size="lg" onClick={handleGetStarted} className="gap-2">
+                      Começar Agora
+                      <ArrowRight className="w-4 h-4" />
+                    </Button>
+                    <Button size="lg" variant="outline" onClick={() => navigate('/plans')}>
+                      Ver Planos
+                    </Button>
+                  </>
+                )}
               </div>
 
               <div className="flex flex-wrap gap-6 pt-4">

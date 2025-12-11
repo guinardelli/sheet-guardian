@@ -39,14 +39,14 @@ export const Header = () => {
             </Badge>
           )}
           {!isOnDashboard && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => { navigate('/dashboard'); setMobileMenuOpen(false); }}
               className={mobile ? 'w-full justify-start' : ''}
             >
               <LayoutDashboard className="h-4 w-4 mr-2" />
-              Dashboard
+              Início
             </Button>
           )}
           <Button

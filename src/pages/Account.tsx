@@ -1,12 +1,16 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription, PLAN_LIMITS, SubscriptionPlan } from '@/hooks/useSubscription';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Header } from '@/components/Header';
-import { ArrowLeft, Mail, Crown, TrendingUp, Loader2 } from 'lucide-react';
+import { Home, Mail, Crown, TrendingUp, Loader2, User, Lock, Save, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 
 const PLAN_NAMES: Record<SubscriptionPlan, string> = {
   free: 'Gratuito',
@@ -20,10 +24,25 @@ const PLAN_COLORS: Record<SubscriptionPlan, string> = {
   premium: 'bg-yellow-500',
 };
 
+interface Profile {
+  id: string;
+  user_id: string;
+  email: string | null;
+  full_name: string | null;
+}
+
 const Account = () => {
   const { user, loading: authLoading } = useAuth();
-  const { subscription, loading: subLoading } = useSubscription();
+  const { subscription, loading: subLoading, refetch: refetchSubscription } = useSubscription();
   const navigate = useNavigate();
+
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [fullName, setFullName] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [savingName, setSavingName] = useState(false);
+  const [savingEmail, setSavingEmail] = useState(false);
+  const [sendingPasswordReset, setSendingPasswordReset] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -31,7 +50,99 @@ const Account = () => {
     }
   }, [user, authLoading, navigate]);
 
-  if (authLoading || subLoading) {
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
+    }
+  }, [user]);
+
+  const fetchProfile = async () => {
+    if (!user) return;
+
+    setProfileLoading(true);
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!error && data) {
+      setProfile(data as Profile);
+      setFullName(data.full_name || '');
+      setNewEmail(data.email || user.email || '');
+    } else {
+      setNewEmail(user.email || '');
+    }
+    setProfileLoading(false);
+  };
+
+  const handleSaveFullName = async () => {
+    if (!user) return;
+
+    setSavingName(true);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ full_name: fullName })
+      .eq('user_id', user.id);
+
+    if (error) {
+      toast.error('Erro ao salvar nome', {
+        description: error.message
+      });
+    } else {
+      toast.success('Nome atualizado com sucesso!');
+      await fetchProfile();
+    }
+    setSavingName(false);
+  };
+
+  const handleUpdateEmail = async () => {
+    if (!newEmail || newEmail === user?.email) {
+      toast.error('Digite um novo email diferente do atual');
+      return;
+    }
+
+    setSavingEmail(true);
+    const { error } = await supabase.auth.updateUser({
+      email: newEmail
+    });
+
+    if (error) {
+      toast.error('Erro ao atualizar email', {
+        description: error.message
+      });
+    } else {
+      toast.success('Email de confirmação enviado!', {
+        description: 'Verifique sua caixa de entrada para confirmar o novo email.'
+      });
+    }
+    setSavingEmail(false);
+  };
+
+  const handlePasswordReset = async () => {
+    if (!user?.email) {
+      toast.error('Email não encontrado');
+      return;
+    }
+
+    setSendingPasswordReset(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+      redirectTo: `${window.location.origin}/auth`
+    });
+
+    if (error) {
+      toast.error('Erro ao enviar email de redefinição', {
+        description: error.message
+      });
+    } else {
+      toast.success('Email enviado!', {
+        description: 'Verifique sua caixa de entrada para redefinir sua senha.'
+      });
+    }
+    setSendingPasswordReset(false);
+  };
+
+  if (authLoading || profileLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -104,11 +215,11 @@ const Account = () => {
       <main className="max-w-2xl mx-auto px-4 py-8">
         <Button
           variant="ghost"
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/dashboard')}
           className="mb-6"
         >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar
+          <Home className="mr-2 h-4 w-4" />
+          Início
         </Button>
 
         <h1 className="text-3xl font-bold text-foreground mb-8">Minha Conta</h1>
@@ -118,19 +229,113 @@ const Account = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5" />
-                Informações da Conta
+                <User className="h-5 w-5" />
+                Informações Pessoais
               </CardTitle>
+              <CardDescription>
+                Gerencie suas informações pessoais
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm text-muted-foreground">Email</label>
-                <p className="font-medium">{user?.email}</p>
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Nome Completo</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="fullName"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Seu nome completo"
+                  />
+                  <Button
+                    onClick={handleSaveFullName}
+                    disabled={savingName}
+                    size="icon"
+                  >
+                    {savingName ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
               <div>
-                <label className="text-sm text-muted-foreground">ID do Usuário</label>
+                <Label className="text-sm text-muted-foreground">ID do Usuário</Label>
                 <p className="font-mono text-sm text-muted-foreground">{user?.id}</p>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Email Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="h-5 w-5" />
+                Email
+              </CardTitle>
+              <CardDescription>
+                Altere seu endereço de email
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Endereço de Email</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="email"
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="seu@email.com"
+                  />
+                  <Button
+                    onClick={handleUpdateEmail}
+                    disabled={savingEmail || newEmail === user?.email}
+                    variant="outline"
+                  >
+                    {savingEmail ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                    )}
+                    Alterar
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Ao alterar o email, você receberá um link de confirmação no novo endereço.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Password Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lock className="h-5 w-5" />
+                Senha
+              </CardTitle>
+              <CardDescription>
+                Redefina sua senha de acesso
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                onClick={handlePasswordReset}
+                disabled={sendingPasswordReset}
+                variant="outline"
+                className="w-full"
+              >
+                {sendingPasswordReset ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Lock className="h-4 w-4 mr-2" />
+                )}
+                Enviar Email para Redefinir Senha
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2">
+                Você receberá um email com um link para criar uma nova senha.
+              </p>
             </CardContent>
           </Card>
 
@@ -143,7 +348,12 @@ const Account = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {subscription ? (
+              {subLoading ? (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Carregando informações do plano...
+                </div>
+              ) : subscription ? (
                 <>
                   <div className="flex items-center gap-3">
                     <Badge className={PLAN_COLORS[subscription.plan]}>
@@ -198,7 +408,18 @@ const Account = () => {
                   </div>
                 </>
               ) : (
-                <p className="text-muted-foreground">Carregando informações do plano...</p>
+                <div className="text-muted-foreground">
+                  <p>Não foi possível carregar as informações do plano.</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={refetchSubscription}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Tentar novamente
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
