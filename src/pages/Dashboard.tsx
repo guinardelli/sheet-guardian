@@ -40,7 +40,7 @@ const Dashboard = () => {
   const [processingComplete, setProcessingComplete] = useState(false);
 
   const { user, loading: authLoading } = useAuth();
-  const { subscription, canProcessSheet, incrementUsage } = useSubscription();
+  const { subscription, canProcessSheet, incrementUsage, getUsageStats } = useSubscription();
   const navigate = useNavigate();
 
   // Redirect if not logged in
@@ -90,19 +90,32 @@ const Dashboard = () => {
   const handleFileSelect = useCallback((file: File) => {
     if (!user) {
       toast.error('Login necessário', {
-        description: 'Faça login para processar planilhas.'
+        description: 'Faça login para processar planilhas.',
+        action: {
+          label: 'Entrar',
+          onClick: () => navigate('/auth')
+        }
       });
-      navigate('/auth');
       return;
     }
 
     const fileSizeKB = file.size / 1024;
-    const { allowed, reason } = canProcessSheet(fileSizeKB);
-    
+    const { allowed, reason, suggestUpgrade } = canProcessSheet(fileSizeKB);
+
     if (!allowed) {
-      toast.error('Limite atingido', {
-        description: reason
-      });
+      if (suggestUpgrade) {
+        toast.error('Limite atingido', {
+          description: reason,
+          action: {
+            label: 'Ver Planos',
+            onClick: () => navigate('/plans')
+          }
+        });
+      } else {
+        toast.error('Erro', {
+          description: reason
+        });
+      }
       return;
     }
 
@@ -133,12 +146,22 @@ const Dashboard = () => {
     if (!selectedFile || !user) return;
 
     const fileSizeKB = selectedFile.size / 1024;
-    const { allowed, reason } = canProcessSheet(fileSizeKB);
-    
+    const { allowed, reason, suggestUpgrade } = canProcessSheet(fileSizeKB);
+
     if (!allowed) {
-      toast.error('Limite atingido', {
-        description: reason
-      });
+      if (suggestUpgrade) {
+        toast.error('Limite atingido', {
+          description: reason,
+          action: {
+            label: 'Ver Planos',
+            onClick: () => navigate('/plans')
+          }
+        });
+      } else {
+        toast.error('Erro', {
+          description: reason
+        });
+      }
       return;
     }
 
@@ -233,22 +256,20 @@ const Dashboard = () => {
           <Card>
             <CardContent className="pt-4">
               <div className="flex flex-wrap justify-center gap-4 text-sm">
-                {planLimits?.sheetsPerMonth !== null && (
-                  <div>
-                    <span className="text-muted-foreground">Uso mensal: </span>
-                    <span className="font-medium">
-                      {subscription.sheets_used_month}/{planLimits.sheetsPerMonth}
-                    </span>
-                  </div>
-                )}
-                {planLimits?.sheetsPerWeek !== null && (
-                  <div>
-                    <span className="text-muted-foreground">Uso semanal: </span>
-                    <span className="font-medium">
-                      {subscription.sheets_used_today}/{planLimits.sheetsPerWeek}
-                    </span>
-                  </div>
-                )}
+                {(() => {
+                  const usageStats = getUsageStats();
+                  if (usageStats && usageStats.limit !== null) {
+                    return (
+                      <div>
+                        <span className="text-muted-foreground">Uso ({usageStats.period}): </span>
+                        <span className="font-medium">
+                          {usageStats.used}/{usageStats.limit}
+                        </span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
                 {planLimits?.maxFileSizeMB !== null && (
                   <div>
                     <span className="text-muted-foreground">Tamanho máximo: </span>
@@ -256,7 +277,17 @@ const Dashboard = () => {
                   </div>
                 )}
                 {subscription.plan === 'premium' && (
-                  <div className="text-primary font-medium">✨ Sem limitações</div>
+                  <div className="text-primary font-medium">Uso Ilimitado</div>
+                )}
+                {subscription.plan !== 'premium' && (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-primary"
+                    onClick={() => navigate('/plans')}
+                  >
+                    Fazer upgrade
+                  </Button>
                 )}
               </div>
             </CardContent>

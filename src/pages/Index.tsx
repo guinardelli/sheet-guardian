@@ -32,13 +32,13 @@ const Index = () => {
               </div>
               
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-foreground tracking-tight">
-                Proteja suas planilhas Excel com{' '}
+                Proteja seu código VBA Excel com{' '}
                 <span className="text-primary">segurança total</span>
               </h1>
               
               <p className="text-lg text-muted-foreground">
-                Bloqueie macros VBA em suas planilhas Excel de forma rápida e segura. 
-                Proteja seus dados contra execução não autorizada de código.
+                Bloqueie macros VBA em suas planilhas Excel de forma rápida e segura.
+                Proteja seus dados contra cópia não autorizada.
               </p>
               
               <div className="flex flex-wrap gap-4">
@@ -129,12 +129,12 @@ const Index = () => {
       <section className="py-16 md:py-24 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-            Pronto para proteger suas planilhas?
+            Pronto para proteger seu código VBA?
           </h2>
           <p className="text-muted-foreground text-lg mb-8">
             Comece agora mesmo e proteja seus arquivos Excel contra macros maliciosos.
           </p>
-          <Button size="lg" onClick={handleGetStarted} className="gap-2">
+          <Button size="lg" onClick={() => navigate('/plans')} className="gap-2">
             Começar Gratuitamente
             <ArrowRight className="w-4 h-4" />
           </Button>

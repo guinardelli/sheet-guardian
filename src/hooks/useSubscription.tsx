@@ -71,9 +71,38 @@ export const useSubscription = () => {
     return `${d.getUTCFullYear()}-W${weekNo}`;
   };
 
-  const canProcessSheet = (fileSizeKB: number): { allowed: boolean; reason?: string } => {
+  const getUsageStats = () => {
+    if (!subscription) return null;
+
+    const limits = PLAN_LIMITS[subscription.plan];
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const currentWeek = getWeekNumber(today);
+    const currentMonth = todayStr.substring(0, 7);
+
+    let used = 0;
+    let limit: number | null = null;
+    let period = '';
+
+    if (limits.sheetsPerMonth !== null) {
+      const lastResetMonth = subscription.last_reset_date?.substring(0, 7);
+      used = lastResetMonth === currentMonth ? subscription.sheets_used_month : 0;
+      limit = limits.sheetsPerMonth;
+      period = 'mês';
+    } else if (limits.sheetsPerWeek !== null) {
+      const lastDate = subscription.last_sheet_date ? new Date(subscription.last_sheet_date) : null;
+      const lastWeek = lastDate ? getWeekNumber(lastDate) : '';
+      used = lastWeek === currentWeek ? subscription.sheets_used_today : 0;
+      limit = limits.sheetsPerWeek;
+      period = 'semana';
+    }
+
+    return { used, limit, period };
+  };
+
+  const canProcessSheet = (fileSizeKB: number): { allowed: boolean; reason?: string; suggestUpgrade?: boolean } => {
     if (!subscription) {
-      return { allowed: false, reason: 'Você precisa estar logado para processar planilhas.' };
+      return { allowed: false, reason: 'Você precisa estar logado para processar planilhas.', suggestUpgrade: false };
     }
 
     const limits = PLAN_LIMITS[subscription.plan];
@@ -81,9 +110,10 @@ export const useSubscription = () => {
 
     // Check file size limit
     if (limits.maxFileSizeMB && fileSizeMB > limits.maxFileSizeMB) {
-      return { 
-        allowed: false, 
-        reason: `Arquivo muito grande. Limite do seu plano: ${limits.maxFileSizeMB} MB` 
+      return {
+        allowed: false,
+        reason: `Arquivo muito grande (${fileSizeMB.toFixed(1)} MB). Limite do seu plano: ${limits.maxFileSizeMB} MB. Faça upgrade para processar arquivos maiores.`,
+        suggestUpgrade: true
       };
     }
 
@@ -92,15 +122,16 @@ export const useSubscription = () => {
     const currentWeek = getWeekNumber(today);
 
     // Check weekly limit
-    if (limits.sheetsPerWeek !== null && subscription.last_sheet_date) {
-      const lastDate = new Date(subscription.last_sheet_date);
-      const lastWeek = getWeekNumber(lastDate);
+    if (limits.sheetsPerWeek !== null) {
+      const lastDate = subscription.last_sheet_date ? new Date(subscription.last_sheet_date) : null;
+      const lastWeek = lastDate ? getWeekNumber(lastDate) : '';
       const usedThisWeek = lastWeek === currentWeek ? subscription.sheets_used_today : 0;
-      
+
       if (usedThisWeek >= limits.sheetsPerWeek) {
-        return { 
-          allowed: false, 
-          reason: `Limite semanal atingido (${limits.sheetsPerWeek} arquivos/semana)` 
+        return {
+          allowed: false,
+          reason: `Limite semanal atingido (${usedThisWeek}/${limits.sheetsPerWeek}). Faça upgrade para mais processamentos.`,
+          suggestUpgrade: true
         };
       }
     }
@@ -110,11 +141,12 @@ export const useSubscription = () => {
       const currentMonth = todayStr.substring(0, 7);
       const lastResetMonth = subscription.last_reset_date?.substring(0, 7);
       const usedMonth = lastResetMonth === currentMonth ? subscription.sheets_used_month : 0;
-      
+
       if (usedMonth >= limits.sheetsPerMonth) {
-        return { 
-          allowed: false, 
-          reason: `Limite mensal atingido (${limits.sheetsPerMonth} processamento/mês)` 
+        return {
+          allowed: false,
+          reason: `Limite mensal atingido (${usedMonth}/${limits.sheetsPerMonth}). Faça upgrade para mais processamentos.`,
+          suggestUpgrade: true
         };
       }
     }
@@ -165,6 +197,7 @@ export const useSubscription = () => {
     canProcessSheet,
     incrementUsage,
     updatePlan,
+    getUsageStats,
     refetch: fetchSubscription,
   };
 };
