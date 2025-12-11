@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Play, RotateCcw, Download, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -9,11 +9,11 @@ import { ProcessingLog } from '@/components/ProcessingLog';
 import { StatisticsCard } from '@/components/StatisticsCard';
 import { ExcelIcon } from '@/components/ExcelIcon';
 import { Header } from '@/components/Header';
-import { 
-  processExcelFile, 
-  downloadFile, 
-  LogEntry, 
-  ProcessingResult 
+import {
+  processExcelFile,
+  downloadFile,
+  LogEntry,
+  ProcessingResult
 } from '@/lib/excel-vba-modifier';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -28,6 +28,9 @@ const PROCESSING_MESSAGES = [
   'Finalizando...',
 ];
 
+// Maximum number of log entries to keep in memory
+const MAX_LOG_ENTRIES = 100;
+
 const Dashboard = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [originalFile, setOriginalFile] = useState<File | null>(null);
@@ -39,9 +42,28 @@ const Dashboard = () => {
   const [result, setResult] = useState<ProcessingResult | null>(null);
   const [processingComplete, setProcessingComplete] = useState(false);
 
-  const { user, loading: authLoading } = useAuth();
-  const { subscription, canProcessSheet, incrementUsage, getUsageStats } = useSubscription();
+  // Ref to prevent double processing
+  const processingLockRef = useRef(false);
+
+  const { user, loading: authLoading, authError, clearAuthError } = useAuth();
+  const { subscription, canProcessSheet, incrementUsage, getUsageStats, isUpdating } = useSubscription();
   const navigate = useNavigate();
+
+  // Show auth errors to user
+  useEffect(() => {
+    if (authError) {
+      toast.error('Erro de autenticação', {
+        description: authError,
+        action: {
+          label: 'Entrar',
+          onClick: () => {
+            clearAuthError();
+            navigate('/auth');
+          }
+        }
+      });
+    }
+  }, [authError, clearAuthError, navigate]);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -139,11 +161,21 @@ const Dashboard = () => {
   }, []);
 
   const handleLog = useCallback((entry: LogEntry) => {
-    setLogs(prev => [...prev, entry]);
+    setLogs(prev => {
+      const newLogs = [...prev, entry];
+      // Limit log entries to prevent memory growth
+      if (newLogs.length > MAX_LOG_ENTRIES) {
+        return newLogs.slice(-MAX_LOG_ENTRIES);
+      }
+      return newLogs;
+    });
   }, []);
 
   const handleProcess = useCallback(async () => {
-    if (!selectedFile || !user) return;
+    // Guard: prevent double processing
+    if (!selectedFile || !user || isProcessing || processingLockRef.current) {
+      return;
+    }
 
     const fileSizeKB = selectedFile.size / 1024;
     const { allowed, reason, suggestUpgrade } = canProcessSheet(fileSizeKB);
@@ -165,6 +197,8 @@ const Dashboard = () => {
       return;
     }
 
+    // Set lock to prevent race conditions
+    processingLockRef.current = true;
     setIsProcessing(true);
     setLogs([]);
     setProgress(0);
@@ -172,38 +206,75 @@ const Dashboard = () => {
     setResult(null);
     setProcessingComplete(false);
 
-    const processingResult = await processExcelFile(
-      selectedFile,
-      handleLog,
-      setProgress
-    );
+    try {
+      const processingResult = await processExcelFile(
+        selectedFile,
+        handleLog,
+        setProgress
+      );
 
-    // Wait for the cinematic animation to catch up
-    await new Promise(resolve => setTimeout(resolve, 4500));
+      // Wait for the cinematic animation to catch up
+      await new Promise(resolve => setTimeout(resolve, 4500));
 
-    setResult(processingResult);
-    setProcessingComplete(true);
-    setIsProcessing(false);
+      setResult(processingResult);
+      setProcessingComplete(true);
 
-    if (processingResult.success && processingResult.modifiedFile) {
-      await incrementUsage();
-      
-      toast.success('Arquivo processado com sucesso!', {
-        description: `${processingResult.patternsModified} padrão(ões) modificado(s)`,
-        action: {
-          label: 'Baixar',
-          onClick: () => downloadFile(
-            processingResult.modifiedFile!,
-            processingResult.newFileName
-          )
+      if (processingResult.success && processingResult.modifiedFile) {
+        // Try to increment usage with proper error handling
+        try {
+          const usageResult = await incrementUsage();
+          if (!usageResult.success) {
+            console.error('Erro ao registrar uso:', usageResult.error);
+            toast.warning('Aviso', {
+              description: 'Arquivo processado, mas houve um erro ao registrar o uso. Seu limite pode não estar atualizado.'
+            });
+          }
+        } catch (usageError) {
+          console.error('Erro inesperado ao registrar uso:', usageError);
+          toast.warning('Aviso', {
+            description: 'Arquivo processado, mas houve um erro ao registrar o uso.'
+          });
         }
+
+        // Warn if no patterns were modified
+        if (processingResult.patternsModified === 0) {
+          toast.warning('Processamento concluído', {
+            description: 'Nenhum padrão de proteção VBA foi encontrado ou modificado no arquivo.',
+            action: {
+              label: 'Baixar',
+              onClick: () => downloadFile(
+                processingResult.modifiedFile!,
+                processingResult.newFileName
+              )
+            }
+          });
+        } else {
+          toast.success('Arquivo processado com sucesso!', {
+            description: `${processingResult.patternsModified} padrão(ões) modificado(s)`,
+            action: {
+              label: 'Baixar',
+              onClick: () => downloadFile(
+                processingResult.modifiedFile!,
+                processingResult.newFileName
+              )
+            }
+          });
+        }
+      } else if (processingResult.error) {
+        toast.error('Erro ao processar arquivo', {
+          description: processingResult.error
+        });
+      }
+    } catch (error) {
+      console.error('Erro inesperado durante processamento:', error);
+      toast.error('Erro inesperado', {
+        description: 'Ocorreu um erro durante o processamento. Tente novamente.'
       });
-    } else if (processingResult.error) {
-      toast.error('Erro ao processar arquivo', {
-        description: processingResult.error
-      });
+    } finally {
+      setIsProcessing(false);
+      processingLockRef.current = false;
     }
-  }, [selectedFile, user, canProcessSheet, handleLog, incrementUsage]);
+  }, [selectedFile, user, isProcessing, canProcessSheet, handleLog, incrementUsage, navigate]);
 
   const handleDownload = useCallback(() => {
     if (result?.modifiedFile) {
@@ -328,11 +399,11 @@ const Dashboard = () => {
           <Button
             size="lg"
             onClick={handleProcess}
-            disabled={!selectedFile || isProcessing || !user}
+            disabled={!selectedFile || isProcessing || !user || isUpdating}
             className="w-full sm:w-auto sm:min-w-[200px]"
           >
             <Play className="w-4 h-4 mr-2" />
-            {isProcessing ? 'Processando...' : 'Iniciar Processamento'}
+            {isProcessing ? 'Processando...' : isUpdating ? 'Aguarde...' : 'Iniciar Processamento'}
           </Button>
 
           {result?.success && result.modifiedFile && processingComplete && (

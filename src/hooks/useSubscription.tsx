@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
 export type SubscriptionPlan = 'free' | 'professional' | 'premium';
+
+const VALID_PLANS: SubscriptionPlan[] = ['free', 'professional', 'premium'];
 
 interface Subscription {
   id: string;
@@ -13,6 +15,7 @@ interface Subscription {
   last_reset_date: string | null;
   payment_method: string | null;
   payment_status: string | null;
+  updated_at?: string; // For optimistic locking
 }
 
 interface PlanLimits {
@@ -33,10 +36,40 @@ export const PLAN_PRICES: Record<SubscriptionPlan, number> = {
   premium: 38,
 };
 
+// Helper to get local date string (YYYY-MM-DD) without timezone issues
+const getLocalDateString = (date: Date = new Date()): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Helper to get ISO week number with proper year boundary handling
+const getWeekNumber = (date: Date): string => {
+  // Clone date to avoid mutation
+  const d = new Date(date.getTime());
+  d.setHours(0, 0, 0, 0);
+
+  // Set to nearest Thursday: current date + 4 - current day number
+  // Make Sunday's day number 7
+  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+
+  // Get first day of year
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+
+  // Calculate full weeks to nearest Thursday
+  const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+
+  // Return with the year of the Thursday (handles year boundary correctly)
+  return `${d.getFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+};
+
 export const useSubscription = () => {
   const { user } = useAuth();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const updateLockRef = useRef(false); // Prevent race conditions
 
   useEffect(() => {
     if (user) {
@@ -49,26 +82,24 @@ export const useSubscription = () => {
 
   const fetchSubscription = async () => {
     if (!user) return;
-    
-    const { data, error } = await supabase
-      .from('subscriptions')
-      .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle();
 
-    if (!error && data) {
-      setSubscription(data as Subscription);
+    try {
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Erro ao buscar assinatura:', error);
+      } else if (data) {
+        setSubscription(data as Subscription);
+      }
+    } catch (err) {
+      console.error('Erro inesperado ao buscar assinatura:', err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  };
-
-  const getWeekNumber = (date: Date): string => {
-    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-    const dayNum = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-    return `${d.getUTCFullYear()}-W${weekNo}`;
   };
 
   const getUsageStats = () => {
@@ -76,7 +107,7 @@ export const useSubscription = () => {
 
     const limits = PLAN_LIMITS[subscription.plan];
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = getLocalDateString(today);
     const currentWeek = getWeekNumber(today);
     const currentMonth = todayStr.substring(0, 7);
 
@@ -85,12 +116,17 @@ export const useSubscription = () => {
     let period = '';
 
     if (limits.sheetsPerMonth !== null) {
-      const lastResetMonth = subscription.last_reset_date?.substring(0, 7);
+      // Safely handle null/undefined last_reset_date
+      const lastResetMonth = subscription.last_reset_date
+        ? subscription.last_reset_date.substring(0, 7)
+        : null;
       used = lastResetMonth === currentMonth ? subscription.sheets_used_month : 0;
       limit = limits.sheetsPerMonth;
       period = 'mês';
     } else if (limits.sheetsPerWeek !== null) {
-      const lastDate = subscription.last_sheet_date ? new Date(subscription.last_sheet_date) : null;
+      const lastDate = subscription.last_sheet_date
+        ? new Date(subscription.last_sheet_date + 'T00:00:00') // Parse as local date
+        : null;
       const lastWeek = lastDate ? getWeekNumber(lastDate) : '';
       used = lastWeek === currentWeek ? subscription.sheets_used_today : 0;
       limit = limits.sheetsPerWeek;
@@ -107,6 +143,9 @@ export const useSubscription = () => {
     if (!subscription) {
       return { allowed: false, reason: 'Não foi possível carregar sua assinatura. Tente recarregar a página.', suggestUpgrade: false };
     }
+    if (isUpdating) {
+      return { allowed: false, reason: 'Atualizando uso, aguarde...', suggestUpgrade: false };
+    }
 
     const limits = PLAN_LIMITS[subscription.plan];
     const fileSizeMB = fileSizeKB / 1024;
@@ -121,12 +160,14 @@ export const useSubscription = () => {
     }
 
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = getLocalDateString(today);
     const currentWeek = getWeekNumber(today);
 
     // Check weekly limit
     if (limits.sheetsPerWeek !== null) {
-      const lastDate = subscription.last_sheet_date ? new Date(subscription.last_sheet_date) : null;
+      const lastDate = subscription.last_sheet_date
+        ? new Date(subscription.last_sheet_date + 'T00:00:00') // Parse as local date
+        : null;
       const lastWeek = lastDate ? getWeekNumber(lastDate) : '';
       const usedThisWeek = lastWeek === currentWeek ? subscription.sheets_used_today : 0;
 
@@ -142,7 +183,9 @@ export const useSubscription = () => {
     // Check monthly limit
     if (limits.sheetsPerMonth !== null) {
       const currentMonth = todayStr.substring(0, 7);
-      const lastResetMonth = subscription.last_reset_date?.substring(0, 7);
+      const lastResetMonth = subscription.last_reset_date
+        ? subscription.last_reset_date.substring(0, 7)
+        : null;
       const usedMonth = lastResetMonth === currentMonth ? subscription.sheets_used_month : 0;
 
       if (usedMonth >= limits.sheetsPerMonth) {
@@ -157,46 +200,92 @@ export const useSubscription = () => {
     return { allowed: true };
   };
 
-  const incrementUsage = async () => {
-    if (!user || !subscription) return;
+  const incrementUsage = async (): Promise<{ success: boolean; error?: string }> => {
+    if (!user || !subscription) {
+      return { success: false, error: 'Usuário ou assinatura não encontrados' };
+    }
 
-    const today = new Date().toISOString().split('T')[0];
-    const currentMonth = today.substring(0, 7);
-    const lastResetMonth = subscription.last_reset_date?.substring(0, 7);
-    const isToday = subscription.last_sheet_date === today;
+    // Prevent race conditions with lock
+    if (updateLockRef.current) {
+      return { success: false, error: 'Atualização em andamento' };
+    }
 
-    const newSheetsToday = isToday ? subscription.sheets_used_today + 1 : 1;
-    const newSheetsMonth = lastResetMonth === currentMonth 
-      ? subscription.sheets_used_month + 1 
-      : 1;
+    updateLockRef.current = true;
+    setIsUpdating(true);
 
-    await supabase
-      .from('subscriptions')
-      .update({
-        sheets_used_today: newSheetsToday,
-        sheets_used_month: newSheetsMonth,
-        last_sheet_date: today,
-        last_reset_date: lastResetMonth === currentMonth ? subscription.last_reset_date : today,
-      })
-      .eq('user_id', user.id);
+    try {
+      const today = getLocalDateString();
+      const currentMonth = today.substring(0, 7);
+      const lastResetMonth = subscription.last_reset_date
+        ? subscription.last_reset_date.substring(0, 7)
+        : null;
+      const isToday = subscription.last_sheet_date === today;
 
-    await fetchSubscription();
+      const newSheetsToday = isToday ? subscription.sheets_used_today + 1 : 1;
+      const newSheetsMonth = lastResetMonth === currentMonth
+        ? subscription.sheets_used_month + 1
+        : 1;
+
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({
+          sheets_used_today: newSheetsToday,
+          sheets_used_month: newSheetsMonth,
+          last_sheet_date: today,
+          last_reset_date: lastResetMonth === currentMonth ? subscription.last_reset_date : today,
+        })
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Erro ao incrementar uso:', error);
+        return { success: false, error: 'Erro ao atualizar uso. Tente novamente.' };
+      }
+
+      await fetchSubscription();
+      return { success: true };
+    } catch (err) {
+      console.error('Erro inesperado ao incrementar uso:', err);
+      return { success: false, error: 'Erro inesperado ao atualizar uso.' };
+    } finally {
+      updateLockRef.current = false;
+      setIsUpdating(false);
+    }
   };
 
-  const updatePlan = async (newPlan: SubscriptionPlan) => {
-    if (!user) return;
+  const updatePlan = async (newPlan: SubscriptionPlan): Promise<{ success: boolean; error?: string }> => {
+    if (!user) {
+      return { success: false, error: 'Usuário não encontrado' };
+    }
 
-    await supabase
-      .from('subscriptions')
-      .update({ plan: newPlan, payment_status: newPlan === 'free' ? 'active' : 'pending' })
-      .eq('user_id', user.id);
+    // Validate plan
+    if (!VALID_PLANS.includes(newPlan)) {
+      console.error('Plano inválido:', newPlan);
+      return { success: false, error: 'Plano inválido' };
+    }
 
-    await fetchSubscription();
+    try {
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({ plan: newPlan, payment_status: newPlan === 'free' ? 'active' : 'pending' })
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Erro ao atualizar plano:', error);
+        return { success: false, error: 'Erro ao atualizar plano. Tente novamente.' };
+      }
+
+      await fetchSubscription();
+      return { success: true };
+    } catch (err) {
+      console.error('Erro inesperado ao atualizar plano:', err);
+      return { success: false, error: 'Erro inesperado ao atualizar plano.' };
+    }
   };
 
   return {
     subscription,
     loading,
+    isUpdating,
     canProcessSheet,
     incrementUsage,
     updatePlan,
