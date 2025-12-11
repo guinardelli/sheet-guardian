@@ -1,15 +1,14 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useSubscription, PLAN_LIMITS, SubscriptionPlan } from '@/hooks/useSubscription';
+import { useSubscription, SubscriptionPlan } from '@/hooks/useSubscription';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Check, CreditCard, QrCode, ArrowLeft, Loader2 } from 'lucide-react';
+import { Check, CreditCard, QrCode, ArrowLeft, Loader2, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
+import { STRIPE_PLANS } from '@/lib/stripe';
 
 const PLAN_INFO: Record<'free' | 'professional' | 'premium', {
   name: string;
@@ -62,16 +61,63 @@ const PLAN_INFO: Record<'free' | 'professional' | 'premium', {
 const AVAILABLE_PLANS: Array<'free' | 'professional' | 'premium'> = ['free', 'professional', 'premium'];
 
 const Plans = () => {
-  const { user } = useAuth();
-  const { subscription, updatePlan, loading: subLoading } = useSubscription();
+  const { user, session } = useAuth();
+  const { subscription, updatePlan, loading: subLoading, refetch } = useSubscription();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'credit_card'>('pix');
-  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [searchParams] = useSearchParams();
   const [processing, setProcessing] = useState(false);
+  const [checkingSubscription, setCheckingSubscription] = useState(false);
 
-  const handleSelectPlan = (plan: 'free' | 'professional' | 'premium') => {
+  // Handle Stripe redirect
+  useEffect(() => {
+    const success = searchParams.get('success');
+    const canceled = searchParams.get('canceled');
+
+    if (success === 'true') {
+      toast({
+        title: "Pagamento realizado!",
+        description: "Sua assinatura está sendo processada. Aguarde alguns instantes...",
+      });
+      // Check subscription status after successful payment
+      checkStripeSubscription();
+    } else if (canceled === 'true') {
+      toast({
+        title: "Pagamento cancelado",
+        description: "O pagamento foi cancelado. Você pode tentar novamente quando quiser.",
+        variant: "destructive",
+      });
+    }
+  }, [searchParams]);
+
+  const checkStripeSubscription = async () => {
+    if (!session?.access_token) return;
+
+    setCheckingSubscription(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-subscription', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.subscribed) {
+        toast({
+          title: "Assinatura ativada!",
+          description: `Você agora é assinante do plano ${PLAN_INFO[data.plan as keyof typeof PLAN_INFO]?.name || data.plan}.`,
+        });
+        await refetch();
+      }
+    } catch (error) {
+      console.error('Error checking subscription:', error);
+    } finally {
+      setCheckingSubscription(false);
+    }
+  };
+
+  const handleSelectPlan = async (plan: 'free' | 'professional' | 'premium') => {
     if (!user) {
       toast({
         title: "Crie sua conta",
@@ -82,8 +128,7 @@ const Plans = () => {
     }
 
     if (plan === 'free') {
-      // Free plan - just update directly
-      updatePlan('free');
+      await updatePlan('free');
       toast({
         title: "Plano atualizado!",
         description: "Você está no plano Gratuito.",
@@ -92,36 +137,82 @@ const Plans = () => {
       return;
     }
 
-    setSelectedPlan(plan);
-    setShowPaymentDialog(true);
+    // For paid plans, redirect to Stripe Checkout
+    setProcessing(true);
+    try {
+      const priceId = STRIPE_PLANS[plan].price_id;
+      
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { priceId },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.url) {
+        // Open Stripe Checkout in new tab
+        window.open(data.url, '_blank');
+      } else {
+        throw new Error('URL de checkout não recebida');
+      }
+    } catch (error: any) {
+      console.error('Checkout error:', error);
+      toast({
+        title: "Erro ao processar pagamento",
+        description: error.message || "Tente novamente mais tarde.",
+        variant: "destructive",
+      });
+    } finally {
+      setProcessing(false);
+    }
   };
 
-  const handlePayment = async () => {
-    if (!selectedPlan) return;
+  const handleManageSubscription = async () => {
+    if (!session?.access_token) return;
 
     setProcessing(true);
-    
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    await updatePlan(selectedPlan);
-    setProcessing(false);
-    setShowPaymentDialog(false);
-    
-    toast({
-      title: "Pagamento confirmado!",
-      description: `Você agora é assinante do plano ${PLAN_INFO[selectedPlan as keyof typeof PLAN_INFO]?.name || selectedPlan}.`,
-    });
-    navigate('/dashboard');
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.url) {
+        window.open(data.url, '_blank');
+      } else {
+        throw new Error('URL do portal não recebida');
+      }
+    } catch (error: any) {
+      console.error('Portal error:', error);
+      toast({
+        title: "Erro ao abrir portal",
+        description: error.message || "Tente novamente mais tarde.",
+        variant: "destructive",
+      });
+    } finally {
+      setProcessing(false);
+    }
   };
 
-  if (subLoading) {
+  if (subLoading || checkingSubscription) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+          {checkingSubscription && (
+            <p className="text-muted-foreground">Verificando assinatura...</p>
+          )}
+        </div>
       </div>
     );
   }
+
+  const hasActiveSubscription = subscription?.plan && subscription.plan !== 'free' && subscription.payment_status === 'active';
 
   return (
     <div className="min-h-screen bg-background px-4 sm:px-6 lg:px-8 py-8 md:py-12">
@@ -236,19 +327,41 @@ const Plans = () => {
                     disabled={isCurrentPlan || processing}
                     onClick={() => handleSelectPlan(plan)}
                   >
-                    {isCurrentPlan
-                      ? 'Plano Atual'
-                      : !user
-                        ? (isFree ? 'Criar Conta Grátis' : 'Criar Conta')
-                        : (subscription && subscription.plan !== 'free' && plan !== 'free')
-                          ? 'Trocar Plano'
-                          : (plan === 'free' ? 'Mudar para Gratuito' : 'Fazer Upgrade')}
+                    {processing ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processando...
+                      </>
+                    ) : isCurrentPlan ? (
+                      'Plano Atual'
+                    ) : !user ? (
+                      isFree ? 'Criar Conta Grátis' : 'Criar Conta'
+                    ) : (subscription && subscription.plan !== 'free' && plan !== 'free') ? (
+                      'Trocar Plano'
+                    ) : (
+                      plan === 'free' ? 'Mudar para Gratuito' : 'Fazer Upgrade'
+                    )}
                   </Button>
                 </CardFooter>
               </Card>
             );
           })}
         </div>
+
+        {/* Manage Subscription Button */}
+        {hasActiveSubscription && (
+          <div className="flex justify-center mb-10">
+            <Button
+              variant="outline"
+              onClick={handleManageSubscription}
+              disabled={processing}
+              className="gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              Gerenciar Assinatura
+            </Button>
+          </div>
+        )}
 
         <div className="bg-card rounded-xl p-6 border border-border/50 shadow-soft">
           <h2 className="text-base font-semibold text-foreground mb-4">Formas de Pagamento Aceitas</h2>
@@ -268,85 +381,6 @@ const Plans = () => {
           </div>
         </div>
       </div>
-
-      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl">Finalizar Pagamento</DialogTitle>
-            <DialogDescription className="text-base">
-              {selectedPlan && PLAN_INFO[selectedPlan as keyof typeof PLAN_INFO] && (
-                `Plano ${PLAN_INFO[selectedPlan as keyof typeof PLAN_INFO].name} - R$ ${PLAN_INFO[selectedPlan as keyof typeof PLAN_INFO].currentPrice}/mês`
-              )}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-6 py-4">
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Forma de Pagamento</Label>
-              <RadioGroup
-                value={paymentMethod}
-                onValueChange={(v) => setPaymentMethod(v as 'pix' | 'credit_card')}
-                className="gap-3"
-              >
-                <div className={`flex items-center space-x-3 p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'pix' ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'}`}>
-                  <RadioGroupItem value="pix" id="pix" />
-                  <Label htmlFor="pix" className="flex items-center gap-2.5 cursor-pointer flex-1 font-medium">
-                    <QrCode className="h-5 w-5 text-muted-foreground" />
-                    PIX
-                  </Label>
-                </div>
-                <div className={`flex items-center space-x-3 p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'credit_card' ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'}`}>
-                  <RadioGroupItem value="credit_card" id="credit_card" />
-                  <Label htmlFor="credit_card" className="flex items-center gap-2.5 cursor-pointer flex-1 font-medium">
-                    <CreditCard className="h-5 w-5 text-muted-foreground" />
-                    Cartão de Crédito
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
-
-            {paymentMethod === 'pix' && (
-              <div className="bg-muted/50 p-4 rounded-xl text-center">
-                <p className="text-sm text-muted-foreground">
-                  Clique em confirmar para gerar o QR Code do PIX
-                </p>
-              </div>
-            )}
-
-            {paymentMethod === 'credit_card' && (
-              <div className="bg-muted/50 p-4 rounded-xl text-center">
-                <p className="text-sm text-muted-foreground">
-                  Você será redirecionado para o checkout seguro
-                </p>
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setShowPaymentDialog(false)}
-              className="flex-1 h-11"
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handlePayment}
-              disabled={processing}
-              className="flex-1 h-11 shadow-soft"
-            >
-              {processing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processando...
-                </>
-              ) : (
-                'Confirmar Pagamento'
-              )}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
