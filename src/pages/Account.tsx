@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Header } from '@/components/Header';
-import { Home, Mail, Crown, TrendingUp, Loader2, User, Lock, Save, RefreshCw } from 'lucide-react';
+import { Home, Mail, Crown, TrendingUp, Loader2, User, Lock, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
 const PLAN_NAMES: Record<SubscriptionPlan, string> = {
@@ -28,7 +28,6 @@ interface Profile {
   id: string;
   user_id: string;
   email: string | null;
-  full_name: string | null;
 }
 
 const Account = () => {
@@ -38,9 +37,7 @@ const Account = () => {
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
-  const [fullName, setFullName] = useState('');
   const [newEmail, setNewEmail] = useState('');
-  const [savingName, setSavingName] = useState(false);
   const [savingEmail, setSavingEmail] = useState(false);
   const [sendingPasswordReset, setSendingPasswordReset] = useState(false);
 
@@ -68,7 +65,6 @@ const Account = () => {
 
     if (!error && data) {
       setProfile(data as Profile);
-      setFullName(data.full_name || '');
       setNewEmail(data.email || user.email || '');
     } else {
       setNewEmail(user.email || '');
@@ -76,25 +72,6 @@ const Account = () => {
     setProfileLoading(false);
   };
 
-  const handleSaveFullName = async () => {
-    if (!user) return;
-
-    setSavingName(true);
-    const { error } = await supabase
-      .from('profiles')
-      .update({ full_name: fullName })
-      .eq('user_id', user.id);
-
-    if (error) {
-      toast.error('Erro ao salvar nome', {
-        description: error.message
-      });
-    } else {
-      toast.success('Nome atualizado com sucesso!');
-      await fetchProfile();
-    }
-    setSavingName(false);
-  };
 
   const handleUpdateEmail = async () => {
     if (!newEmail || newEmail === user?.email) {
@@ -233,32 +210,10 @@ const Account = () => {
                 Informações Pessoais
               </CardTitle>
               <CardDescription>
-                Gerencie suas informações pessoais
+                Suas informações de conta
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Nome Completo</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="fullName"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Seu nome completo"
-                  />
-                  <Button
-                    onClick={handleSaveFullName}
-                    disabled={savingName}
-                    size="icon"
-                  >
-                    {savingName ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Save className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
               <div>
                 <Label className="text-sm text-muted-foreground">ID do Usuário</Label>
                 <p className="font-mono text-sm text-muted-foreground">{user?.id}</p>
