@@ -303,37 +303,34 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="flex flex-col w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 gap-8">
-        {/* Header */}
-        <header className="flex items-center justify-center gap-4">
-          <ExcelIcon className="w-10 h-10 text-primary" />
-          <h1 className="text-2xl font-bold text-foreground">
-            Bloqueador de Planilhas Excel
-          </h1>
-        </header>
-
-        {/* Title Section */}
-        <div className="flex flex-col gap-3 text-center">
-          <h2 className="text-3xl sm:text-4xl font-black text-foreground tracking-tight">
-            Bloqueador de Planilhas
-          </h2>
-          <p className="text-muted-foreground text-base">
+      <main className="flex flex-col w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-12 gap-10">
+        {/* Page Header */}
+        <div className="flex flex-col gap-4 text-center">
+          <div className="flex items-center justify-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <ExcelIcon className="w-7 h-7 text-primary" />
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+              Bloqueador de Planilhas
+            </h1>
+          </div>
+          <p className="text-muted-foreground text-base md:text-lg max-w-xl mx-auto leading-relaxed">
             Selecione um arquivo Excel (.xlsm), inicie o processamento e acompanhe o status no log.
           </p>
         </div>
 
         {/* Usage Info */}
         {user && subscription && (
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex flex-wrap justify-center gap-4 text-sm">
+          <Card className="border-border/50 shadow-soft">
+            <CardContent className="py-4 px-5">
+              <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-sm">
                 {(() => {
                   const usageStats = getUsageStats();
                   if (usageStats && usageStats.limit !== null) {
                     return (
-                      <div>
-                        <span className="text-muted-foreground">Uso ({usageStats.period}): </span>
-                        <span className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">Uso ({usageStats.period}):</span>
+                        <span className="font-semibold text-foreground">
                           {usageStats.used}/{usageStats.limit}
                         </span>
                       </div>
@@ -342,22 +339,22 @@ const Dashboard = () => {
                   return null;
                 })()}
                 {planLimits?.maxFileSizeMB !== null && (
-                  <div>
-                    <span className="text-muted-foreground">Tamanho máximo: </span>
-                    <span className="font-medium">{planLimits.maxFileSizeMB} MB</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Tamanho máximo:</span>
+                    <span className="font-semibold text-foreground">{planLimits.maxFileSizeMB} MB</span>
                   </div>
                 )}
                 {subscription.plan === 'premium' && (
-                  <div className="text-primary font-medium">Uso Ilimitado</div>
+                  <span className="text-primary font-semibold">Uso Ilimitado</span>
                 )}
                 {subscription.plan !== 'premium' && (
                   <Button
                     variant="link"
                     size="sm"
-                    className="h-auto p-0 text-primary"
+                    className="h-auto p-0 text-primary hover:text-primary/80 font-medium"
                     onClick={() => navigate('/plans')}
                   >
-                    Fazer upgrade
+                    Fazer upgrade →
                   </Button>
                 )}
               </div>
@@ -375,17 +372,20 @@ const Dashboard = () => {
 
         {/* Cinematic Progress Bar */}
         {isProcessing && (
-          <Card className="overflow-hidden">
+          <Card className="overflow-hidden border-border/50 shadow-soft animate-fade-in">
             <CardContent className="p-6">
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-5">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-foreground">{processingMessage}</span>
-                  <span className="text-sm font-bold text-primary">{displayProgress}%</span>
+                  <span className="text-sm font-bold text-primary tabular-nums">{displayProgress}%</span>
                 </div>
-                <Progress value={displayProgress} className="h-3" />
+                <Progress value={displayProgress} className="h-2.5" />
                 <div className="flex justify-center">
-                  <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                    <div className="animate-pulse w-2 h-2 bg-primary rounded-full"></div>
+                  <div className="flex items-center gap-2.5 text-muted-foreground text-sm">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+                    </span>
                     Processando seu arquivo...
                   </div>
                 </div>
@@ -400,7 +400,7 @@ const Dashboard = () => {
             size="lg"
             onClick={handleProcess}
             disabled={!selectedFile || isProcessing || !user || isUpdating}
-            className="w-full sm:w-auto sm:min-w-[200px]"
+            className="w-full sm:w-auto sm:min-w-[200px] h-12 shadow-soft"
           >
             <Play className="w-4 h-4 mr-2" />
             {isProcessing ? 'Processando...' : isUpdating ? 'Aguarde...' : 'Iniciar Processamento'}
@@ -411,7 +411,7 @@ const Dashboard = () => {
               size="lg"
               variant="outline"
               onClick={handleDownload}
-              className="w-full sm:w-auto sm:min-w-[200px] animate-fade-in"
+              className="w-full sm:w-auto sm:min-w-[200px] h-12 animate-fade-in"
             >
               <Download className="w-4 h-4 mr-2" />
               Baixar Arquivo
@@ -423,7 +423,7 @@ const Dashboard = () => {
               size="lg"
               variant="secondary"
               onClick={handleRestore}
-              className="w-full sm:w-auto sm:min-w-[200px]"
+              className="w-full sm:w-auto sm:min-w-[200px] h-12"
             >
               <RotateCcw className="w-4 h-4 mr-2" />
               Restaurar Original
@@ -438,7 +438,7 @@ const Dashboard = () => {
         <ProcessingLog logs={logs} />
 
         {/* Footer */}
-        <footer className="text-center py-6 border-t border-border mt-4">
+        <footer className="text-center py-8 border-t border-border/50 mt-6">
           <p className="text-sm text-muted-foreground">
             © {new Date().getFullYear()} Bloqueador de Planilhas. Todos os direitos reservados.
           </p>

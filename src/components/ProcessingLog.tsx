@@ -40,26 +40,26 @@ export function ProcessingLog({ logs }: ProcessingLogProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <h3 className="text-foreground text-xl font-bold">Log de Processamento</h3>
-      <div 
+      <h3 className="text-foreground text-lg font-semibold tracking-tight">Log de Processamento</h3>
+      <div
         ref={scrollRef}
-        className="flex flex-col h-72 w-full rounded-lg bg-slate-900 p-4 font-mono text-sm text-slate-300 overflow-y-auto"
+        className="flex flex-col h-72 w-full rounded-xl bg-slate-900 p-5 font-mono text-sm text-slate-300 overflow-y-auto shadow-soft-lg"
       >
         {logs.length === 0 ? (
-          <div className="flex items-start gap-3 py-1.5">
-            <MoreHorizontal className="w-4 h-4 text-slate-500 mt-0.5" />
-            <p className="flex-1 leading-relaxed">Aguardando arquivo para iniciar...</p>
+          <div className="flex items-start gap-3 py-2">
+            <MoreHorizontal className="w-4 h-4 text-slate-500 mt-0.5 animate-pulse" />
+            <p className="flex-1 leading-relaxed text-slate-400">Aguardando arquivo para iniciar...</p>
           </div>
         ) : (
           logs.map((log, index) => {
             const Icon = iconMap[log.type];
             return (
-              <div 
-                key={index} 
-                className="flex items-start gap-3 py-1.5 animate-fade-in"
+              <div
+                key={index}
+                className="flex items-start gap-3 py-2 animate-fade-in border-b border-slate-800/50 last:border-0"
               >
                 <Icon className={cn('w-4 h-4 mt-0.5 flex-shrink-0', colorMap[log.type])} />
-                <span className="text-slate-500 flex-shrink-0">[{formatTime(log.timestamp)}]</span>
+                <span className="text-slate-500 flex-shrink-0 tabular-nums">[{formatTime(log.timestamp)}]</span>
                 <p className="flex-1 leading-relaxed break-words">{log.message}</p>
               </div>
             );

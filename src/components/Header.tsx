@@ -34,7 +34,10 @@ export const Header = () => {
       {user ? (
         <>
           {subscription && (
-            <Badge variant={subscription.plan === 'premium' ? 'default' : 'secondary'}>
+            <Badge
+              variant={subscription.plan === 'premium' ? 'default' : 'secondary'}
+              className="font-medium tracking-wide"
+            >
               {PLAN_NAMES[subscription.plan]}
             </Badge>
           )}
@@ -102,19 +105,19 @@ export const Header = () => {
   );
 
   return (
-    <header className="border-b bg-card sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2">
-          <ExcelIcon className="w-8 h-8 text-primary" />
-          <span className="font-semibold text-foreground hidden sm:inline">
+    <header className="border-b border-border/50 bg-background/80 backdrop-blur-lg sticky top-0 z-50 shadow-soft">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
+        <Link to="/" className="flex items-center gap-2.5 group">
+          <ExcelIcon className="w-8 h-8 text-primary transition-transform group-hover:scale-105" />
+          <span className="font-semibold text-foreground hidden sm:inline tracking-tight">
             Excel VBA Blocker
           </span>
         </Link>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-3">
+        <nav className="hidden md:flex items-center gap-2">
           <NavItems />
-        </div>
+        </nav>
 
         {/* Mobile Navigation */}
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>

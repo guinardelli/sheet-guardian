@@ -212,24 +212,24 @@ const Account = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="max-w-2xl mx-auto px-4 py-8">
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-12">
         <Button
           variant="ghost"
           onClick={() => navigate('/dashboard')}
-          className="mb-6"
+          className="mb-8"
         >
           <Home className="mr-2 h-4 w-4" />
           Início
         </Button>
 
-        <h1 className="text-3xl font-bold text-foreground mb-8">Minha Conta</h1>
+        <h1 className="text-3xl font-bold text-foreground mb-10 tracking-tight">Minha Conta</h1>
 
         <div className="space-y-6">
           {/* User Info */}
-          <Card>
+          <Card className="border-border/50 shadow-soft">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <User className="h-5 w-5 text-primary" />
                 Informações Pessoais
               </CardTitle>
               <CardDescription>
@@ -267,10 +267,10 @@ const Account = () => {
           </Card>
 
           {/* Email Settings */}
-          <Card>
+          <Card className="border-border/50 shadow-soft">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Mail className="h-5 w-5 text-primary" />
                 Email
               </CardTitle>
               <CardDescription>

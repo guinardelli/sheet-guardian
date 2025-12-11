@@ -44,15 +44,17 @@ export function StatisticsCard({ result }: StatisticsCardProps) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in">
       {stats.map((stat, index) => (
-        <div 
+        <div
           key={index}
-          className="flex flex-col gap-2 p-4 rounded-lg bg-card border border-border"
+          className="flex flex-col gap-3 p-5 rounded-xl bg-card border border-border/50 shadow-soft"
         >
-          <div className="flex items-center gap-2">
-            <stat.icon className={`w-4 h-4 ${stat.color}`} />
-            <span className="text-sm text-muted-foreground">{stat.label}</span>
+          <div className="flex items-center gap-2.5">
+            <div className={`p-1.5 rounded-lg ${stat.color === 'text-primary' ? 'bg-primary/10' : 'bg-muted'}`}>
+              <stat.icon className={`w-4 h-4 ${stat.color}`} />
+            </div>
+            <span className="text-sm text-muted-foreground font-medium">{stat.label}</span>
           </div>
-          <span className={`text-lg font-bold ${stat.color}`}>{stat.value}</span>
+          <span className={`text-xl font-bold ${stat.color} tracking-tight`}>{stat.value}</span>
         </div>
       ))}
     </div>
