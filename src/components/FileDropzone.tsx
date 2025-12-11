@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useRef } from 'react';
 import { Upload, FileSpreadsheet, X, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -12,31 +12,48 @@ interface FileDropzoneProps {
   disabled?: boolean;
 }
 
-export function FileDropzone({ 
-  onFileSelect, 
-  selectedFile, 
+export function FileDropzone({
+  onFileSelect,
+  selectedFile,
   onClearFile,
-  disabled 
+  disabled
 }: FileDropzoneProps) {
   const [isDragging, setIsDragging] = useState(false);
+  const dropzoneRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!disabled) setIsDragging(true);
   }, [disabled]);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(false);
+    e.stopPropagation();
+
+    // Only set isDragging to false if we're actually leaving the dropzone
+    // This prevents flickering when dragging over child elements
+    if (dropzoneRef.current && !dropzoneRef.current.contains(e.relatedTarget as Node)) {
+      setIsDragging(false);
+    }
   }, []);
 
-  const validateAndSelectFile = useCallback((file: File) => {
+  const validateAndSelectFile = useCallback((file: File): boolean => {
     // Validate file extension
     if (!file.name.toLowerCase().endsWith('.xlsm')) {
       toast.error('Tipo de arquivo inválido', {
         description: 'Apenas arquivos .xlsm são aceitos.'
       });
-      return;
+      return false;
+    }
+
+    // Validate file is not empty
+    if (file.size === 0) {
+      toast.error('Arquivo vazio', {
+        description: 'O arquivo selecionado está vazio.'
+      });
+      return false;
     }
 
     // Validate file size (hard limit)
@@ -44,7 +61,7 @@ export function FileDropzone({
       toast.error('Arquivo muito grande', {
         description: `O tamanho máximo permitido é ${MAX_FILE_SIZE_BYTES / (1024 * 1024)} MB.`
       });
-      return;
+      return false;
     }
 
     // Warn about large files
@@ -55,6 +72,7 @@ export function FileDropzone({
     }
 
     onFileSelect(file);
+    return true;
   }, [onFileSelect]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -74,24 +92,34 @@ export function FileDropzone({
     if (files && files.length > 0) {
       validateAndSelectFile(files[0]);
     }
+    // Always reset input value to allow re-selecting the same file
     e.target.value = '';
   }, [validateAndSelectFile]);
+
+  // Reset file input programmatically (useful for re-selecting same file after error)
+  const resetFileInput = useCallback(() => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, []);
 
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
   };
 
   return (
     <div
+      ref={dropzoneRef}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={cn(
         'flex flex-col items-center gap-6 rounded-xl border-2 border-dashed px-6 py-14 transition-all duration-200',
-        isDragging 
-          ? 'border-primary bg-primary/5' 
+        isDragging
+          ? 'border-primary bg-primary/5'
           : 'border-border bg-card/50',
         disabled && 'opacity-50 cursor-not-allowed',
         !disabled && !selectedFile && 'hover:border-primary/50 hover:bg-card/80'
@@ -135,6 +163,7 @@ export function FileDropzone({
           </div>
           <label className="cursor-pointer">
             <input
+              ref={fileInputRef}
               type="file"
               accept=".xlsm"
               onChange={handleFileInput}

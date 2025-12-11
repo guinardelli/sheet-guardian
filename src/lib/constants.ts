@@ -12,10 +12,13 @@ export const LARGE_FILE_WARNING_BYTES = LARGE_FILE_WARNING_MB * 1024 * 1024;
 export const ALLOWED_FILE_EXTENSIONS = ['.xlsm'] as const;
 
 // MIME types for Excel files with macros
+// Note: We rely primarily on file extension validation (.xlsm)
+// MIME types are used as secondary validation when available
 export const ALLOWED_MIME_TYPES = [
   'application/vnd.ms-excel.sheet.macroEnabled.12',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/octet-stream', // Some systems report xlsm as this
+  // Note: application/octet-stream removed as it's too broad
+  // File extension validation is the primary check
 ] as const;
 
 // Rate limiting

@@ -22,19 +22,37 @@ if (!isSupabaseConfigured) {
 
 // Create a mock client for when Supabase is not configured
 const createMockClient = (): SupabaseClient<Database> => {
+  const notConfiguredError = new Error('Supabase não configurado');
+
   const mockAuth = {
     onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
     getSession: () => Promise.resolve({ data: { session: null }, error: null }),
-    signInWithPassword: () => Promise.resolve({ data: { user: null, session: null }, error: new Error('Supabase não configurado') }),
-    signUp: () => Promise.resolve({ data: { user: null, session: null }, error: new Error('Supabase não configurado') }),
+    signInWithPassword: () => Promise.resolve({ data: { user: null, session: null }, error: notConfiguredError }),
+    signUp: () => Promise.resolve({ data: { user: null, session: null }, error: notConfiguredError }),
     signOut: () => Promise.resolve({ error: null }),
+    resetPasswordForEmail: () => Promise.resolve({ data: {}, error: notConfiguredError }),
+    updateUser: () => Promise.resolve({ data: { user: null }, error: notConfiguredError }),
+    getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+    refreshSession: () => Promise.resolve({ data: { session: null, user: null }, error: notConfiguredError }),
   };
 
   return {
     auth: mockAuth,
     from: () => ({
-      select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: new Error('Supabase não configurado') }) }) }),
-      update: () => ({ eq: () => Promise.resolve({ error: new Error('Supabase não configurado') }) }),
+      select: () => ({
+        eq: () => ({
+          maybeSingle: () => Promise.resolve({ data: null, error: notConfiguredError }),
+          single: () => Promise.resolve({ data: null, error: notConfiguredError }),
+        }),
+        maybeSingle: () => Promise.resolve({ data: null, error: notConfiguredError }),
+      }),
+      update: () => ({
+        eq: () => Promise.resolve({ data: null, error: notConfiguredError }),
+      }),
+      insert: () => Promise.resolve({ data: null, error: notConfiguredError }),
+      delete: () => ({
+        eq: () => Promise.resolve({ data: null, error: notConfiguredError }),
+      }),
     }),
   } as unknown as SupabaseClient<Database>;
 };

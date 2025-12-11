@@ -2,6 +2,9 @@ import JSZip from 'jszip';
 
 const VBA_FILENAME = 'xl/vbaProject.bin';
 
+// Minimum size for a valid VBA project file (bytes)
+const MIN_VBA_SIZE = 100;
+
 export interface ProcessingResult {
   success: boolean;
   modifiedFile: Blob | null;
@@ -12,6 +15,7 @@ export interface ProcessingResult {
   originalSize: number;
   modifiedSize: number;
   error?: string;
+  warnings?: string[];
 }
 
 export interface LogEntry {
@@ -30,14 +34,27 @@ const BINARY_PATTERNS = [
 const QUOTE_BYTE = 34; // "
 const F_BYTE = 70;     // F
 
-function modifyVbaContent(content: Uint8Array): { modified: Uint8Array; patternsFound: number } {
+interface ModifyVbaResult {
+  modified: Uint8Array;
+  patternsFound: number;
+  warnings: string[];
+}
+
+function modifyVbaContent(content: Uint8Array): ModifyVbaResult {
   // Work directly with bytes to avoid encoding issues
   const result = new Uint8Array(content);
   let patternsFound = 0;
-  
+  const warnings: string[] = [];
+
+  // Validate VBA content size
+  if (content.length < MIN_VBA_SIZE) {
+    warnings.push(`Arquivo VBA muito pequeno (${content.length} bytes). Pode estar corrompido.`);
+  }
+
   for (const pattern of BINARY_PATTERNS) {
     let i = 0;
-    while (i < result.length - pattern.prefix.length) {
+    // Fix: use <= to include pattern at exact boundary position
+    while (i <= result.length - pattern.prefix.length) {
       // Check if we found the pattern prefix
       let found = true;
       for (let j = 0; j < pattern.prefix.length; j++) {
@@ -46,16 +63,16 @@ function modifyVbaContent(content: Uint8Array): { modified: Uint8Array; patterns
           break;
         }
       }
-      
+
       if (found) {
         // Find the closing quote
         const valueStart = i + pattern.prefix.length;
         let valueEnd = valueStart;
-        
+
         while (valueEnd < result.length && result[valueEnd] !== QUOTE_BYTE) {
           valueEnd++;
         }
-        
+
         if (valueEnd < result.length) {
           // Replace the value with 'F's (same length)
           for (let k = valueStart; k < valueEnd; k++) {
@@ -64,6 +81,9 @@ function modifyVbaContent(content: Uint8Array): { modified: Uint8Array; patterns
           patternsFound++;
           i = valueEnd + 1;
           continue;
+        } else {
+          // Pattern found but no closing quote - log warning
+          warnings.push(`Padrão ${pattern.name} encontrado na posição ${i}, mas sem quote de fechamento.`);
         }
       }
       i++;
@@ -72,7 +92,8 @@ function modifyVbaContent(content: Uint8Array): { modified: Uint8Array; patterns
 
   return {
     modified: result,
-    patternsFound
+    patternsFound,
+    warnings
   };
 }
 
@@ -85,6 +106,8 @@ export async function processExcelFile(
     onLog({ timestamp: new Date(), message, type });
   };
 
+  const allWarnings: string[] = [];
+
   try {
     log('🚀 Iniciando processo de modificação...', 'info');
     onProgress(5);
@@ -94,12 +117,24 @@ export async function processExcelFile(
       throw new Error('Tipo de arquivo inválido. Apenas arquivos .xlsm são aceitos.');
     }
 
+    // Validate file is not empty
+    if (file.size === 0) {
+      throw new Error('O arquivo está vazio.');
+    }
+
     log('📦 Lendo arquivo Excel...', 'info');
     onProgress(10);
 
     const arrayBuffer = await file.arrayBuffer();
-    const zip = await JSZip.loadAsync(arrayBuffer);
-    
+
+    // Validate it's a valid ZIP file (Excel files are ZIP archives)
+    let zip: JSZip;
+    try {
+      zip = await JSZip.loadAsync(arrayBuffer);
+    } catch (zipError) {
+      throw new Error('Arquivo inválido ou corrompido. Verifique se é um arquivo Excel válido (.xlsm).');
+    }
+
     log('✅ Arquivo lido com sucesso', 'success');
     onProgress(30);
 
@@ -132,7 +167,13 @@ export async function processExcelFile(
 
     // Read and modify VBA content
     const vbaContent = await vbaFile.async('uint8array');
-    const { modified: modifiedVba, patternsFound } = modifyVbaContent(vbaContent);
+    const { modified: modifiedVba, patternsFound, warnings: vbaWarnings } = modifyVbaContent(vbaContent);
+
+    // Collect warnings from VBA processing
+    if (vbaWarnings.length > 0) {
+      allWarnings.push(...vbaWarnings);
+      vbaWarnings.forEach(w => log(`⚠️ ${w}`, 'warning'));
+    }
 
     if (patternsFound > 0) {
       log(`✅ ${patternsFound} padrão(ões) de proteção modificado(s)`, 'success');
@@ -170,7 +211,8 @@ export async function processExcelFile(
       vbaExists: true,
       patternsModified: patternsFound,
       originalSize: file.size,
-      modifiedSize: modifiedBlob.size
+      modifiedSize: modifiedBlob.size,
+      warnings: allWarnings.length > 0 ? allWarnings : undefined
     };
 
   } catch (error) {
