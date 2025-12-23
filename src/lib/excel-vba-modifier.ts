@@ -12,6 +12,7 @@ export interface ProcessingResult {
   newFileName: string;
   vbaExists: boolean;
   patternsModified: number;
+  shouldCountUsage: boolean;
   originalSize: number;
   modifiedSize: number;
   error?: string;
@@ -40,6 +41,9 @@ interface ModifyVbaResult {
   warnings: string[];
 }
 
+/**
+ * Scan VBA binary content and overwrite protected patterns with "F" bytes.
+ */
 function modifyVbaContent(content: Uint8Array): ModifyVbaResult {
   // Work directly with bytes to avoid encoding issues
   const result = new Uint8Array(content);
@@ -157,6 +161,7 @@ export async function processExcelFile(
         newFileName: `${baseName}_${timestamp}.xlsm`,
         vbaExists: false,
         patternsModified: 0,
+        shouldCountUsage: false,
         originalSize: file.size,
         modifiedSize: modifiedBlob.size
       };
@@ -210,6 +215,7 @@ export async function processExcelFile(
       newFileName,
       vbaExists: true,
       patternsModified: patternsFound,
+      shouldCountUsage: patternsFound > 0,
       originalSize: file.size,
       modifiedSize: modifiedBlob.size,
       warnings: allWarnings.length > 0 ? allWarnings : undefined
@@ -226,6 +232,7 @@ export async function processExcelFile(
       newFileName: '',
       vbaExists: false,
       patternsModified: 0,
+      shouldCountUsage: false,
       originalSize: file.size,
       modifiedSize: 0,
       error: errorMessage

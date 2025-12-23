@@ -41,6 +41,7 @@
 ### Development Tools
 - **ESLint** - Code linting
 - **lovable-tagger** - Development mode component tagging
+- **Vitest** - Unit testing
 
 ---
 
@@ -48,45 +49,43 @@
 
 ```
 sheet-guardian/
-├── src/
-│   ├── components/          # React components
-│   │   ├── ui/             # shadcn/ui components (Button, Card, etc.)
-│   │   ├── ExcelBlocker.tsx
-│   │   ├── FileDropzone.tsx
-│   │   ├── Header.tsx
-│   │   ├── ProcessingLog.tsx
-│   │   └── StatisticsCard.tsx
-│   ├── hooks/              # Custom React hooks
-│   │   ├── useAuth.tsx     # Authentication context and hook
-│   │   ├── useSubscription.tsx  # Subscription management
-│   │   ├── use-mobile.tsx
-│   │   └── use-toast.ts
-│   ├── integrations/       # Third-party service integrations
-│   │   └── supabase/
-│   │       ├── client.ts   # Supabase client configuration
-│   │       └── types.ts    # Auto-generated database types
-│   ├── lib/                # Utility functions
-│   │   ├── excel-vba-modifier.ts  # Core Excel processing logic
-│   │   └── utils.ts        # General utilities
-│   ├── pages/              # Route pages
-│   │   ├── Index.tsx       # Landing page
-│   │   ├── Dashboard.tsx   # Main app (file processing)
-│   │   ├── Auth.tsx        # Login/signup
-│   │   ├── Plans.tsx       # Subscription plans
-│   │   └── NotFound.tsx    # 404 page
-│   ├── App.tsx             # Root component with providers
-│   ├── main.tsx            # Application entry point
-│   └── index.css           # Global styles
-├── supabase/
-│   ├── config.toml
-│   └── migrations/         # Database migrations
-├── public/                 # Static assets
-├── package.json
-├── vite.config.ts
-├── tailwind.config.ts
-├── tsconfig.json
-└── eslint.config.js
+??? src/
+?   ??? components/           # React components
+?   ?   ??? ui/                # shadcn/ui components
+?   ??? hooks/                 # Custom React hooks
+?   ?   ??? useAuth.tsx
+?   ?   ??? useSubscription.tsx
+?   ??? integrations/
+?   ?   ??? supabase/
+?   ?       ??? client.ts
+?   ?       ??? types.ts
+?   ??? lib/
+?   ?   ??? excel-vba-modifier.ts
+?   ?   ??? error-tracker.ts
+?   ?   ??? logger.ts
+?   ?   ??? utils.ts
+?   ??? pages/
+?   ?   ??? Index.tsx
+?   ?   ??? Dashboard.tsx
+?   ?   ??? Auth.tsx
+?   ?   ??? Plans.tsx
+?   ?   ??? Account.tsx
+?   ?   ??? NotFound.tsx
+?   ??? test/
+?   ??? App.tsx
+?   ??? main.tsx
+?   ??? index.css
+??? supabase/
+?   ??? config.toml
+?   ??? migrations/
+??? public/
+??? package.json
+??? vite.config.ts
+??? tailwind.config.ts
+??? tsconfig.json
+??? eslint.config.js
 ```
+
 
 ---
 
@@ -165,11 +164,19 @@ await incrementUsage();
 - `user_id` - References auth.users(id), unique
 - `plan` - Enum: 'free' | 'professional' | 'premium'
 - `sheets_used_today` - Integer (daily counter)
+- `sheets_used_week` - Integer (weekly counter)
 - `sheets_used_month` - Integer (monthly counter)
 - `last_sheet_date` - Date (last processing date)
 - `last_reset_date` - Date (last monthly reset)
+- `stripe_customer_id`, `stripe_subscription_id`, `stripe_product_id` - Text
 - `payment_method`, `payment_status` - Text
 - `created_at`, `updated_at` - Timestamps
+
+#### `auth_attempts`
+- Tracks authentication attempts for rate limiting
+
+#### `error_logs`
+- Client-side error logs captured in production
 
 ### Subscription Plan Limits
 ```typescript
@@ -189,9 +196,8 @@ premium:      { sheetsPerWeek: null, sheetsPerMonth: null, maxFileSizeMB: null }
 ### Code Style & Conventions
 
 1. **TypeScript Strictness**
-   - Relaxed settings: `noImplicitAny: false`, `strictNullChecks: false`
-   - Unused variables/parameters are allowed (linter disabled)
-   - Use explicit types where it improves clarity
+   - Strict mode enabled: `noImplicitAny`, `strictNullChecks`, `noUnusedLocals`, `noUnusedParameters`
+   - Fix type errors instead of suppressing; add explicit types when it improves clarity
 
 2. **Component Patterns**
    - Prefer functional components with hooks
@@ -206,7 +212,7 @@ premium:      { sheetsPerWeek: null, sheetsPerMonth: null, maxFileSizeMB: null }
 
 4. **Error Handling**
    - Use `toast` from Sonner for user-facing errors
-   - Log detailed errors to console in development
+   - Use `logger` for dev logs and `error-tracker` for production errors
    - Provide Portuguese error messages for better UX
 
 5. **File Organization**
@@ -263,7 +269,7 @@ const onSubmit = (values: z.infer<typeof formSchema>) => {
 ```
 
 ### Testing Approach
-- Manual testing in browser (no automated tests configured)
+- Automated tests with Vitest (`npm test -- --run`)
 - Test authentication flow: signup → email confirmation → login
 - Test subscription limits: try exceeding daily/monthly limits
 - Test file processing: upload various .xlsm files
@@ -278,6 +284,9 @@ Required in `.env`:
 VITE_SUPABASE_URL=https://[project-id].supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=[anon-key]
 VITE_SUPABASE_PROJECT_ID=[project-id]
+STRIPE_SECRET_KEY=sk_live_or_test_key
+STRIPE_WEBHOOK_SECRET=whsec_webhook_secret
+SERVICE_ROLE_KEY=service_role_key
 ```
 
 **Important**: Never commit `.env` with real credentials. Use `.env.example` for templates.
@@ -309,7 +318,7 @@ const { data, error } = await supabase
   .maybeSingle();
 
 if (error) {
-  console.error('Database error:', error);
+  logger.error('Database error', error);
   return;
 }
 ```

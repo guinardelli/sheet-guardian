@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { logger } from '@/lib/logger';
 
 export type SubscriptionPlan = 'free' | 'professional' | 'premium';
 
@@ -10,6 +11,7 @@ interface Subscription {
   id: string;
   plan: SubscriptionPlan;
   sheets_used_today: number;
+  sheets_used_week: number;
   sheets_used_month: number;
   last_sheet_date: string | null;
   last_reset_date: string | null;
@@ -37,15 +39,17 @@ export const PLAN_PRICES: Record<SubscriptionPlan, number> = {
 };
 
 // Helper to get local date string (YYYY-MM-DD) without timezone issues
-const getLocalDateString = (date: Date = new Date()): string => {
+export const getLocalDateString = (date: Date = new Date()): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
 
-// Helper to get ISO week number with proper year boundary handling
-const getWeekNumber = (date: Date): string => {
+/**
+ * Get ISO week identifier (YYYY-Www) with proper year boundary handling.
+ */
+export const getWeekNumber = (date: Date): string => {
   // Clone date to avoid mutation
   const d = new Date(date.getTime());
   d.setHours(0, 0, 0, 0);
@@ -71,16 +75,7 @@ export const useSubscription = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const updateLockRef = useRef(false); // Prevent race conditions
 
-  useEffect(() => {
-    if (user) {
-      fetchSubscription();
-    } else {
-      setSubscription(null);
-      setLoading(false);
-    }
-  }, [user]);
-
-  const fetchSubscription = async () => {
+  const fetchSubscription = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -91,16 +86,25 @@ export const useSubscription = () => {
         .maybeSingle();
 
       if (error) {
-        console.error('Erro ao buscar assinatura:', error);
+        logger.error('Erro ao buscar assinatura', error);
       } else if (data) {
         setSubscription(data as Subscription);
       }
     } catch (err) {
-      console.error('Erro inesperado ao buscar assinatura:', err);
+      logger.error('Erro inesperado ao buscar assinatura', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchSubscription();
+    } else {
+      setSubscription(null);
+      setLoading(false);
+    }
+  }, [user, fetchSubscription]);
 
   const getUsageStats = () => {
     if (!subscription) return null;
@@ -128,7 +132,7 @@ export const useSubscription = () => {
         ? new Date(subscription.last_sheet_date + 'T00:00:00') // Parse as local date
         : null;
       const lastWeek = lastDate ? getWeekNumber(lastDate) : '';
-      used = lastWeek === currentWeek ? subscription.sheets_used_today : 0;
+      used = lastWeek === currentWeek ? (subscription.sheets_used_week ?? 0) : 0;
       limit = limits.sheetsPerWeek;
       period = 'semana';
     }
@@ -169,7 +173,7 @@ export const useSubscription = () => {
         ? new Date(subscription.last_sheet_date + 'T00:00:00') // Parse as local date
         : null;
       const lastWeek = lastDate ? getWeekNumber(lastDate) : '';
-      const usedThisWeek = lastWeek === currentWeek ? subscription.sheets_used_today : 0;
+      const usedThisWeek = lastWeek === currentWeek ? (subscription.sheets_used_week ?? 0) : 0;
 
       if (usedThisWeek >= limits.sheetsPerWeek) {
         return {
@@ -216,12 +220,18 @@ export const useSubscription = () => {
     try {
       const today = getLocalDateString();
       const currentMonth = today.substring(0, 7);
+      const currentWeek = getWeekNumber(new Date());
+      const lastDate = subscription.last_sheet_date
+        ? new Date(subscription.last_sheet_date + 'T00:00:00')
+        : null;
+      const lastWeek = lastDate ? getWeekNumber(lastDate) : '';
       const lastResetMonth = subscription.last_reset_date
         ? subscription.last_reset_date.substring(0, 7)
         : null;
       const isToday = subscription.last_sheet_date === today;
 
       const newSheetsToday = isToday ? subscription.sheets_used_today + 1 : 1;
+      const newSheetsWeek = lastWeek === currentWeek ? (subscription.sheets_used_week ?? 0) + 1 : 1;
       const newSheetsMonth = lastResetMonth === currentMonth
         ? subscription.sheets_used_month + 1
         : 1;
@@ -230,6 +240,7 @@ export const useSubscription = () => {
         .from('subscriptions')
         .update({
           sheets_used_today: newSheetsToday,
+          sheets_used_week: newSheetsWeek,
           sheets_used_month: newSheetsMonth,
           last_sheet_date: today,
           last_reset_date: lastResetMonth === currentMonth ? subscription.last_reset_date : today,
@@ -237,14 +248,14 @@ export const useSubscription = () => {
         .eq('user_id', user.id);
 
       if (error) {
-        console.error('Erro ao incrementar uso:', error);
+        logger.error('Erro ao incrementar uso', error);
         return { success: false, error: 'Erro ao atualizar uso. Tente novamente.' };
       }
 
       await fetchSubscription();
       return { success: true };
     } catch (err) {
-      console.error('Erro inesperado ao incrementar uso:', err);
+      logger.error('Erro inesperado ao incrementar uso', err);
       return { success: false, error: 'Erro inesperado ao atualizar uso.' };
     } finally {
       updateLockRef.current = false;
@@ -259,7 +270,7 @@ export const useSubscription = () => {
 
     // Validate plan
     if (!VALID_PLANS.includes(newPlan)) {
-      console.error('Plano inválido:', newPlan);
+      logger.error('Plano inválido', undefined, { plan: newPlan });
       return { success: false, error: 'Plano inválido' };
     }
 
@@ -270,14 +281,14 @@ export const useSubscription = () => {
         .eq('user_id', user.id);
 
       if (error) {
-        console.error('Erro ao atualizar plano:', error);
+        logger.error('Erro ao atualizar plano', error);
         return { success: false, error: 'Erro ao atualizar plano. Tente novamente.' };
       }
 
       await fetchSubscription();
       return { success: true };
     } catch (err) {
-      console.error('Erro inesperado ao atualizar plano:', err);
+      logger.error('Erro inesperado ao atualizar plano', err);
       return { success: false, error: 'Erro inesperado ao atualizar plano.' };
     }
   };

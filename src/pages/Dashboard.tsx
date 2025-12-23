@@ -1,8 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Play, RotateCcw, Download, AlertTriangle } from 'lucide-react';
+import { Play, RotateCcw, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
 import { FileDropzone } from '@/components/FileDropzone';
 import { ProcessingLog } from '@/components/ProcessingLog';
@@ -19,6 +18,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription, PLAN_LIMITS } from '@/hooks/useSubscription';
 import { useNavigate } from 'react-router-dom';
+import { logger } from '@/lib/logger';
 
 const PROCESSING_MESSAGES = [
   'Analisando arquivo...',
@@ -35,12 +35,13 @@ const Dashboard = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [originalFile, setOriginalFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [, setProgress] = useState(0);
   const [displayProgress, setDisplayProgress] = useState(0);
   const [processingMessage, setProcessingMessage] = useState('');
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [result, setResult] = useState<ProcessingResult | null>(null);
   const [processingComplete, setProcessingComplete] = useState(false);
+  const [downloadAllowed, setDownloadAllowed] = useState(false);
 
   // Ref to prevent double processing
   const processingLockRef = useRef(false);
@@ -148,6 +149,7 @@ const Dashboard = () => {
     setProgress(0);
     setDisplayProgress(0);
     setProcessingComplete(false);
+    setDownloadAllowed(false);
   }, [user, canProcessSheet, navigate]);
 
   const handleClearFile = useCallback(() => {
@@ -158,6 +160,7 @@ const Dashboard = () => {
     setProgress(0);
     setDisplayProgress(0);
     setProcessingComplete(false);
+    setDownloadAllowed(false);
   }, []);
 
   const handleLog = useCallback((entry: LogEntry) => {
@@ -205,6 +208,7 @@ const Dashboard = () => {
     setDisplayProgress(0);
     setResult(null);
     setProcessingComplete(false);
+    setDownloadAllowed(false);
 
     try {
       const processingResult = await processExcelFile(
@@ -220,21 +224,29 @@ const Dashboard = () => {
       setProcessingComplete(true);
 
       if (processingResult.success && processingResult.modifiedFile) {
-        // Try to increment usage with proper error handling
-        try {
-          const usageResult = await incrementUsage();
-          if (!usageResult.success) {
-            console.error('Erro ao registrar uso:', usageResult.error);
-            toast.warning('Aviso', {
-              description: 'Arquivo processado, mas houve um erro ao registrar o uso. Seu limite pode não estar atualizado.'
+        if (processingResult.shouldCountUsage) {
+          try {
+            const usageResult = await incrementUsage();
+            if (!usageResult.success) {
+              logger.error('Failed to increment usage', undefined, {
+                userId: user.id,
+                error: usageResult.error,
+              });
+              toast.error('Erro crítico', {
+                description: 'Não foi possível registrar o uso. Entre em contato.',
+              });
+              return;
+            }
+          } catch (usageError) {
+            logger.error('Unexpected error incrementing usage', usageError, { userId: user.id });
+            toast.error('Erro crítico', {
+              description: 'Não foi possível registrar o uso. Entre em contato.',
             });
+            return;
           }
-        } catch (usageError) {
-          console.error('Erro inesperado ao registrar uso:', usageError);
-          toast.warning('Aviso', {
-            description: 'Arquivo processado, mas houve um erro ao registrar o uso.'
-          });
         }
+
+        setDownloadAllowed(true);
 
         // Warn if no patterns were modified
         if (processingResult.patternsModified === 0) {
@@ -266,7 +278,7 @@ const Dashboard = () => {
         });
       }
     } catch (error) {
-      console.error('Erro inesperado durante processamento:', error);
+      logger.error('Erro inesperado durante processamento', error);
       toast.error('Erro inesperado', {
         description: 'Ocorreu um erro durante o processamento. Tente novamente.'
       });
@@ -277,11 +289,11 @@ const Dashboard = () => {
   }, [selectedFile, user, isProcessing, canProcessSheet, handleLog, incrementUsage, navigate]);
 
   const handleDownload = useCallback(() => {
-    if (result?.modifiedFile) {
+    if (result?.modifiedFile && downloadAllowed) {
       downloadFile(result.modifiedFile, result.newFileName);
       toast.success('Download iniciado!');
     }
-  }, [result]);
+  }, [result, downloadAllowed]);
 
   const handleRestore = useCallback(() => {
     if (originalFile) {
@@ -338,7 +350,7 @@ const Dashboard = () => {
                   }
                   return null;
                 })()}
-                {planLimits?.maxFileSizeMB !== null && (
+                {planLimits && planLimits.maxFileSizeMB !== null && (
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">Tamanho máximo:</span>
                     <span className="font-semibold text-foreground">{planLimits.maxFileSizeMB} MB</span>
@@ -406,7 +418,7 @@ const Dashboard = () => {
             {isProcessing ? 'Processando...' : isUpdating ? 'Aguarde...' : 'Iniciar Processamento'}
           </Button>
 
-          {result?.success && result.modifiedFile && processingComplete && (
+          {result?.success && result.modifiedFile && processingComplete && downloadAllowed && (
             <Button
               size="lg"
               variant="outline"

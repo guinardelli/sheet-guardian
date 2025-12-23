@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      error_logs: {
+        Row: {
+          context: Json | null
+          created_at: string
+          id: string
+          message: string
+          stack: string | null
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string
+          id?: string
+          message: string
+          stack?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string
+          id?: string
+          message?: string
+          stack?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -49,6 +82,10 @@ export type Database = {
           plan: Database["public"]["Enums"]["subscription_plan"]
           sheets_used_month: number
           sheets_used_today: number
+          sheets_used_week: number
+          stripe_customer_id: string | null
+          stripe_product_id: string | null
+          stripe_subscription_id: string | null
           updated_at: string
           user_id: string
         }
@@ -62,6 +99,10 @@ export type Database = {
           plan?: Database["public"]["Enums"]["subscription_plan"]
           sheets_used_month?: number
           sheets_used_today?: number
+          sheets_used_week?: number
+          stripe_customer_id?: string | null
+          stripe_product_id?: string | null
+          stripe_subscription_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -75,6 +116,10 @@ export type Database = {
           plan?: Database["public"]["Enums"]["subscription_plan"]
           sheets_used_month?: number
           sheets_used_today?: number
+          sheets_used_week?: number
+          stripe_customer_id?: string | null
+          stripe_product_id?: string | null
+          stripe_subscription_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -85,7 +130,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      check_rate_limit: {
+        Args: {
+          user_ip: string
+          attempt_type: string
+          max_attempts?: number
+          window_minutes?: number
+        }
+        Returns: boolean
+      }
+      log_auth_attempt: {
+        Args: {
+          user_ip: string
+          user_email?: string | null
+          attempt_type?: string
+          was_successful?: boolean
+          user_agent_string?: string | null
+        }
+        Returns: void
+      }
     }
     Enums: {
       subscription_plan: "free" | "professional" | "premium"

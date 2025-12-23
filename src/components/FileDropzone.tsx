@@ -1,5 +1,5 @@
 import { useCallback, useState, useRef } from 'react';
-import { Upload, FileSpreadsheet, X, AlertTriangle } from 'lucide-react';
+import { Upload, FileSpreadsheet, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { MAX_FILE_SIZE_BYTES, LARGE_FILE_WARNING_BYTES } from '@/lib/constants';
@@ -95,13 +95,6 @@ export function FileDropzone({
     // Always reset input value to allow re-selecting the same file
     e.target.value = '';
   }, [validateAndSelectFile]);
-
-  // Reset file input programmatically (useful for re-selecting same file after error)
-  const resetFileInput = useCallback(() => {
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  }, []);
 
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;

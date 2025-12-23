@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription, PLAN_LIMITS, SubscriptionPlan } from '@/hooks/useSubscription';
@@ -24,18 +24,11 @@ const PLAN_COLORS: Record<SubscriptionPlan, string> = {
   premium: 'bg-yellow-500',
 };
 
-interface Profile {
-  id: string;
-  user_id: string;
-  email: string | null;
-}
-
 const Account = () => {
   const { user, loading: authLoading } = useAuth();
   const { subscription, loading: subLoading, refetch: refetchSubscription } = useSubscription();
   const navigate = useNavigate();
 
-  const [profile, setProfile] = useState<Profile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [newEmail, setNewEmail] = useState('');
   const [savingEmail, setSavingEmail] = useState(false);
@@ -47,13 +40,7 @@ const Account = () => {
     }
   }, [user, authLoading, navigate]);
 
-  useEffect(() => {
-    if (user) {
-      fetchProfile();
-    }
-  }, [user]);
-
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     if (!user) return;
 
     setProfileLoading(true);
@@ -64,13 +51,18 @@ const Account = () => {
       .maybeSingle();
 
     if (!error && data) {
-      setProfile(data as Profile);
       setNewEmail(data.email || user.email || '');
     } else {
       setNewEmail(user.email || '');
     }
     setProfileLoading(false);
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
+    }
+  }, [user, fetchProfile]);
 
 
   const handleUpdateEmail = async () => {
@@ -168,14 +160,14 @@ const Account = () => {
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">Uso semanal:</span>
             <span className="font-semibold">
-              {subscription.sheets_used_today}/{planLimits.sheetsPerWeek}
+              {subscription.sheets_used_week}/{planLimits.sheetsPerWeek}
             </span>
           </div>
           <div className="w-full bg-muted rounded-full h-2">
             <div
               className="bg-primary h-2 rounded-full transition-all"
               style={{
-                width: `${Math.min((subscription.sheets_used_today / planLimits.sheetsPerWeek) * 100, 100)}%`
+                width: `${Math.min((subscription.sheets_used_week / planLimits.sheetsPerWeek) * 100, 100)}%`
               }}
             />
           </div>
@@ -329,19 +321,19 @@ const Account = () => {
                   <div className="pt-4 border-t">
                     <h4 className="text-sm font-medium mb-3">Limites do Plano</h4>
                     <ul className="space-y-2 text-sm">
-                      {planLimits?.sheetsPerMonth !== null && (
+                      {planLimits && planLimits.sheetsPerMonth !== null && (
                         <li className="flex justify-between">
                           <span className="text-muted-foreground">Processamentos por mês:</span>
                           <span>{planLimits.sheetsPerMonth}</span>
                         </li>
                       )}
-                      {planLimits?.sheetsPerWeek !== null && (
+                      {planLimits && planLimits.sheetsPerWeek !== null && (
                         <li className="flex justify-between">
                           <span className="text-muted-foreground">Processamentos por semana:</span>
                           <span>{planLimits.sheetsPerWeek}</span>
                         </li>
                       )}
-                      {planLimits?.maxFileSizeMB !== null && (
+                      {planLimits && planLimits.maxFileSizeMB !== null && (
                         <li className="flex justify-between">
                           <span className="text-muted-foreground">Tamanho máximo de arquivo:</span>
                           <span>{planLimits.maxFileSizeMB} MB</span>

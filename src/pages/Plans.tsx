@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useSubscription, SubscriptionPlan } from '@/hooks/useSubscription';
+import { useSubscription } from '@/hooks/useSubscription';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Check, CreditCard, QrCode, ArrowLeft, Loader2, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { STRIPE_PLANS } from '@/lib/stripe';
+import { logger } from '@/lib/logger';
 
 const PLAN_INFO: Record<'free' | 'professional' | 'premium', {
   name: string;
@@ -69,28 +70,7 @@ const Plans = () => {
   const [processing, setProcessing] = useState(false);
   const [checkingSubscription, setCheckingSubscription] = useState(false);
 
-  // Handle Stripe redirect
-  useEffect(() => {
-    const success = searchParams.get('success');
-    const canceled = searchParams.get('canceled');
-
-    if (success === 'true') {
-      toast({
-        title: "Pagamento realizado!",
-        description: "Sua assinatura está sendo processada. Aguarde alguns instantes...",
-      });
-      // Check subscription status after successful payment
-      checkStripeSubscription();
-    } else if (canceled === 'true') {
-      toast({
-        title: "Pagamento cancelado",
-        description: "O pagamento foi cancelado. Você pode tentar novamente quando quiser.",
-        variant: "destructive",
-      });
-    }
-  }, [searchParams]);
-
-  const checkStripeSubscription = async () => {
+  const checkStripeSubscription = useCallback(async () => {
     if (!session?.access_token) return;
 
     setCheckingSubscription(true);
@@ -111,11 +91,32 @@ const Plans = () => {
         await refetch();
       }
     } catch (error) {
-      console.error('Error checking subscription:', error);
+      logger.error('Error checking subscription', error);
     } finally {
       setCheckingSubscription(false);
     }
-  };
+  }, [session?.access_token, refetch, toast]);
+
+  // Handle Stripe redirect
+  useEffect(() => {
+    const success = searchParams.get('success');
+    const canceled = searchParams.get('canceled');
+
+    if (success === 'true') {
+      toast({
+        title: "Pagamento realizado!",
+        description: "Sua assinatura está sendo processada. Aguarde alguns instantes...",
+      });
+      // Check subscription status after successful payment
+      checkStripeSubscription();
+    } else if (canceled === 'true') {
+      toast({
+        title: "Pagamento cancelado",
+        description: "O pagamento foi cancelado. Você pode tentar novamente quando quiser.",
+        variant: "destructive",
+      });
+    }
+  }, [searchParams, checkStripeSubscription, toast]);
 
   const handleSelectPlan = async (plan: 'free' | 'professional' | 'premium') => {
     if (!user) {
@@ -157,11 +158,12 @@ const Plans = () => {
       } else {
         throw new Error('URL de checkout não recebida');
       }
-    } catch (error: any) {
-      console.error('Checkout error:', error);
+    } catch (error: unknown) {
+      logger.error('Checkout error', error);
+      const message = error instanceof Error ? error.message : "Tente novamente mais tarde.";
       toast({
         title: "Erro ao processar pagamento",
-        description: error.message || "Tente novamente mais tarde.",
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -187,11 +189,12 @@ const Plans = () => {
       } else {
         throw new Error('URL do portal não recebida');
       }
-    } catch (error: any) {
-      console.error('Portal error:', error);
+    } catch (error: unknown) {
+      logger.error('Portal error', error);
+      const message = error instanceof Error ? error.message : "Tente novamente mais tarde.";
       toast({
         title: "Erro ao abrir portal",
-        description: error.message || "Tente novamente mais tarde.",
+        description: message,
         variant: "destructive",
       });
     } finally {
