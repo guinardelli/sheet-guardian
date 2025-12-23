@@ -45,30 +45,36 @@ export const Header = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => { navigate('/dashboard'); setMobileMenuOpen(false); }}
+              asChild
               className={mobile ? 'w-full justify-start' : ''}
             >
-              <LayoutDashboard className="h-4 w-4 mr-2" />
-              Início
+              <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)}>
+                <LayoutDashboard className="h-4 w-4 mr-2" />
+                Início
+              </Link>
             </Button>
           )}
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => { navigate('/plans'); setMobileMenuOpen(false); }}
+            asChild
             className={mobile ? 'w-full justify-start' : ''}
           >
-            <CreditCard className="h-4 w-4 mr-2" />
-            Planos
+            <Link to="/plans" onClick={() => setMobileMenuOpen(false)}>
+              <CreditCard className="h-4 w-4 mr-2" />
+              Planos
+            </Link>
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => { navigate('/account'); setMobileMenuOpen(false); }}
+            asChild
             className={mobile ? 'w-full justify-start' : ''}
           >
-            <UserCircle className="h-4 w-4 mr-2" />
-            Minha Conta
+            <Link to="/account" onClick={() => setMobileMenuOpen(false)}>
+              <UserCircle className="h-4 w-4 mr-2" />
+              Minha Conta
+            </Link>
           </Button>
           <Button
             variant="ghost"
@@ -85,19 +91,23 @@ export const Header = () => {
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={() => { navigate('/plans'); setMobileMenuOpen(false); }}
+            asChild
             className={mobile ? 'w-full justify-start' : ''}
           >
-            <CreditCard className="h-4 w-4 mr-2" />
-            Planos
+            <Link to="/plans" onClick={() => setMobileMenuOpen(false)}>
+              <CreditCard className="h-4 w-4 mr-2" />
+              Planos
+            </Link>
           </Button>
           <Button 
             size="sm" 
-            onClick={() => { navigate('/auth'); setMobileMenuOpen(false); }}
+            asChild
             className={mobile ? 'w-full' : ''}
           >
-            <User className="h-4 w-4 mr-2" />
-            Entrar
+            <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
+              <User className="h-4 w-4 mr-2" />
+              Entrar
+            </Link>
           </Button>
         </>
       )}

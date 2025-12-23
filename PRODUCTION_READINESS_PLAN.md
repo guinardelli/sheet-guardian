@@ -331,7 +331,7 @@ Após análise completa do código, identifiquei **7 problemas críticos** que i
   }
   ```
 - **Teste**: Deploy em preview, verificar tudo funciona, ajustar CSP se necessário
-- **Status**: CONCLUIDO - CSP e HSTS adicionados em `vercel.json`. Teste pendente
+- **Status**: CONCLUIDO - CSP e HSTS adicionados em `vercel.json` (connect-src inclui `*.functions.supabase.co`). Teste pendente
 
 #### 3.2 Implementar Logging Estruturado (Dia 7, 3h)
 - **Criar**: `src/lib/logger.ts` com interface de log estruturado
@@ -801,6 +801,10 @@ Após análise completa do código, identifiquei **7 problemas críticos** que i
 - 1) Faca deploy preview no Vercel e execute o checklist.
 - 2) Faca deploy em producao.
 - 3) Monitore por 48 horas (erros, pagamentos, logs).
+
+## CORRECOES ADICIONAIS (SUPORTE)
+- Navegacao do header ajustada para Links (menu superior volta a responder).
+- CSP atualizado para permitir chamadas a Edge Functions (`*.functions.supabase.co`).
 
 ## 🗂️ ARQUIVOS CRÍTICOS A MODIFICAR
 
