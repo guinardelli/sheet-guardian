@@ -807,6 +807,7 @@ Após análise completa do código, identifiquei **7 problemas críticos** que i
 - CSP atualizado para permitir chamadas a Edge Functions (`*.functions.supabase.co`).
 - Toast viewport ajustado com `pointer-events: none` para nao bloquear cliques no header.
 - CSP expandido com `font-src`, `worker-src`, `object-src`, `base-uri`, `form-action`.
+- Header refatorado para menu simples sem Radix UI (Sheet/Button asChild).
 
 ## 🗂️ ARQUIVOS CRÍTICOS A MODIFICAR
 
