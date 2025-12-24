@@ -805,6 +805,7 @@ Após análise completa do código, identifiquei **7 problemas críticos** que i
 ## CORRECOES ADICIONAIS (SUPORTE)
 - Navegacao do header ajustada para Links (menu superior volta a responder).
 - CSP atualizado para permitir chamadas a Edge Functions (`*.functions.supabase.co`).
+- Toast viewport ajustado com `pointer-events: none` para nao bloquear cliques no header.
 
 ## 🗂️ ARQUIVOS CRÍTICOS A MODIFICAR
 
