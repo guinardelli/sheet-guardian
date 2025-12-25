@@ -11,8 +11,6 @@ import {
 } from '@/components/ui/navigation-menu';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { LanguageSelector } from '@/components/LanguageSelector';
-import { NotificationBell } from '@/components/NotificationBell';
-import { SearchBar } from '@/components/SearchBar';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
 import { cn } from '@/lib/utils';
@@ -63,9 +61,6 @@ export const NewHeader = () => {
               </div>
               <span className="text-lg font-semibold tracking-tight text-foreground">Excel VBA Blocker</span>
             </Link>
-            <div className="hidden md:block w-48 lg:w-64">
-              <SearchBar />
-            </div>
           </div>
 
           <nav className="hidden lg:flex items-center justify-center">
@@ -94,7 +89,6 @@ export const NewHeader = () => {
 
           <div className="flex items-center justify-end gap-2">
             <div className="hidden md:flex items-center gap-2">
-              <NotificationBell />
               <LanguageSelector />
               {user ? (
                 <div className="flex items-center gap-2">
@@ -135,18 +129,17 @@ export const NewHeader = () => {
                       <Shield className="h-6 w-6 text-primary" />
                       <span className="font-semibold text-foreground">Excel VBA Blocker</span>
                     </Link>
-                    <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      aria-label="Fechar menu"
+                    >
                       <X className="h-5 w-5" />
                     </Button>
                   </div>
 
-                  <div className="space-y-4">
-                    <SearchBar />
-                    <div className="flex items-center gap-2">
-                      <NotificationBell />
-                      <LanguageSelector />
-                    </div>
-                  </div>
+                  <LanguageSelector />
 
                   <nav className="flex-1 space-y-2">
                     {navItems.map((item) => (

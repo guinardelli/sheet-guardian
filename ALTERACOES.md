@@ -1,4 +1,4 @@
-# Plano de Redesign UI/UX - Sheet Guardian
+'# Plano de Redesign UI/UX - Sheet Guardian
 
 ## Objetivo
 Redesenhar completamente a interface do Sheet Guardian para torná-la mais simples, moderna e funcional com estilo **minimalista Vercel/Linear**, mantendo as cores atuais (verde teracota + azul) e adicionando novos recursos ao header (busca, notificações, idioma).
@@ -852,3 +852,4 @@ Ao final deste redesign, o Sheet Guardian terá:
 ✅ **Responsividade** testada em 6 breakpoints
 
 O resultado será uma aplicação **simples, funcional e visualmente atraente** que transmite **profissionalismo e confiança**.
+'

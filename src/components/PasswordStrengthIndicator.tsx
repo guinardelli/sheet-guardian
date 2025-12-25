@@ -50,8 +50,8 @@ export function PasswordStrengthIndicator({
             <span className={cn(
               "font-medium",
               strength <= 2 && "text-destructive",
-              strength > 2 && strength <= 4 && "text-yellow-600",
-              strength === 5 && "text-green-600"
+              strength > 2 && strength <= 4 && "text-[hsl(var(--color-warning))]",
+              strength === 5 && "text-[hsl(var(--color-success-strong))]"
             )}>
               {getStrengthLabel()}
             </span>
@@ -74,7 +74,7 @@ export function PasswordStrengthIndicator({
                 key={index}
                 className={cn(
                   "flex items-center gap-2 transition-colors",
-                  isMet ? "text-green-600" : "text-muted-foreground"
+                  isMet ? "text-[hsl(var(--color-success-strong))]" : "text-muted-foreground"
                 )}
               >
                 {isMet ? (

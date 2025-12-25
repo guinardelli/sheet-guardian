@@ -47,8 +47,8 @@ export function ProcessingLog({ logs }: ProcessingLogProps) {
       >
         {logs.length === 0 ? (
           <div className="flex items-start gap-3 py-2">
-            <MoreHorizontal className="w-4 h-4 text-slate-500 mt-0.5 animate-pulse" />
-            <p className="flex-1 leading-relaxed text-slate-400">Aguardando arquivo para iniciar...</p>
+            <MoreHorizontal className="w-4 h-4 text-muted-foreground/80 mt-0.5 animate-pulse" />
+            <p className="flex-1 leading-relaxed text-muted-foreground/70">Aguardando arquivo para iniciar...</p>
           </div>
         ) : (
           logs.map((log, index) => {
@@ -56,10 +56,10 @@ export function ProcessingLog({ logs }: ProcessingLogProps) {
             return (
               <div
                 key={index}
-                className="flex items-start gap-3 py-2 animate-fade-in border-b border-slate-800/50 last:border-0"
+                className="flex items-start gap-3 py-2 animate-fade-in border-b border-border/30 last:border-0"
               >
                 <Icon className={cn('w-4 h-4 mt-0.5 flex-shrink-0', colorMap[log.type])} />
-                <span className="text-slate-500 flex-shrink-0 tabular-nums">[{formatTime(log.timestamp)}]</span>
+                <span className="text-muted-foreground/80 flex-shrink-0 tabular-nums">[{formatTime(log.timestamp)}]</span>
                 <p className="flex-1 leading-relaxed break-words">{log.message}</p>
               </div>
             );
