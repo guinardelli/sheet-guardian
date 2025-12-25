@@ -33,6 +33,11 @@ export const Header = () => {
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
   const isOnDashboard = location.pathname === '/dashboard';
 
+  const handleLinkClick = (e: React.MouseEvent, path: string) => {
+    e.stopPropagation();
+    navigate(path);
+  };
+
   const linkClass =
     'px-3 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors duration-200 flex items-center gap-2 no-underline';
   const mobileLinkClass =
@@ -40,7 +45,7 @@ export const Header = () => {
 
   return (
     <>
-      <header className="border-b border-border/50 bg-background/80 backdrop-blur-lg sticky top-0 z-50 shadow-soft">
+      <header className="border-b border-border/50 bg-background/80 backdrop-blur-lg sticky top-0 z-[100] shadow-soft">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5 group no-underline">
             <ExcelIcon className="w-8 h-8 text-primary transition-transform group-hover:scale-105" />
@@ -61,19 +66,31 @@ export const Header = () => {
                   </Badge>
                 )}
                 {!isOnDashboard && (
-                  <Link to="/dashboard" className={linkClass}>
+                  <a
+                    onClick={(e) => { e.preventDefault(); handleLinkClick(e, '/dashboard'); }}
+                    href="/dashboard"
+                    className={`${linkClass} cursor-pointer`}
+                  >
                     <LayoutDashboard className="h-4 w-4" />
                     Inicio
-                  </Link>
+                  </a>
                 )}
-                <Link to="/plans" className={linkClass}>
+                <a
+                  onClick={(e) => { e.preventDefault(); handleLinkClick(e, '/plans'); }}
+                  href="/plans"
+                  className={`${linkClass} cursor-pointer`}
+                >
                   <CreditCard className="h-4 w-4" />
                   Planos
-                </Link>
-                <Link to="/account" className={linkClass}>
+                </a>
+                <a
+                  onClick={(e) => { e.preventDefault(); handleLinkClick(e, '/account'); }}
+                  href="/account"
+                  className={`${linkClass} cursor-pointer`}
+                >
                   <User className="h-4 w-4" />
                   Minha Conta
-                </Link>
+                </a>
                 <button type="button" onClick={handleSignOut} className={`${linkClass} cursor-pointer`}>
                   <LogOut className="h-4 w-4" />
                   Sair
@@ -110,13 +127,13 @@ export const Header = () => {
       </header>
 
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={closeMobileMenu} />
+        <div className="fixed inset-0 bg-black/50 z-[90] md:hidden" onClick={closeMobileMenu} />
       )}
 
       {isMobileMenuOpen && (
         <nav
           id="mobile-menu"
-          className="fixed top-[60px] right-0 w-[280px] sm:w-[320px] h-[calc(100vh-60px)] bg-background border-l border-border shadow-lg flex flex-col gap-2 p-4 z-50 md:hidden"
+          className="fixed top-[60px] right-0 w-[280px] sm:w-[320px] h-[calc(100vh-60px)] bg-background border-l border-border shadow-lg flex flex-col gap-2 p-4 z-[95] md:hidden"
         >
           {user ? (
             <>
@@ -131,19 +148,31 @@ export const Header = () => {
                 </div>
               )}
               {!isOnDashboard && (
-                <Link to="/dashboard" className={mobileLinkClass} onClick={closeMobileMenu}>
+                <a
+                  onClick={(e) => { e.preventDefault(); handleLinkClick(e, '/dashboard'); closeMobileMenu(); }}
+                  href="/dashboard"
+                  className={`${mobileLinkClass} cursor-pointer`}
+                >
                   <LayoutDashboard className="h-4 w-4" />
                   Inicio
-                </Link>
+                </a>
               )}
-              <Link to="/plans" className={mobileLinkClass} onClick={closeMobileMenu}>
+              <a
+                onClick={(e) => { e.preventDefault(); handleLinkClick(e, '/plans'); closeMobileMenu(); }}
+                href="/plans"
+                className={`${mobileLinkClass} cursor-pointer`}
+              >
                 <CreditCard className="h-4 w-4" />
                 Planos
-              </Link>
-              <Link to="/account" className={mobileLinkClass} onClick={closeMobileMenu}>
+              </a>
+              <a
+                onClick={(e) => { e.preventDefault(); handleLinkClick(e, '/account'); closeMobileMenu(); }}
+                href="/account"
+                className={`${mobileLinkClass} cursor-pointer`}
+              >
                 <User className="h-4 w-4" />
                 Minha Conta
-              </Link>
+              </a>
               <button
                 type="button"
                 onClick={handleSignOutMobile}
