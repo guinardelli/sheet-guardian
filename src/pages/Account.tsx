@@ -80,6 +80,19 @@ const Account = () => {
       toast.error('Erro ao atualizar email', {
         description: error.message
       });
+      setSavingEmail(false);
+      return;
+    }
+
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({ email: newEmail })
+      .eq('user_id', user.id);
+
+    if (profileError) {
+      toast.error('Erro ao sincronizar perfil', {
+        description: profileError.message
+      });
     } else {
       toast.success('Email de confirmação enviado!', {
         description: 'Verifique sua caixa de entrada para confirmar o novo email.'

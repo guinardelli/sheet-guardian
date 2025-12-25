@@ -3,6 +3,11 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createLogger } from "../_shared/logger.ts";
 
+const ALLOWED_PRICE_TO_PRODUCT: Record<string, string> = {
+  "price_1Sd9EhJkxX3Me4wlrU22rZwM": "prod_TaJslOsZAWnhcN", // professional
+  "price_1Sd9F5JkxX3Me4wl1xNRb5Kh": "prod_TaJsysi99Q1g2J", // premium
+};
+
 const allowedOrigins = new Set([
   "https://vbablocker.vercel.app",
   "http://localhost:8080",
@@ -47,11 +52,28 @@ serve(async (req) => {
     
     const { priceId } = await req.json();
     if (!priceId) throw new Error("Price ID is required");
+    const allowedProduct = ALLOWED_PRICE_TO_PRODUCT[priceId];
+    if (!allowedProduct) {
+      throw new Error("Invalid priceId");
+    }
     logger.info("Price ID received", { priceId });
 
-    const authHeader = req.headers.get("Authorization")!;
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
     const token = authHeader.replace("Bearer ", "");
-    const { data } = await supabaseClient.auth.getUser(token);
+    const { data, error: userError } = await supabaseClient.auth.getUser(token);
+    if (userError) {
+      logger.warn("Auth getUser failed", { error: userError.message });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
     const user = data.user;
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logger.info("User authenticated", { userId: user.id, email: user.email });
@@ -76,6 +98,9 @@ serve(async (req) => {
 
     const price = await stripe.prices.retrieve(priceId);
     const productId = typeof price.product === "string" ? price.product : price.product.id;
+    if (productId !== allowedProduct) {
+      throw new Error("Price/product mismatch");
+    }
 
     const { error: updateError } = await supabaseAdmin
       .from("subscriptions")

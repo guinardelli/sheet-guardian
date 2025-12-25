@@ -129,12 +129,24 @@ const Plans = () => {
     }
 
     if (plan === 'free') {
-      await updatePlan('free');
-      toast({
-        title: "Plano atualizado!",
-        description: "Você está no plano Gratuito.",
-      });
-      navigate('/dashboard');
+      try {
+        const result = await updatePlan('free');
+        if (!result.success) {
+          throw new Error(result.error || 'Erro ao atualizar plano gratuito');
+        }
+        toast({
+          title: "Plano atualizado!",
+          description: "Você está no plano Gratuito.",
+        });
+        navigate('/dashboard');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Tente novamente mais tarde.';
+        toast({
+          title: "Erro ao mudar para plano gratuito",
+          description: message,
+          variant: "destructive",
+        });
+      }
       return;
     }
 

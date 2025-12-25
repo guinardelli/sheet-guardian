@@ -52,6 +52,10 @@ const createMockClient = (): SupabaseClient<Database> => {
         eq: () => Promise.resolve({ data: null, error: notConfiguredError }),
       }),
     }),
+    rpc: () => Promise.resolve({ data: null, error: notConfiguredError }),
+    functions: {
+      invoke: () => Promise.resolve({ data: null, error: notConfiguredError }),
+    },
   } as unknown as SupabaseClient<Database>;
 };
 
