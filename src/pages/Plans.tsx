@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Header } from '@/components/Header';
 import { Check, CreditCard, QrCode, ArrowLeft, Loader2, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { STRIPE_PLANS } from '@/lib/stripe';
@@ -230,18 +231,20 @@ const Plans = () => {
   const hasActiveSubscription = subscription?.plan && subscription.plan !== 'free' && subscription.payment_status === 'active';
 
   return (
-    <div className="min-h-screen bg-background px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-      <div className="max-w-5xl mx-auto">
-        <Button
-          variant="ghost"
-          onClick={() => navigate(-1)}
-          className="mb-8"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar
-        </Button>
+    <div className="min-h-screen bg-background">
+      <Header />
+      <div className="px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        <div className="max-w-5xl mx-auto">
+          <Button
+            variant="ghost"
+            onClick={() => navigate(-1)}
+            className="mb-8"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Button>
 
-        <div className="text-center mb-14">
+          <div className="text-center mb-14">
           <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-4">
             Planos
           </p>
@@ -396,6 +399,7 @@ const Plans = () => {
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 };
