@@ -26,10 +26,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const isMounted = useRef(true);
+  const sessionRef = useRef<Session | null>(null);
+
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
 
   // Handle auth state changes with proper error detection
   const handleAuthChange = useCallback((event: AuthChangeEvent, newSession: Session | null) => {
     if (!isMounted.current) return;
+    const previousSession = sessionRef.current;
 
     // Detect token refresh failures
     if (event === 'TOKEN_REFRESHED' && !newSession) {
@@ -38,7 +44,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     // Detect unexpected sign outs (could be token refresh failure)
-    if (event === 'SIGNED_OUT' && session && !newSession) {
+    if (event === 'SIGNED_OUT' && previousSession && !newSession) {
       logger.warn('Unexpected sign out detected');
       setAuthError('Você foi desconectado. Por favor, faça login novamente.');
     }
@@ -53,7 +59,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setAuthError(null);
       }
     }
-  }, [session]);
+  }, []);
 
   useEffect(() => {
     isMounted.current = true;
@@ -180,6 +186,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = async () => {
     setAuthError(null);
+    setSession(null);
+    setUser(null);
     await supabase.auth.signOut();
   };
 
