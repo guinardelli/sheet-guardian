@@ -29,8 +29,8 @@ export function PasswordStrengthIndicator({
 
   const getStrengthColor = () => {
     if (strength <= 2) return 'bg-destructive';
-    if (strength <= 4) return 'bg-[hsl(var(--color-warning))]';
-    return 'bg-[hsl(var(--color-success-strong))]';
+    if (strength <= 4) return 'bg-warning';
+    return 'bg-success';
   };
 
   const getStrengthLabel = () => {
@@ -50,8 +50,8 @@ export function PasswordStrengthIndicator({
             <span className={cn(
               "font-medium",
               strength <= 2 && "text-destructive",
-              strength > 2 && strength <= 4 && "text-[hsl(var(--color-warning))]",
-              strength === 5 && "text-[hsl(var(--color-success-strong))]"
+              strength > 2 && strength <= 4 && "text-warning",
+              strength === 5 && "text-success"
             )}>
               {getStrengthLabel()}
             </span>
@@ -74,7 +74,7 @@ export function PasswordStrengthIndicator({
                 key={index}
                 className={cn(
                   "flex items-center gap-2 transition-colors",
-                  isMet ? "text-[hsl(var(--color-success-strong))]" : "text-muted-foreground"
+                  isMet ? "text-success" : "text-muted-foreground"
                 )}
               >
                 {isMet ? (

@@ -17,7 +17,7 @@ const iconMap = {
 const colorMap = {
   info: 'text-muted-foreground',
   success: 'text-primary',
-  warning: 'text-[hsl(var(--color-warning))]',
+  warning: 'text-warning',
   error: 'text-destructive',
 };
 
@@ -43,7 +43,7 @@ export function ProcessingLog({ logs }: ProcessingLogProps) {
       <h3 className="text-foreground text-lg font-semibold tracking-tight">Log de Processamento</h3>
       <div
         ref={scrollRef}
-        className="flex flex-col h-72 w-full rounded-xl bg-[hsl(var(--color-log-bg))] p-5 font-mono text-sm text-muted-foreground overflow-y-auto shadow-soft-lg"
+        className="flex flex-col h-72 w-full rounded-xl bg-muted p-5 font-mono text-sm text-muted-foreground overflow-y-auto shadow-soft-lg"
       >
         {logs.length === 0 ? (
           <div className="flex items-start gap-3 py-2">

@@ -23,7 +23,6 @@ const PLAN_NAMES: Record<string, string> = {
 
 const navItems = [
   { name: 'Início', path: '/' },
-  { name: 'Processar', path: '/dashboard' },
   { name: 'Planos', path: '/plans' },
 ];
 
@@ -106,9 +105,6 @@ export const NewHeader = () => {
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => navigate('/plans')}>
-                    Planos
-                  </Button>
                   <Button size="sm" onClick={() => navigate('/auth')}>
                     Entrar
                   </Button>
@@ -199,16 +195,6 @@ export const NewHeader = () => {
                           }}
                         >
                           Entrar
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          className="w-full"
-                          onClick={() => {
-                            setIsMobileMenuOpen(false);
-                            navigate('/plans');
-                          }}
-                        >
-                          Ver Planos
                         </Button>
                       </div>
                     )}

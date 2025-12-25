@@ -30,8 +30,11 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 153 56% 32%;
-    --success-foreground: 0 0% 100%;
+    --success: var(--primary);
+    --success-foreground: var(--primary-foreground);
+
+    --warning: 45 93% 47%;
+    --warning-foreground: 0 0% 100%;
 
     --border: 220 13% 91%;
     --input: 220 13% 91%;
@@ -45,12 +48,6 @@
     --z-modal: 1050;
     --z-popover: 1060;
     --z-toast: 1080;
-
-    /* Color Tokens */
-    --color-warning: 45 93% 47%;
-    --color-success-strong: 142 71% 45%;
-    --color-info: 217 91% 50%;
-    --color-log-bg: 220 25% 9%;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -87,8 +84,11 @@
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 153 56% 42%;
-    --success-foreground: 0 0% 100%;
+    --success: var(--primary);
+    --success-foreground: var(--primary-foreground);
+
+    --warning: 45 93% 58%;
+    --warning-foreground: 0 0% 100%;
 
     --border: 220 20% 20%;
     --input: 220 20% 20%;
