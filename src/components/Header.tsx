@@ -33,11 +33,6 @@ export const Header = () => {
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
   const isOnDashboard = location.pathname === '/dashboard';
 
-  const handleLinkClick = (e: React.MouseEvent, path: string) => {
-    e.stopPropagation();
-    navigate(path);
-  };
-
   const linkClass =
     'px-3 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors duration-200 flex items-center gap-2 no-underline';
   const mobileLinkClass =
@@ -66,31 +61,19 @@ export const Header = () => {
                   </Badge>
                 )}
                 {!isOnDashboard && (
-                  <a
-                    onClick={(e) => { e.preventDefault(); handleLinkClick(e, '/dashboard'); }}
-                    href="/dashboard"
-                    className={`${linkClass} cursor-pointer`}
-                  >
+                  <Link to="/dashboard" className={linkClass}>
                     <LayoutDashboard className="h-4 w-4" />
                     Inicio
-                  </a>
+                  </Link>
                 )}
-                <a
-                  onClick={(e) => { e.preventDefault(); handleLinkClick(e, '/plans'); }}
-                  href="/plans"
-                  className={`${linkClass} cursor-pointer`}
-                >
+                <Link to="/plans" className={linkClass}>
                   <CreditCard className="h-4 w-4" />
                   Planos
-                </a>
-                <a
-                  onClick={(e) => { e.preventDefault(); handleLinkClick(e, '/account'); }}
-                  href="/account"
-                  className={`${linkClass} cursor-pointer`}
-                >
+                </Link>
+                <Link to="/account" className={linkClass}>
                   <User className="h-4 w-4" />
                   Minha Conta
-                </a>
+                </Link>
                 <button type="button" onClick={handleSignOut} className={`${linkClass} cursor-pointer`}>
                   <LogOut className="h-4 w-4" />
                   Sair
@@ -148,31 +131,19 @@ export const Header = () => {
                 </div>
               )}
               {!isOnDashboard && (
-                <a
-                  onClick={(e) => { e.preventDefault(); handleLinkClick(e, '/dashboard'); closeMobileMenu(); }}
-                  href="/dashboard"
-                  className={`${mobileLinkClass} cursor-pointer`}
-                >
+                <Link to="/dashboard" className={mobileLinkClass} onClick={closeMobileMenu}>
                   <LayoutDashboard className="h-4 w-4" />
                   Inicio
-                </a>
+                </Link>
               )}
-              <a
-                onClick={(e) => { e.preventDefault(); handleLinkClick(e, '/plans'); closeMobileMenu(); }}
-                href="/plans"
-                className={`${mobileLinkClass} cursor-pointer`}
-              >
+              <Link to="/plans" className={mobileLinkClass} onClick={closeMobileMenu}>
                 <CreditCard className="h-4 w-4" />
                 Planos
-              </a>
-              <a
-                onClick={(e) => { e.preventDefault(); handleLinkClick(e, '/account'); closeMobileMenu(); }}
-                href="/account"
-                className={`${mobileLinkClass} cursor-pointer`}
-              >
+              </Link>
+              <Link to="/account" className={mobileLinkClass} onClick={closeMobileMenu}>
                 <User className="h-4 w-4" />
                 Minha Conta
-              </a>
+              </Link>
               <button
                 type="button"
                 onClick={handleSignOutMobile}
