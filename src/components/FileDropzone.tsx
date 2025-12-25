@@ -110,12 +110,12 @@ export function FileDropzone({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={cn(
-        'flex flex-col items-center gap-6 rounded-2xl border-2 border-dashed px-6 py-16 transition-all duration-300',
+        'flex flex-col items-center gap-6 rounded-2xl border-2 border-dashed px-6 py-16 transition-all duration-200',
         isDragging
-          ? 'border-primary bg-primary/5 shadow-soft-lg'
+          ? 'border-primary bg-primary/5 scale-[1.02] shadow-soft-lg'
           : 'border-border/70 bg-card/30',
+        !isDragging && !disabled && 'hover:border-primary/50 hover:bg-primary/5 hover:shadow-soft',
         disabled && 'opacity-50 cursor-not-allowed',
-        !disabled && !selectedFile && 'hover:border-primary/50 hover:bg-card/50 hover:shadow-soft'
       )}
     >
       {selectedFile ? (

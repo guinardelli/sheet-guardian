@@ -1,23 +1,28 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { Play, RotateCcw, Download } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Download, Info, Play, RotateCcw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Card, CardContent } from '@/components/ui/card';
+
+import { ExcelIcon } from '@/components/ExcelIcon';
 import { FileDropzone } from '@/components/FileDropzone';
+import { LoadingSkeleton } from '@/components/LoadingSkeleton';
+import { NewHeader } from '@/components/NewHeader';
 import { ProcessingLog } from '@/components/ProcessingLog';
 import { StatisticsCard } from '@/components/StatisticsCard';
-import { ExcelIcon } from '@/components/ExcelIcon';
-import { Header } from '@/components/Header';
+
+import { useAuth } from '@/hooks/useAuth';
+import { PLAN_LIMITS, useSubscription } from '@/hooks/useSubscription';
+
 import {
-  processExcelFile,
   downloadFile,
   LogEntry,
-  ProcessingResult
+  processExcelFile,
+  ProcessingResult,
 } from '@/lib/excel-vba-modifier';
-import { toast } from 'sonner';
-import { useAuth } from '@/hooks/useAuth';
-import { useSubscription, PLAN_LIMITS } from '@/hooks/useSubscription';
-import { useNavigate } from 'react-router-dom';
 import { logger } from '@/lib/logger';
 
 const PROCESSING_MESSAGES = [
@@ -28,7 +33,6 @@ const PROCESSING_MESSAGES = [
   'Finalizando...',
 ];
 
-// Maximum number of log entries to keep in memory
 const MAX_LOG_ENTRIES = 100;
 
 const Dashboard = () => {
@@ -43,14 +47,12 @@ const Dashboard = () => {
   const [processingComplete, setProcessingComplete] = useState(false);
   const [downloadAllowed, setDownloadAllowed] = useState(false);
 
-  // Ref to prevent double processing
   const processingLockRef = useRef(false);
 
   const { user, loading: authLoading, authError, clearAuthError } = useAuth();
   const { subscription, canProcessSheet, incrementUsage, getUsageStats, isUpdating } = useSubscription();
   const navigate = useNavigate();
 
-  // Show auth errors to user
   useEffect(() => {
     if (authError) {
       toast.error('Erro de autenticação', {
@@ -60,24 +62,22 @@ const Dashboard = () => {
           onClick: () => {
             clearAuthError();
             navigate('/auth');
-          }
-        }
+          },
+        },
       });
     }
   }, [authError, clearAuthError, navigate]);
 
-  // Redirect if not logged in
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth');
     }
   }, [user, authLoading, navigate]);
 
-  // Cinematic progress animation
   useEffect(() => {
     if (!isProcessing || processingComplete) return;
 
-    const duration = 4000; // 4 seconds
+    const duration = 4000;
     const interval = 50;
     const steps = duration / interval;
     let currentStep = 0;
@@ -87,10 +87,9 @@ const Dashboard = () => {
       const newProgress = Math.min(Math.floor((currentStep / steps) * 95), 95);
       setDisplayProgress(newProgress);
 
-      // Update message based on progress
       const messageIndex = Math.min(
         Math.floor((newProgress / 100) * PROCESSING_MESSAGES.length),
-        PROCESSING_MESSAGES.length - 1
+        PROCESSING_MESSAGES.length - 1,
       );
       setProcessingMessage(PROCESSING_MESSAGES[messageIndex]);
 
@@ -102,7 +101,6 @@ const Dashboard = () => {
     return () => clearInterval(timer);
   }, [isProcessing, processingComplete]);
 
-  // Complete the progress when processing is done
   useEffect(() => {
     if (processingComplete && result) {
       setDisplayProgress(100);
@@ -110,47 +108,50 @@ const Dashboard = () => {
     }
   }, [processingComplete, result]);
 
-  const handleFileSelect = useCallback((file: File) => {
-    if (!user) {
-      toast.error('Login necessário', {
-        description: 'Faça login para processar planilhas.',
-        action: {
-          label: 'Entrar',
-          onClick: () => navigate('/auth')
-        }
-      });
-      return;
-    }
-
-    const fileSizeKB = file.size / 1024;
-    const { allowed, reason, suggestUpgrade } = canProcessSheet(fileSizeKB);
-
-    if (!allowed) {
-      if (suggestUpgrade) {
-        toast.error('Limite atingido', {
-          description: reason,
+  const handleFileSelect = useCallback(
+    (file: File) => {
+      if (!user) {
+        toast.error('Login necessário', {
+          description: 'Faça login para processar planilhas.',
           action: {
-            label: 'Ver Planos',
-            onClick: () => navigate('/plans')
-          }
+            label: 'Entrar',
+            onClick: () => navigate('/auth'),
+          },
         });
-      } else {
-        toast.error('Erro', {
-          description: reason
-        });
+        return;
       }
-      return;
-    }
 
-    setSelectedFile(file);
-    setOriginalFile(file);
-    setResult(null);
-    setLogs([]);
-    setProgress(0);
-    setDisplayProgress(0);
-    setProcessingComplete(false);
-    setDownloadAllowed(false);
-  }, [user, canProcessSheet, navigate]);
+      const fileSizeKB = file.size / 1024;
+      const { allowed, reason, suggestUpgrade } = canProcessSheet(fileSizeKB);
+
+      if (!allowed) {
+        if (suggestUpgrade) {
+          toast.error('Limite atingido', {
+            description: reason,
+            action: {
+              label: 'Ver Planos',
+              onClick: () => navigate('/plans'),
+            },
+          });
+        } else {
+          toast.error('Erro', {
+            description: reason,
+          });
+        }
+        return;
+      }
+
+      setSelectedFile(file);
+      setOriginalFile(file);
+      setResult(null);
+      setLogs([]);
+      setProgress(0);
+      setDisplayProgress(0);
+      setProcessingComplete(false);
+      setDownloadAllowed(false);
+    },
+    [user, canProcessSheet, navigate],
+  );
 
   const handleClearFile = useCallback(() => {
     setSelectedFile(null);
@@ -164,9 +165,8 @@ const Dashboard = () => {
   }, []);
 
   const handleLog = useCallback((entry: LogEntry) => {
-    setLogs(prev => {
+    setLogs((prev) => {
       const newLogs = [...prev, entry];
-      // Limit log entries to prevent memory growth
       if (newLogs.length > MAX_LOG_ENTRIES) {
         return newLogs.slice(-MAX_LOG_ENTRIES);
       }
@@ -175,7 +175,6 @@ const Dashboard = () => {
   }, []);
 
   const handleProcess = useCallback(async () => {
-    // Guard: prevent double processing
     if (!selectedFile || !user || isProcessing || processingLockRef.current) {
       return;
     }
@@ -189,18 +188,17 @@ const Dashboard = () => {
           description: reason,
           action: {
             label: 'Ver Planos',
-            onClick: () => navigate('/plans')
-          }
+            onClick: () => navigate('/plans'),
+          },
         });
       } else {
         toast.error('Erro', {
-          description: reason
+          description: reason,
         });
       }
       return;
     }
 
-    // Set lock to prevent race conditions
     processingLockRef.current = true;
     setIsProcessing(true);
     setLogs([]);
@@ -211,14 +209,9 @@ const Dashboard = () => {
     setDownloadAllowed(false);
 
     try {
-      const processingResult = await processExcelFile(
-        selectedFile,
-        handleLog,
-        setProgress
-      );
+      const processingResult = await processExcelFile(selectedFile, handleLog, setProgress);
 
-      // Wait for the cinematic animation to catch up
-      await new Promise(resolve => setTimeout(resolve, 4500));
+      await new Promise((resolve) => setTimeout(resolve, 4500));
 
       setResult(processingResult);
       setProcessingComplete(true);
@@ -248,39 +241,34 @@ const Dashboard = () => {
 
         setDownloadAllowed(true);
 
-        // Warn if no patterns were modified
         if (processingResult.patternsModified === 0) {
           toast.warning('Processamento concluído', {
             description: 'Nenhum padrão de proteção VBA foi encontrado ou modificado no arquivo.',
             action: {
               label: 'Baixar',
-              onClick: () => downloadFile(
-                processingResult.modifiedFile!,
-                processingResult.newFileName
-              )
-            }
+              onClick: () =>
+                downloadFile(processingResult.modifiedFile!, processingResult.newFileName),
+            },
           });
         } else {
           toast.success('Arquivo processado com sucesso!', {
             description: `${processingResult.patternsModified} padrão(ões) modificado(s)`,
             action: {
               label: 'Baixar',
-              onClick: () => downloadFile(
-                processingResult.modifiedFile!,
-                processingResult.newFileName
-              )
-            }
+              onClick: () =>
+                downloadFile(processingResult.modifiedFile!, processingResult.newFileName),
+            },
           });
         }
       } else if (processingResult.error) {
         toast.error('Erro ao processar arquivo', {
-          description: processingResult.error
+          description: processingResult.error,
         });
       }
     } catch (error) {
       logger.error('Erro inesperado durante processamento', error);
       toast.error('Erro inesperado', {
-        description: 'Ocorreu um erro durante o processamento. Tente novamente.'
+        description: 'Ocorreu um erro durante o processamento. Tente novamente.',
       });
     } finally {
       setIsProcessing(false);
@@ -303,24 +291,30 @@ const Dashboard = () => {
   }, [originalFile]);
 
   const planLimits = subscription ? PLAN_LIMITS[subscription.plan] : null;
+  const usageStats = getUsageStats();
+  const usagePercentage = usageStats?.limit
+    ? Math.min((usageStats.used / usageStats.limit) * 100, 100)
+    : 0;
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="min-h-screen bg-background pt-20">
+        <NewHeader />
+        <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 sm:px-6 lg:px-8 py-8 lg:py-10">
+          <LoadingSkeleton variant="dashboard" />
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <main className="flex flex-col w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-12 gap-10">
-        {/* Page Header */}
+    <div className="min-h-screen bg-background pt-20">
+      <NewHeader />
+      <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 sm:px-6 lg:px-8 py-8 lg:py-10">
         <div className="flex flex-col gap-4 text-center">
           <div className="flex items-center justify-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <ExcelIcon className="w-7 h-7 text-primary" />
+            <div className="rounded-lg bg-primary/10 p-2">
+              <ExcelIcon className="h-7 w-7 text-primary" />
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
               Bloqueador de Planilhas
@@ -331,25 +325,33 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* Usage Info */}
         {user && subscription && (
-          <Card className="border-border/50 shadow-soft">
-            <CardContent className="py-4 px-5">
-              <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-sm">
-                {(() => {
-                  const usageStats = getUsageStats();
-                  if (usageStats && usageStats.limit !== null) {
-                    return (
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground">Uso ({usageStats.period}):</span>
-                        <span className="font-semibold text-foreground">
-                          {usageStats.used}/{usageStats.limit}
-                        </span>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
+          <Card className="border-border/50 shadow-soft bg-gradient-to-br from-background to-muted/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Info className="h-5 w-5 text-primary" />
+                Informações de Uso
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {usageStats && usageStats.limit !== null && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Uso {usageStats.period}</span>
+                    <span className="font-medium">
+                      {usageStats.used} / {usageStats.limit}
+                    </span>
+                  </div>
+                  <div className="relative h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-accent transition-all duration-500"
+                      style={{ width: `${usagePercentage}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center gap-4 text-sm">
                 {planLimits && planLimits.maxFileSizeMB !== null && (
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">Tamanho máximo:</span>
@@ -374,7 +376,6 @@ const Dashboard = () => {
           </Card>
         )}
 
-        {/* File Dropzone */}
         <FileDropzone
           onFileSelect={handleFileSelect}
           selectedFile={selectedFile}
@@ -382,7 +383,6 @@ const Dashboard = () => {
           disabled={isProcessing || !user}
         />
 
-        {/* Cinematic Progress Bar */}
         {isProcessing && (
           <Card className="overflow-hidden border-border/50 shadow-soft animate-fade-in">
             <CardContent className="p-6">
@@ -406,7 +406,6 @@ const Dashboard = () => {
           </Card>
         )}
 
-        {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-3">
           <Button
             size="lg"
@@ -443,13 +442,14 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Statistics */}
-        {processingComplete && <StatisticsCard result={result} />}
+        {processingComplete && (
+          <div className="animate-fade-in">
+            <StatisticsCard result={result} />
+          </div>
+        )}
 
-        {/* Processing Log */}
         <ProcessingLog logs={logs} />
 
-        {/* Footer */}
         <footer className="text-center py-8 border-t border-border/50 mt-6">
           <p className="text-sm text-muted-foreground">
             © {new Date().getFullYear()} Bloqueador de Planilhas. Todos os direitos reservados.

@@ -1,27 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
+import { z } from 'zod';
+
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/hooks/use-toast';
+
 import { ExcelIcon } from '@/components/ExcelIcon';
+import { NewHeader } from '@/components/NewHeader';
 import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
-import { z } from 'zod';
+
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 
 const authSchema = z.object({
-  email: z.string().trim().email({ message: "Email inválido" }).max(255),
+  email: z.string().trim().email({ message: 'Email inválido' }).max(255),
   password: z
     .string()
-    .min(8, { message: "Senha deve ter no mínimo 8 caracteres" })
-    .max(100, { message: "Senha não pode exceder 100 caracteres" })
-    .regex(/[A-Z]/, { message: "Senha deve conter pelo menos uma letra maiúscula" })
-    .regex(/[a-z]/, { message: "Senha deve conter pelo menos uma letra minúscula" })
-    .regex(/[0-9]/, { message: "Senha deve conter pelo menos um número" })
-    .regex(/[^A-Za-z0-9]/, { message: "Senha deve conter pelo menos um caractere especial (!@#$%^&*)" }),
+    .min(6, { message: 'Senha deve ter no mínimo 6 caracteres' })
+    .max(100, { message: 'Senha não pode exceder 100 caracteres' }),
 });
 
 const Auth = () => {
@@ -46,9 +48,9 @@ const Auth = () => {
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast({
-          title: "Erro de validação",
+          title: 'Erro de validação',
           description: error.errors[0].message,
-          variant: "destructive",
+          variant: 'destructive',
         });
       }
       return false;
@@ -58,18 +60,17 @@ const Auth = () => {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
-    
+
     setLoading(true);
     const { error } = await signIn(email, password);
     setLoading(false);
 
     if (error) {
       toast({
-        title: "Erro ao entrar",
-        description: error.message === 'Invalid login credentials' 
-          ? 'Email ou senha incorretos' 
-          : error.message,
-        variant: "destructive",
+        title: 'Erro ao entrar',
+        description:
+          error.message === 'Invalid login credentials' ? 'Email ou senha incorretos' : error.message,
+        variant: 'destructive',
       });
     } else {
       navigate('/dashboard');
@@ -90,14 +91,14 @@ const Auth = () => {
         message = 'Este email já está cadastrado. Tente fazer login.';
       }
       toast({
-        title: "Erro ao cadastrar",
+        title: 'Erro ao cadastrar',
         description: message,
-        variant: "destructive",
+        variant: 'destructive',
       });
     } else {
       toast({
-        title: "Conta criada!",
-        description: "Você já pode acessar o sistema.",
+        title: 'Conta criada!',
+        description: 'Você já pode acessar o sistema.',
       });
       navigate('/dashboard');
     }
@@ -106,9 +107,9 @@ const Auth = () => {
   const handleForgotPassword = async () => {
     if (!email.trim()) {
       toast({
-        title: "Email necessário",
-        description: "Digite seu email para recuperar a senha.",
-        variant: "destructive",
+        title: 'Email necessário',
+        description: 'Digite seu email para recuperar a senha.',
+        variant: 'destructive',
       });
       return;
     }
@@ -117,133 +118,154 @@ const Auth = () => {
       z.string().email().parse(email);
     } catch {
       toast({
-        title: "Email inválido",
-        description: "Digite um email válido.",
-        variant: "destructive",
+        title: 'Email inválido',
+        description: 'Digite um email válido.',
+        variant: 'destructive',
       });
       return;
     }
 
     setResetLoading(true);
 
-    // Call password reset - note: we don't check for errors to prevent email enumeration
-    // Always show success message regardless of whether email exists
     await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth`,
     });
 
     setResetLoading(false);
 
-    // Always show success to prevent email enumeration attack
-    // If email doesn't exist, user won't receive email but attacker can't tell
     toast({
-      title: "Email enviado!",
-      description: "Se o email existir em nossa base, você receberá instruções para redefinir sua senha.",
+      title: 'Email enviado!',
+      description: 'Se o email existir em nossa base, você receberá instruções para redefinir sua senha.',
     });
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 sm:p-6 lg:p-8 relative">
-      {/* Background decoration */}
-      <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent pointer-events-none" />
+    <div className="min-h-screen bg-background pt-20">
+      <NewHeader />
+      <div className="relative flex min-h-[calc(100vh-5rem)] items-center justify-center p-4 sm:p-6 lg:p-8">
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent pointer-events-none" />
 
-      <Card className="w-full max-w-md shadow-soft-lg border-border/50 relative">
-        <CardHeader className="text-center pb-2">
-          <div className="flex justify-center mb-5">
-            <div className="p-3 rounded-2xl bg-primary/10">
-              <ExcelIcon className="w-12 h-12 text-primary" />
+        <Card className="w-full max-w-md border-border/50 shadow-soft-lg bg-background/95 backdrop-blur-sm relative">
+          <CardHeader className="space-y-3 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center mx-auto">
+              <ExcelIcon className="w-10 h-10 text-primary" />
             </div>
-          </div>
-          <CardTitle className="text-2xl font-bold tracking-tight">Excel VBA Blocker</CardTitle>
-          <CardDescription className="text-base mt-2">
-            Faça login ou crie uma conta para continuar
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-4">
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="login" className="font-medium">Entrar</TabsTrigger>
-              <TabsTrigger value="register" className="font-medium">Cadastrar</TabsTrigger>
-            </TabsList>
+            <CardTitle className="text-2xl">Excel VBA Blocker</CardTitle>
+            <CardDescription className="text-base">
+              Faça login ou crie uma conta para continuar
+            </CardDescription>
+          </CardHeader>
 
-            <TabsContent value="login">
-              <form onSubmit={handleSignIn} className="space-y-5">
-                <div className="space-y-2">
-                  <Label htmlFor="login-email" className="text-sm font-medium">Email</Label>
-                  <Input
-                    id="login-email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="h-11"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="login-password" className="text-sm font-medium">Senha</Label>
-                  <Input
-                    id="login-password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="h-11"
-                  />
-                </div>
-                <div className="text-right">
-                  <Button
-                    type="button"
-                    variant="link"
-                    className="p-0 h-auto text-sm text-muted-foreground hover:text-primary"
-                    onClick={handleForgotPassword}
-                    disabled={resetLoading}
-                  >
-                    {resetLoading ? 'Enviando...' : 'Esqueceu a senha?'}
+          <CardContent>
+            <Tabs defaultValue="login" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="login" className="transition-all duration-200">
+                  Entrar
+                </TabsTrigger>
+                <TabsTrigger value="register" className="transition-all duration-200">
+                  Cadastrar
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="login" className="animate-fade-in space-y-5 pt-6">
+                <form onSubmit={handleSignIn} className="space-y-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="login-email" className="text-sm font-medium">
+                      Email
+                    </Label>
+                    <Input
+                      id="login-email"
+                      type="email"
+                      placeholder="seu@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className={cn(
+                        'h-11 transition-all duration-200',
+                        'focus:ring-2 focus:ring-primary/20 focus:border-primary',
+                      )}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password" className="text-sm font-medium">
+                      Senha
+                    </Label>
+                    <Input
+                      id="login-password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className={cn(
+                        'h-11 transition-all duration-200',
+                        'focus:ring-2 focus:ring-primary/20 focus:border-primary',
+                      )}
+                    />
+                  </div>
+                  <div className="text-right">
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="p-0 h-auto text-sm text-muted-foreground hover:text-primary"
+                      onClick={handleForgotPassword}
+                      disabled={resetLoading}
+                    >
+                      {resetLoading ? 'Enviando...' : 'Esqueceu a senha?'}
+                    </Button>
+                  </div>
+                  <Button type="submit" className="w-full h-11 shadow-soft" disabled={loading}>
+                    {loading ? 'Entrando...' : 'Entrar'}
                   </Button>
-                </div>
-                <Button type="submit" className="w-full h-11 shadow-soft" disabled={loading}>
-                  {loading ? 'Entrando...' : 'Entrar'}
-                </Button>
-              </form>
-            </TabsContent>
+                </form>
+              </TabsContent>
 
-            <TabsContent value="register">
-              <form onSubmit={handleSignUp} className="space-y-5">
-                <div className="space-y-2">
-                  <Label htmlFor="register-email" className="text-sm font-medium">Email</Label>
-                  <Input
-                    id="register-email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="h-11"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="register-password" className="text-sm font-medium">Senha</Label>
-                  <Input
-                    id="register-password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="h-11"
-                  />
-                  <PasswordStrengthIndicator password={password} />
-                </div>
-                <Button type="submit" className="w-full h-11 shadow-soft" disabled={loading}>
-                  {loading ? 'Cadastrando...' : 'Criar Conta'}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+              <TabsContent value="register" className="animate-fade-in space-y-5 pt-6">
+                <form onSubmit={handleSignUp} className="space-y-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="register-email" className="text-sm font-medium">
+                      Email
+                    </Label>
+                    <Input
+                      id="register-email"
+                      type="email"
+                      placeholder="seu@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className={cn(
+                        'h-11 transition-all duration-200',
+                        'focus:ring-2 focus:ring-primary/20 focus:border-primary',
+                      )}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="register-password" className="text-sm font-medium">
+                      Senha
+                    </Label>
+                    <Input
+                      id="register-password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className={cn(
+                        'h-11 transition-all duration-200',
+                        'focus:ring-2 focus:ring-primary/20 focus:border-primary',
+                      )}
+                    />
+                    <PasswordStrengthIndicator password={password} />
+                  </div>
+                  <Button type="submit" className="w-full h-11 shadow-soft" disabled={loading}>
+                    {loading ? 'Cadastrando...' : 'Criar Conta'}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

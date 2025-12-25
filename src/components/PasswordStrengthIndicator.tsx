@@ -29,8 +29,8 @@ export function PasswordStrengthIndicator({
 
   const getStrengthColor = () => {
     if (strength <= 2) return 'bg-destructive';
-    if (strength <= 4) return 'bg-yellow-500';
-    return 'bg-green-500';
+    if (strength <= 4) return 'bg-[hsl(var(--color-warning))]';
+    return 'bg-[hsl(var(--color-success-strong))]';
   };
 
   const getStrengthLabel = () => {
