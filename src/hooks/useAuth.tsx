@@ -37,6 +37,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!isMounted.current) return;
     const previousSession = sessionRef.current;
 
+    if (event === 'PASSWORD_RECOVERY' && typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const isResetMode = window.location.pathname === '/auth' && searchParams.get('mode') === 'reset';
+      if (!isResetMode) {
+        logger.info('Password recovery event received, redirecting to reset mode');
+        window.location.href = '/auth?mode=reset';
+      }
+    }
+
     // Detect token refresh failures
     if (event === 'TOKEN_REFRESHED' && !newSession) {
       logger.warn('Token refresh failed - user may need to re-authenticate');

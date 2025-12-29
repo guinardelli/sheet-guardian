@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, Home, Lock, Mail, RefreshCw, User } from 'lucide-react';
+import { CreditCard, Crown, Home, Lock, Mail, RefreshCw, Settings, User } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { NewHeader } from '@/components/NewHeader';
 
 import { useAuth } from '@/hooks/useAuth';
 import { PLAN_LIMITS, SubscriptionPlan, useSubscription } from '@/hooks/useSubscription';
+import { useSubscriptionManagement } from '@/hooks/useSubscriptionManagement';
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -33,11 +34,13 @@ const Account = () => {
   const { user, loading: authLoading } = useAuth();
   const { subscription, loading: subLoading, refetch: refetchSubscription } = useSubscription();
   const navigate = useNavigate();
+  const { openCustomerPortal, loading: portalLoading } = useSubscriptionManagement();
 
   const [profileLoading, setProfileLoading] = useState(true);
   const [newEmail, setNewEmail] = useState('');
   const [savingEmail, setSavingEmail] = useState(false);
   const [sendingPasswordReset, setSendingPasswordReset] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -124,6 +127,12 @@ const Account = () => {
       });
     }
     setSendingPasswordReset(false);
+  };
+
+  const handleRetrySubscription = async () => {
+    setRetrying(true);
+    await refetchSubscription();
+    setRetrying(false);
   };
 
   if (authLoading || profileLoading) {
@@ -361,18 +370,74 @@ const Account = () => {
                         )}
                       </ul>
                     </div>
+                    <div className="pt-4 border-t space-y-2">
+                      {subscription.plan === 'free' ? (
+                        <Button onClick={() => navigate('/plans')} className="w-full">
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          Fazer Upgrade
+                        </Button>
+                      ) : subscription.plan === 'professional' ? (
+                        <>
+                          <Button
+                            onClick={openCustomerPortal}
+                            disabled={portalLoading}
+                            variant="outline"
+                            className="w-full"
+                          >
+                            <Settings className="h-4 w-4 mr-2" />
+                            Gerenciar Assinatura Profissional
+                          </Button>
+                          <Button
+                            onClick={openCustomerPortal}
+                            disabled={portalLoading}
+                            variant="destructive"
+                            className="w-full"
+                          >
+                            Cancelar Plano
+                          </Button>
+                          <Button onClick={() => navigate('/plans')} className="w-full">
+                            <Crown className="h-4 w-4 mr-2" />
+                            Upgrade para Premium
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            onClick={openCustomerPortal}
+                            disabled={portalLoading}
+                            variant="outline"
+                            className="w-full"
+                          >
+                            <Settings className="h-4 w-4 mr-2" />
+                            Gerenciar Assinatura Premium
+                          </Button>
+                          <Button
+                            onClick={openCustomerPortal}
+                            disabled={portalLoading}
+                            variant="destructive"
+                            className="w-full"
+                          >
+                            Cancelar Plano
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </>
                 ) : (
                   <div className="text-muted-foreground">
-                    <p>Não foi possível carregar as informações do plano.</p>
+                    <p>Nao foi possivel carregar as informacoes do plano.</p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Clique abaixo para tentar criar sua assinatura gratuita.
+                    </p>
                     <Button
                       variant="outline"
                       size="sm"
                       className="mt-2"
-                      onClick={refetchSubscription}
+                      onClick={handleRetrySubscription}
+                      disabled={retrying}
                     >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Tentar novamente
+                      {retrying ? <LoadingSpinner /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                      {retrying ? 'Tentando...' : 'Criar assinatura'}
                     </Button>
                   </div>
                 )}

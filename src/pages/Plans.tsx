@@ -10,6 +10,7 @@ import { NewHeader } from '@/components/NewHeader';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useSubscriptionManagement } from '@/hooks/useSubscriptionManagement';
 import { useToast } from '@/hooks/use-toast';
 
 import { supabase } from '@/integrations/supabase/client';
@@ -71,6 +72,7 @@ const Plans = () => {
   const { subscription, updatePlan, loading: subLoading, refetch } = useSubscription();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { openCustomerPortal, loading: portalLoading } = useSubscriptionManagement();
   const [searchParams] = useSearchParams();
   const [processing, setProcessing] = useState(false);
   const [checkingSubscription, setCheckingSubscription] = useState(false);
@@ -180,37 +182,6 @@ const Plans = () => {
       const message = error instanceof Error ? error.message : 'Tente novamente mais tarde.';
       toast({
         title: 'Erro ao processar pagamento',
-        description: message,
-        variant: 'destructive',
-      });
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const handleManageSubscription = async () => {
-    if (!session?.access_token) return;
-
-    setProcessing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('customer-portal', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (error) throw error;
-
-      if (data?.url) {
-        window.open(data.url, '_blank');
-      } else {
-        throw new Error('URL do portal não recebida');
-      }
-    } catch (error: unknown) {
-      logger.error('Portal error', error);
-      const message = error instanceof Error ? error.message : 'Tente novamente mais tarde.';
-      toast({
-        title: 'Erro ao abrir portal',
         description: message,
         variant: 'destructive',
       });
@@ -373,7 +344,12 @@ const Plans = () => {
 
           {hasActiveSubscription && (
             <div className="flex justify-center mb-10">
-              <Button variant="outline" onClick={handleManageSubscription} disabled={processing} className="gap-2">
+              <Button
+                variant="outline"
+                onClick={openCustomerPortal}
+                disabled={portalLoading || processing}
+                className="gap-2"
+              >
                 <Settings className="h-4 w-4" />
                 Gerenciar Assinatura
               </Button>

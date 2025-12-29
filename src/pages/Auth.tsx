@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ExcelIcon } from '@/components/ExcelIcon';
 import { NewHeader } from '@/components/NewHeader';
 import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
+import { ResetPasswordForm } from '@/components/ResetPasswordForm';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -31,15 +32,21 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [isRecoveryMode, setIsRecoveryMode] = useState(() => searchParams.get('mode') === 'reset');
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user) {
+    if (user && !isRecoveryMode) {
       navigate('/dashboard');
     }
-  }, [user, navigate]);
+  }, [user, isRecoveryMode, navigate]);
+
+  useEffect(() => {
+    setIsRecoveryMode(searchParams.get('mode') === 'reset');
+  }, [searchParams]);
 
   const validateForm = () => {
     try {
@@ -138,6 +145,17 @@ const Auth = () => {
       description: 'Se o email existir em nossa base, você receberá instruções para redefinir sua senha.',
     });
   };
+
+  if (isRecoveryMode) {
+    return (
+      <div className="min-h-screen bg-background pt-20">
+        <NewHeader />
+        <div className="relative flex min-h-[calc(100vh-5rem)] items-center justify-center p-4 sm:p-6 lg:p-8">
+          <ResetPasswordForm onSuccess={() => navigate('/dashboard')} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pt-20">

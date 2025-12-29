@@ -87,7 +87,30 @@ export const useSubscription = () => {
 
       if (error) {
         logger.error('Erro ao buscar assinatura', error);
-      } else if (data) {
+      } else if (!data) {
+        logger.warn('Subscription not found, attempting to create', undefined, { userId: user.id });
+
+        const { error: rpcError } = await supabase.rpc('create_missing_subscription', {
+          p_user_id: user.id,
+        });
+
+        if (rpcError) {
+          logger.error('Erro ao criar assinatura via RPC', rpcError, { userId: user.id });
+        } else {
+          const { data: retryData, error: retryError } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (retryError) {
+            logger.error('Erro ao buscar assinatura apos criacao', retryError, { userId: user.id });
+          } else if (retryData) {
+            setSubscription(retryData as Subscription);
+            logger.info('Subscription created successfully', undefined, { userId: user.id });
+          }
+        }
+      } else {
         setSubscription(data as Subscription);
       }
     } catch (err) {
