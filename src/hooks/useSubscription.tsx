@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { logger } from '@/lib/logger';
+import { trackSubscriptionIssue } from '@/lib/error-tracker';
 
 export type SubscriptionPlan = 'free' | 'professional' | 'premium';
 
@@ -75,8 +77,11 @@ export const useSubscription = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const updateLockRef = useRef(false); // Prevent race conditions
 
-  const fetchSubscription = useCallback(async () => {
-    if (!user) return;
+  const fetchSubscription = useCallback(async (): Promise<Subscription | null> => {
+    if (!user) {
+      setLoading(false);
+      return null;
+    }
 
     try {
       const { data, error } = await supabase
@@ -87,16 +92,57 @@ export const useSubscription = () => {
 
       if (error) {
         logger.error('Erro ao buscar assinatura', error);
+        toast.error('Erro ao carregar assinatura', {
+          description: 'Tente recarregar a pagina.',
+        });
+        return null;
       } else if (!data) {
         logger.warn('Subscription not found, attempting to create', undefined, { userId: user.id });
+        trackSubscriptionIssue(user.id, 'subscription_not_found');
 
+        let createdSubscription = false;
+        let resolvedSubscription: Subscription | null = null;
         const { error: rpcError } = await supabase.rpc('create_missing_subscription', {
           p_user_id: user.id,
         });
 
         if (rpcError) {
           logger.error('Erro ao criar assinatura via RPC', rpcError, { userId: user.id });
+          trackSubscriptionIssue(user.id, 'rpc_create_subscription_failed', {
+            message: rpcError.message,
+          });
+
+          const { data: insertData, error: insertError } = await supabase
+            .from('subscriptions')
+            .insert({
+              user_id: user.id,
+              plan: 'free',
+              payment_status: 'active',
+              sheets_used_today: 0,
+              sheets_used_week: 0,
+              sheets_used_month: 0,
+            })
+            .select()
+            .single();
+
+          if (insertError) {
+            logger.error('Erro ao criar assinatura via INSERT', insertError, { userId: user.id });
+            trackSubscriptionIssue(user.id, 'insert_subscription_failed', {
+              message: insertError.message,
+            });
+            toast.error('Erro ao criar assinatura', {
+              description: 'Nao foi possivel criar sua assinatura. Entre em contato com o suporte.',
+            });
+            return null;
+          }
+
+          if (insertData) {
+            createdSubscription = true;
+            resolvedSubscription = insertData as Subscription;
+            setSubscription(insertData as Subscription);
+          }
         } else {
+          createdSubscription = true;
           const { data: retryData, error: retryError } = await supabase
             .from('subscriptions')
             .select('*')
@@ -105,19 +151,35 @@ export const useSubscription = () => {
 
           if (retryError) {
             logger.error('Erro ao buscar assinatura apos criacao', retryError, { userId: user.id });
+            trackSubscriptionIssue(user.id, 'subscription_retry_failed', {
+              message: retryError.message,
+            });
           } else if (retryData) {
             setSubscription(retryData as Subscription);
+            resolvedSubscription = retryData as Subscription;
             logger.info('Subscription created successfully', undefined, { userId: user.id });
           }
         }
+
+        if (createdSubscription && resolvedSubscription) {
+          toast.success('Assinatura criada com sucesso!');
+        }
+
+        return resolvedSubscription;
       } else {
         setSubscription(data as Subscription);
+        return data as Subscription;
       }
     } catch (err) {
       logger.error('Erro inesperado ao buscar assinatura', err);
+      toast.error('Erro ao carregar assinatura', {
+        description: 'Ocorreu um erro inesperado. Tente recarregar a pagina.',
+      });
+      return null;
     } finally {
       setLoading(false);
     }
+    return null;
   }, [user]);
 
   useEffect(() => {

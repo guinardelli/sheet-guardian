@@ -139,17 +139,34 @@ const Plans = () => {
 
     if (plan === 'free') {
       try {
+        if (!subscription) {
+          toast({
+            title: 'Criando assinatura...',
+            description: 'Aguarde enquanto criamos sua assinatura gratuita.',
+          });
+
+          const created = await refetch();
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          const refreshed = await refetch();
+          const resolved = refreshed ?? created;
+
+          if (!resolved) {
+            throw new Error('Nao foi possivel criar sua assinatura. Tente novamente ou contate o suporte.');
+          }
+        }
+
         const result = await updatePlan('free');
         if (!result.success) {
           throw new Error(result.error || 'Erro ao atualizar plano gratuito');
         }
         toast({
           title: 'Plano atualizado!',
-          description: 'Você está no plano Gratuito.',
+          description: 'Vocオ estケ no plano Gratuito.',
         });
         navigate('/dashboard');
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Tente novamente mais tarde.';
+        logger.error('Error switching to free plan', error, { userId: user.id });
         toast({
           title: 'Erro ao mudar para plano gratuito',
           description: message,
@@ -158,7 +175,6 @@ const Plans = () => {
       }
       return;
     }
-
     setProcessing(true);
     try {
       const priceId = STRIPE_PLANS[plan].price_id;

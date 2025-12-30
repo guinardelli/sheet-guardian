@@ -69,6 +69,20 @@ export const captureError = async (error: unknown, context?: ErrorContext) => {
   }
 };
 
+export const trackSubscriptionIssue = (userId: string, issue: string, details?: ErrorContext) => {
+  if (trackingEnabled) {
+    void captureError(`Subscription Issue: ${issue}`, {
+      ...details,
+      component: "subscription",
+      issue_type: issue,
+      user_id: userId,
+    });
+    return;
+  }
+
+  logger.warn("Subscription Issue", undefined, { userId, issue, ...details });
+};
+
 export const initErrorTracker = () => {
   if (!trackingEnabled || initialized || typeof window === "undefined") {
     return;

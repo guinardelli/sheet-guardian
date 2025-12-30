@@ -41,6 +41,8 @@ const Account = () => {
   const [savingEmail, setSavingEmail] = useState(false);
   const [sendingPasswordReset, setSendingPasswordReset] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const [lastError, setLastError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -130,9 +132,33 @@ const Account = () => {
   };
 
   const handleRetrySubscription = async () => {
+    if (retryCount >= 3) {
+      toast.error('Limite de tentativas atingido', {
+        description: 'Entre em contato com o suporte em suporte@sheetguardian.com',
+      });
+      return;
+    }
+
     setRetrying(true);
-    await refetchSubscription();
-    setRetrying(false);
+    setRetryCount((prev) => prev + 1);
+
+    try {
+      const refreshed = await refetchSubscription();
+
+      if (refreshed) {
+        toast.success('Assinatura criada com sucesso!');
+        setRetryCount(0);
+        setLastError(null);
+      } else {
+        setLastError('Nao foi possivel criar a assinatura.');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro desconhecido';
+      setLastError(message);
+      toast.error('Erro ao criar assinatura', { description: message });
+    } finally {
+      setRetrying(false);
+    }
   };
 
   if (authLoading || profileLoading) {
@@ -426,6 +452,11 @@ const Account = () => {
                 ) : (
                   <div className="text-muted-foreground">
                     <p>Nao foi possivel carregar as informacoes do plano.</p>
+                    {lastError && (
+                      <p className="text-xs text-destructive mt-2">
+                        Erro: {lastError}
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground mt-2">
                       Clique abaixo para tentar criar sua assinatura gratuita.
                     </p>
@@ -434,10 +465,14 @@ const Account = () => {
                       size="sm"
                       className="mt-2"
                       onClick={handleRetrySubscription}
-                      disabled={retrying}
+                      disabled={retrying || retryCount >= 3}
                     >
                       {retrying ? <LoadingSpinner /> : <RefreshCw className="h-4 w-4 mr-2" />}
-                      {retrying ? 'Tentando...' : 'Criar assinatura'}
+                      {retrying
+                        ? 'Criando assinatura...'
+                        : retryCount >= 3
+                          ? 'Limite atingido - Contate o suporte'
+                          : `Criar assinatura${retryCount > 0 ? ` (Tentativa ${retryCount}/3)` : ''}`}
                     </Button>
                   </div>
                 )}

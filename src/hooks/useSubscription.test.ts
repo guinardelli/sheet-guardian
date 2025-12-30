@@ -19,22 +19,47 @@ const mockSubscriptionRef = vi.hoisted(() => ({
   current: null as MockSubscription | null,
 }));
 
+const mockMaybeSingle = vi.hoisted(() =>
+  vi.fn(async () => ({ data: mockSubscriptionRef.current, error: null })),
+);
+const mockInsertSingle = vi.hoisted(() =>
+  vi.fn(async () => ({ data: mockSubscriptionRef.current, error: null })),
+);
+const mockInsertSelect = vi.hoisted(() =>
+  vi.fn(() => ({ single: mockInsertSingle })),
+);
+const mockInsert = vi.hoisted(() =>
+  vi.fn(() => ({ select: mockInsertSelect })),
+);
+const mockRpc = vi.hoisted(() => vi.fn(async () => ({ data: null, error: null })));
+
 const supabase = vi.hoisted(() => ({
   from: vi.fn(() => ({
     select: vi.fn(() => ({
       eq: vi.fn(() => ({
-        maybeSingle: vi.fn(async () => ({ data: mockSubscriptionRef.current, error: null })),
+        maybeSingle: mockMaybeSingle,
       })),
     })),
     update: vi.fn(() => ({
       eq: vi.fn(async () => ({ error: null })),
     })),
+    insert: mockInsert,
   })),
+  rpc: mockRpc,
 }));
 
 vi.mock('@/integrations/supabase/client', () => ({ supabase }));
 vi.mock('./useAuth', () => ({
   useAuth: () => ({ user: { id: 'user-1', email: 'test@example.com' } }),
+}));
+vi.mock('sonner', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+vi.mock('@/lib/error-tracker', () => ({
+  trackSubscriptionIssue: vi.fn(),
 }));
 
 import { useSubscription, getLocalDateString, getWeekNumber } from '@/hooks/useSubscription';
@@ -55,6 +80,7 @@ const baseSubscription = {
 
 describe('useSubscription logic', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     mockSubscriptionRef.current = { ...baseSubscription };
   });
 
@@ -171,5 +197,42 @@ describe('useSubscription logic', () => {
     const sunday = new Date(2025, 11, 21);
     const monday = new Date(2025, 11, 22);
     expect(getWeekNumber(sunday)).not.toBe(getWeekNumber(monday));
+  });
+
+  it('creates subscription via RPC when missing', async () => {
+    mockSubscriptionRef.current = null;
+    const created = { ...baseSubscription, plan: 'free' as const };
+
+    mockRpc.mockImplementationOnce(async () => {
+      mockSubscriptionRef.current = created;
+      return { data: null, error: null };
+    });
+
+    const { result } = renderHook(() => useSubscription());
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    expect(mockRpc).toHaveBeenCalled();
+    expect(result.current.subscription?.plan).toBe('free');
+  });
+
+  it('falls back to INSERT when RPC fails', async () => {
+    mockSubscriptionRef.current = null;
+    const created = { ...baseSubscription, plan: 'free' as const };
+
+    mockRpc.mockResolvedValueOnce({ data: null, error: { message: 'Function not found' } });
+    mockInsertSingle.mockImplementationOnce(async () => {
+      mockSubscriptionRef.current = created;
+      return { data: created, error: null };
+    });
+
+    const { result } = renderHook(() => useSubscription());
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    expect(mockInsert).toHaveBeenCalled();
+    expect(result.current.subscription?.plan).toBe('free');
   });
 });
