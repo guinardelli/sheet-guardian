@@ -19,6 +19,9 @@ interface Subscription {
   last_reset_date: string | null;
   payment_method: string | null;
   payment_status: string | null;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  stripe_product_id?: string | null;
   updated_at?: string; // For optimistic locking
 }
 

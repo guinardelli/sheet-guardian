@@ -1,12 +1,25 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Check, CreditCard, Crown, FileSpreadsheet, Loader2, QrCode, Settings, Zap } from 'lucide-react';
+import {
+  AlertCircle,
+  ArrowLeft,
+  Check,
+  CreditCard,
+  Crown,
+  FileSpreadsheet,
+  Loader2,
+  QrCode,
+  Settings,
+  Zap,
+} from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 
 import { NewHeader } from '@/components/NewHeader';
+import { SubscriptionStatus } from '@/components/SubscriptionStatus';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -75,12 +88,14 @@ const Plans = () => {
   const { openCustomerPortal, loading: portalLoading } = useSubscriptionManagement();
   const [searchParams] = useSearchParams();
   const [processing, setProcessing] = useState(false);
-  const [checkingSubscription, setCheckingSubscription] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const checkStripeSubscription = useCallback(async () => {
     if (!session?.access_token) return;
 
-    setCheckingSubscription(true);
+    setSyncStatus('loading');
+    setSyncError(null);
     try {
       const { data, error } = await supabase.functions.invoke('check-subscription', {
         headers: {
@@ -88,9 +103,20 @@ const Plans = () => {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        logger.error('Erro ao verificar assinatura', error);
+        setSyncError('Nao foi possivel verificar sua assinatura. Por favor, tente novamente.');
+        setSyncStatus('error');
+        toast({
+          title: 'Erro ao verificar assinatura',
+          description: 'Clique em "Verificar Assinatura" para tentar novamente.',
+          variant: 'destructive',
+        });
+        return;
+      }
 
       if (data?.subscribed) {
+        setSyncStatus('idle');
         toast({
           title: 'Assinatura ativada!',
           description: `Você agora é assinante do plano ${
@@ -98,13 +124,23 @@ const Plans = () => {
           }.`,
         });
         await refetch();
+      } else {
+        setSyncStatus('error');
+        setSyncError('Assinatura nao encontrada. Aguarde alguns minutos e tente novamente.');
       }
     } catch (error) {
       logger.error('Error checking subscription', error);
-    } finally {
-      setCheckingSubscription(false);
+      setSyncStatus('error');
+      setSyncError('Erro ao conectar com o servidor.');
     }
   }, [session?.access_token, refetch, toast]);
+
+  useEffect(() => {
+    if (subscription?.payment_status === 'active' && subscription?.stripe_subscription_id) {
+      setSyncStatus('idle');
+      setSyncError(null);
+    }
+  }, [subscription?.payment_status, subscription?.stripe_subscription_id]);
 
   useEffect(() => {
     const success = searchParams.get('success');
@@ -206,12 +242,12 @@ const Plans = () => {
     }
   };
 
-  if (subLoading || checkingSubscription) {
+  if (subLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-          {checkingSubscription && <p className="text-muted-foreground">Verificando assinatura...</p>}
+          <p className="text-muted-foreground">Carregando...</p>
         </div>
       </div>
     );
@@ -357,6 +393,26 @@ const Plans = () => {
               );
             })}
           </div>
+
+          {subscription && (
+            <div className="mb-10 space-y-4">
+              <SubscriptionStatus
+                plan={subscription.plan}
+                paymentStatus={subscription.payment_status}
+                stripeSubscriptionId={subscription.stripe_subscription_id ?? null}
+                stripeCustomerId={subscription.stripe_customer_id ?? null}
+                stripeProductId={subscription.stripe_product_id ?? null}
+                onVerify={checkStripeSubscription}
+                isVerifying={syncStatus === 'loading'}
+              />
+              {syncError && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{syncError}</AlertDescription>
+                </Alert>
+              )}
+            </div>
+          )}
 
           {hasActiveSubscription && (
             <div className="flex justify-center mb-10">

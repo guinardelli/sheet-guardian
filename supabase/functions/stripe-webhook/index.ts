@@ -49,6 +49,8 @@ serve(async (req) => {
     return new Response("Invalid signature", { status: 400 });
   }
 
+  logger.info("Webhook received", { eventType: event.type, eventId: event.id });
+
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false },
   });
@@ -96,6 +98,14 @@ serve(async (req) => {
 
       if (error) {
         logger.warn("Failed to update subscription by user", { error: error.message, userId });
+      } else {
+        const updateSummary = {
+          plan: (updates as { plan?: string }).plan,
+          payment_status: (updates as { payment_status?: string }).payment_status,
+          stripe_subscription_id: (updates as { stripe_subscription_id?: string | null })
+            .stripe_subscription_id,
+        };
+        logger.info("Subscription updated", { userId, ...updateSummary });
       }
       return;
     }
@@ -108,11 +118,81 @@ serve(async (req) => {
 
       if (error) {
         logger.warn("Failed to update subscription by customer", { error: error.message, customerId });
+      } else {
+        const updateSummary = {
+          plan: (updates as { plan?: string }).plan,
+          payment_status: (updates as { payment_status?: string }).payment_status,
+          stripe_subscription_id: (updates as { stripe_subscription_id?: string | null })
+            .stripe_subscription_id,
+        };
+        logger.info("Subscription updated", { customerId, ...updateSummary });
       }
       return;
     }
 
     logger.warn("No user/customer mapping found", { eventType: event.type });
+  };
+
+  const sendUpgradeEmail = async (userId: string | null, plan: PlanName) => {
+    if (!userId || plan === "free") {
+      return;
+    }
+
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const resendFrom = Deno.env.get("RESEND_FROM_EMAIL");
+
+    if (!resendApiKey || !resendFrom) {
+      logger.warn("Email provider not configured, skipping upgrade email", { userId });
+      return;
+    }
+
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("email")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (profileError) {
+      logger.warn("Failed to fetch profile email", { error: profileError.message, userId });
+      return;
+    }
+
+    if (!profile?.email) {
+      logger.warn("No email found for user", { userId });
+      return;
+    }
+
+    const emailHtml = `
+      <h2>Upgrade Confirmado!</h2>
+      <p>Parabens! Seu plano foi atualizado para <strong>${plan}</strong>.</p>
+      <p>Voce agora tem acesso a todos os beneficios do plano ${plan}.</p>
+      <p>Obrigado por escolher Sheet Guardian!</p>
+    `;
+
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: resendFrom,
+        to: profile.email,
+        subject: "Upgrade confirmado - Sheet Guardian",
+        html: emailHtml,
+      }),
+    });
+
+    if (!response.ok) {
+      const bodyText = await response.text();
+      logger.warn("Failed to send upgrade email", {
+        status: response.status,
+        body: bodyText.slice(0, 200),
+      });
+      return;
+    }
+
+    logger.info("Upgrade email sent", { email: profile.email, plan, userId });
   };
 
   try {
@@ -135,7 +215,9 @@ serve(async (req) => {
         const productId = subscription.items.data[0]?.price?.product as string | undefined;
         const plan = getPlanForProduct(productId);
 
-        await updateSubscription(userId, customerId, {
+        const resolvedUserId = await resolveUserId(customerId, userId ?? undefined);
+
+        await updateSubscription(resolvedUserId, customerId, {
           plan,
           payment_status: "active",
           stripe_customer_id: customerId,
@@ -143,6 +225,10 @@ serve(async (req) => {
           stripe_product_id: productId ?? null,
           updated_at: new Date().toISOString(),
         });
+
+        if (session.payment_status === "paid") {
+          await sendUpgradeEmail(resolvedUserId, plan);
+        }
         break;
       }
       case "customer.subscription.created":

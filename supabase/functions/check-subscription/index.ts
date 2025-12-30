@@ -61,8 +61,10 @@ serve(async (req) => {
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logger.info("User authenticated", { userId: user.id, email: user.email });
+    logger.info("Starting subscription check", { userId: user.id });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+    logger.info("Looking up Stripe customer", { email: user.email });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
 
     if (customers.data.length === 0) {
@@ -81,6 +83,7 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     logger.info("Found Stripe customer", { customerId });
 
+    logger.info("Checking active subscriptions", { customerId });
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
       status: "active",
@@ -114,12 +117,19 @@ serve(async (req) => {
 
       if (updateError) {
         logger.warn("Failed to update local subscription", { error: updateError.message });
+      } else {
+        logger.info("Subscription updated", {
+          userId: user.id,
+          plan,
+          payment_status: "active",
+          stripe_subscription_id: subscription.id,
+        });
       }
     } else {
       logger.info("No active subscription found");
-      
+
       // Reset to free plan if no active subscription
-      await supabaseClient
+      const { error: resetError } = await supabaseClient
         .from("subscriptions")
         .update({ 
           plan: "free",
@@ -130,6 +140,12 @@ serve(async (req) => {
           updated_at: new Date().toISOString()
         })
         .eq("user_id", user.id);
+
+      if (resetError) {
+        logger.warn("Failed to reset subscription", { error: resetError.message, userId: user.id });
+      } else {
+        logger.info("Subscription reset to free", { userId: user.id });
+      }
     }
 
     return new Response(JSON.stringify({
@@ -144,7 +160,11 @@ serve(async (req) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error("Error", { message: errorMessage });
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    return new Response(JSON.stringify({
+      subscribed: false,
+      error: errorMessage,
+      details: "Erro ao verificar assinatura. Tente novamente em alguns segundos."
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
