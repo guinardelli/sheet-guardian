@@ -1,4 +1,5 @@
 import { useCallback, useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Upload, FileSpreadsheet, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ export function FileDropzone({
   onClearFile,
   disabled
 }: FileDropzoneProps) {
+  const { t } = useTranslation();
   const [isDragging, setIsDragging] = useState(false);
   const dropzoneRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -42,38 +44,38 @@ export function FileDropzone({
   const validateAndSelectFile = useCallback((file: File): boolean => {
     // Validate file extension
     if (!file.name.toLowerCase().endsWith('.xlsm')) {
-      toast.error('Tipo de arquivo inválido', {
-        description: 'Apenas arquivos .xlsm são aceitos.'
+      toast.error(t('dropzone.errors.invalidType'), {
+        description: t('dropzone.errors.invalidTypeDesc')
       });
       return false;
     }
 
     // Validate file is not empty
     if (file.size === 0) {
-      toast.error('Arquivo vazio', {
-        description: 'O arquivo selecionado está vazio.'
+      toast.error(t('dropzone.errors.emptyFile'), {
+        description: t('dropzone.errors.emptyFileDesc')
       });
       return false;
     }
 
     // Validate file size (hard limit)
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      toast.error('Arquivo muito grande', {
-        description: `O tamanho máximo permitido é ${MAX_FILE_SIZE_BYTES / (1024 * 1024)} MB.`
+      toast.error(t('dropzone.errors.fileTooLarge'), {
+        description: `${t('dropzone.errors.fileTooLargeDesc')} ${MAX_FILE_SIZE_BYTES / (1024 * 1024)} MB.`
       });
       return false;
     }
 
     // Warn about large files
     if (file.size > LARGE_FILE_WARNING_BYTES) {
-      toast.warning('Arquivo grande detectado', {
-        description: 'O processamento pode levar mais tempo. Por favor, aguarde.'
+      toast.warning(t('dropzone.errors.largeFileWarning'), {
+        description: t('dropzone.errors.largeFileWarningDesc')
       });
     }
 
     onFileSelect(file);
     return true;
-  }, [onFileSelect]);
+  }, [onFileSelect, t]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -137,7 +139,7 @@ export function FileDropzone({
               className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
             >
               <X className="w-4 h-4 mr-2" />
-              Remover arquivo
+              {t('dropzone.removeFile')}
             </Button>
           )}
         </div>
@@ -148,10 +150,10 @@ export function FileDropzone({
           </div>
           <div className="flex flex-col items-center gap-2.5 max-w-md text-center">
             <p className="text-foreground text-lg font-bold tracking-tight">
-              Arraste e solte seu arquivo Excel aqui
+              {t('dropzone.dragAndDrop')}
             </p>
             <p className="text-muted-foreground text-sm">
-              Ou clique para selecionar um arquivo .xlsm
+              {t('dropzone.orClick')}
             </p>
           </div>
           <label className="cursor-pointer">
@@ -168,7 +170,7 @@ export function FileDropzone({
               className="pointer-events-none h-10 px-6"
               disabled={disabled}
             >
-              Selecionar Arquivo
+              {t('dropzone.selectFile')}
             </Button>
           </label>
         </>

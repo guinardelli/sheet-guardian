@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   AlertCircle,
   ArrowLeft,
@@ -31,42 +32,14 @@ import { logger } from '@/lib/logger';
 import { STRIPE_PLANS } from '@/lib/stripe';
 import { cn } from '@/lib/utils';
 
-const PLAN_INFO: Record<
-  'free' | 'professional' | 'premium',
-  {
-    name: string;
-    description: string;
-    features: string[];
-    extras: string[];
-    currentPrice: number;
-    originalPrice: number | null;
-  }
-> = {
-  free: {
-    name: 'Gratuito',
-    description: 'Para experimentar',
-    features: ['1 processamento por mês', 'Tamanho máximo: 1 MB'],
-    extras: [],
-    currentPrice: 0,
-    originalPrice: null,
-  },
-  professional: {
-    name: 'Profissional',
-    description: 'Para uso regular',
-    features: ['5 arquivos por semana', 'Tamanho máximo: 1 MB'],
-    extras: ['Funcionalidades nativas'],
-    currentPrice: 32,
-    originalPrice: 38,
-  },
-  premium: {
-    name: 'Premium',
-    description: 'Sem limitações',
-    features: ['Processamentos ilimitados', 'Sem limite de tamanho'],
-    extras: ['Suporte VIP', 'Processamento prioritário'],
-    currentPrice: 38,
-    originalPrice: 76,
-  },
-};
+interface PlanInfo {
+  name: string;
+  description: string;
+  features: string[];
+  extras: string[];
+  currentPrice: number;
+  originalPrice: number | null;
+}
 
 const PLAN_ICONS = {
   free: FileSpreadsheet,
@@ -81,6 +54,7 @@ const AVAILABLE_PLANS: Array<'free' | 'professional' | 'premium'> = [
 ];
 
 const Plans = () => {
+  const { t } = useTranslation();
   const { user, session } = useAuth();
   const {
     subscription,
@@ -99,6 +73,33 @@ const Plans = () => {
   const [autoVerifyError, setAutoVerifyError] = useState<string | null>(null);
   const [isAutoVerifying, setIsAutoVerifying] = useState(false);
   const autoVerifyStartedRef = useRef(false);
+
+  const PLAN_INFO: Record<'free' | 'professional' | 'premium', PlanInfo> = {
+    free: {
+      name: t('plansPage.freeInfo.name'),
+      description: t('plansPage.freeInfo.description'),
+      features: [t('plansPage.freeInfo.feature1'), t('plansPage.freeInfo.feature2')],
+      extras: [],
+      currentPrice: 0,
+      originalPrice: null,
+    },
+    professional: {
+      name: t('plansPage.professionalInfo.name'),
+      description: t('plansPage.professionalInfo.description'),
+      features: [t('plansPage.professionalInfo.feature1'), t('plansPage.professionalInfo.feature2')],
+      extras: [t('plansPage.professionalInfo.extra1')],
+      currentPrice: 32,
+      originalPrice: 38,
+    },
+    premium: {
+      name: t('plansPage.premiumInfo.name'),
+      description: t('plansPage.premiumInfo.description'),
+      features: [t('plansPage.premiumInfo.feature1'), t('plansPage.premiumInfo.feature2')],
+      extras: [t('plansPage.premiumInfo.extra1'), t('plansPage.premiumInfo.extra2')],
+      currentPrice: 38,
+      originalPrice: 76,
+    },
+  };
 
   const verifySubscriptionWithRetry = useCallback(async (): Promise<boolean> => {
     setAutoVerifyError(null);
@@ -119,11 +120,9 @@ const Plans = () => {
       }
     }
 
-    setAutoVerifyError(
-      'Nao foi possivel confirmar sua assinatura automaticamente. Se o plano nao atualizar em alguns minutos, saia e entre novamente.',
-    );
+    setAutoVerifyError(t('plansPage.messages.autoVerifyError'));
     return false;
-  }, [syncSubscription]);
+  }, [syncSubscription, t]);
 
   useEffect(() => {
     const success = searchParams.get('success');
@@ -134,8 +133,8 @@ const Plans = () => {
       setIsAutoVerifying(true);
       setAutoVerifyError(null);
       toast({
-        title: 'Pagamento realizado!',
-        description: 'Estamos confirmando sua assinatura. Aguarde alguns instantes...',
+        title: t('plansPage.messages.paymentSuccess'),
+        description: t('plansPage.messages.paymentSuccessDesc'),
       });
 
       const verifyWithRetry = async () => {
@@ -143,8 +142,8 @@ const Plans = () => {
         setIsAutoVerifying(false);
         if (verified) {
           toast({
-            title: 'Assinatura ativada!',
-            description: 'Seu plano foi atualizado automaticamente.',
+            title: t('plansPage.messages.subscriptionActivated'),
+            description: t('plansPage.messages.subscriptionActivatedDesc'),
           });
         }
       };
@@ -152,20 +151,20 @@ const Plans = () => {
       verifyWithRetry();
     } else if (canceled === 'true') {
       toast({
-        title: 'Pagamento cancelado',
-        description: 'O pagamento foi cancelado. Você pode tentar novamente quando quiser.',
+        title: t('plansPage.messages.paymentCanceled'),
+        description: t('plansPage.messages.paymentCanceledDesc'),
         variant: 'destructive',
       });
     }
-  }, [searchParams, verifySubscriptionWithRetry, toast]);
+  }, [searchParams, verifySubscriptionWithRetry, toast, t]);
 
   const handleSelectPlan = async (plan: 'free' | 'professional' | 'premium') => {
     if (!user) {
       toast({
-        title: 'Crie sua conta',
-        description: `Crie uma conta gratuita para ${
-          plan === 'free' ? 'começar a usar' : `assinar o plano ${PLAN_INFO[plan].name}`
-        }.`,
+        title: t('plansPage.messages.createAccountPrompt'),
+        description: plan === 'free'
+          ? t('plansPage.messages.createAccountToStart')
+          : `${t('plansPage.messages.createAccountForPlan')} ${PLAN_INFO[plan].name}.`,
       });
       navigate('/auth');
       return;
@@ -175,8 +174,8 @@ const Plans = () => {
       try {
         if (!subscription) {
           toast({
-            title: 'Criando assinatura...',
-            description: 'Aguarde enquanto criamos sua assinatura gratuita.',
+            title: t('plansPage.messages.creatingSubscription'),
+            description: t('plansPage.messages.creatingSubscriptionDesc'),
           });
 
           const created = await refetch();
@@ -185,24 +184,24 @@ const Plans = () => {
           const resolved = refreshed ?? created;
 
           if (!resolved) {
-            throw new Error('Nao foi possivel criar sua assinatura. Tente novamente ou contate o suporte.');
+            throw new Error(t('plansPage.messages.autoVerifyError'));
           }
         }
 
         const result = await updatePlan('free');
         if (!result.success) {
-          throw new Error(result.error || 'Erro ao atualizar plano gratuito');
+          throw new Error(result.error || t('plansPage.messages.errorSwitchingPlan'));
         }
         toast({
-          title: 'Plano atualizado!',
-          description: 'Vocオ estケ no plano Gratuito.',
+          title: t('plansPage.messages.planUpdated'),
+          description: t('plansPage.messages.planUpdatedDesc'),
         });
         navigate('/dashboard');
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Tente novamente mais tarde.';
+        const message = error instanceof Error ? error.message : t('common.error');
         logger.error('Error switching to free plan', error, { userId: user.id });
         toast({
-          title: 'Erro ao mudar para plano gratuito',
+          title: t('plansPage.messages.errorSwitchingPlan'),
           description: message,
           variant: 'destructive',
         });
@@ -229,9 +228,9 @@ const Plans = () => {
       }
     } catch (error: unknown) {
       logger.error('Checkout error', error);
-      const message = error instanceof Error ? error.message : 'Tente novamente mais tarde.';
+      const message = error instanceof Error ? error.message : t('common.error');
       toast({
-        title: 'Erro ao processar pagamento',
+        title: t('plansPage.messages.checkoutError'),
         description: message,
         variant: 'destructive',
       });
@@ -245,7 +244,7 @@ const Plans = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Carregando...</p>
+          <p className="text-muted-foreground">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -261,16 +260,16 @@ const Plans = () => {
         <div className="max-w-5xl mx-auto">
           <Button variant="ghost" onClick={() => navigate(-1)} className="mb-8">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
+            {t('common.back')}
           </Button>
 
           <div className="text-center mb-14">
-            <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-4">Planos</p>
+            <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-4">{t('plansPage.title')}</p>
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-5 tracking-tight">
-              Escolha seu Plano
+              {t('plansPage.heading')}
             </h1>
             <p className="text-muted-foreground text-lg md:text-xl max-w-xl mx-auto leading-relaxed">
-              Selecione o plano ideal para suas necessidades
+              {t('plansPage.subtitle')}
             </p>
           </div>
 
@@ -294,7 +293,7 @@ const Plans = () => {
                   {isPremium && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                       <Badge className="bg-gradient-to-r from-primary to-accent text-white shadow-lg">
-                        Recomendado
+                        {t('plansPage.recommended')}
                       </Badge>
                     </div>
                   )}
@@ -308,21 +307,21 @@ const Plans = () => {
 
                     <div className="text-center space-y-1 pt-2">
                       {isFree ? (
-                        <span className="text-4xl font-black text-primary">Grátis</span>
+                        <span className="text-4xl font-black text-primary">{t('plansPage.free')}</span>
                       ) : (
                         <>
                           <div className="flex items-baseline justify-center gap-1">
                             <span className="text-4xl font-black text-primary">R$ {info.currentPrice}</span>
-                            <span className="text-muted-foreground">/mês</span>
+                            <span className="text-muted-foreground">{t('plansPage.perMonth')}</span>
                           </div>
                           {info.originalPrice && (
                             <div className="text-sm text-muted-foreground line-through">
-                              De R$ {info.originalPrice}
+                              {t('plansPage.originalPrice')} {info.originalPrice}
                             </div>
                           )}
                           {info.originalPrice && (
                             <Badge variant="secondary" className="mt-2 font-semibold">
-                              {Math.round((1 - info.currentPrice / info.originalPrice) * 100)}% OFF
+                              {Math.round((1 - info.currentPrice / info.originalPrice) * 100)}% {t('plansPage.off')}
                             </Badge>
                           )}
                         </>
@@ -332,7 +331,7 @@ const Plans = () => {
 
                   <CardContent className="space-y-5 pt-2">
                     <div>
-                      <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Limites</p>
+                      <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">{t('plansPage.limits')}</p>
                       <ul className="space-y-2.5">
                         {info.features.map((feature, index) => (
                           <li key={index} className="flex items-center gap-2.5">
@@ -347,7 +346,7 @@ const Plans = () => {
 
                     {info.extras.length > 0 && (
                       <div>
-                        <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Adicionais</p>
+                        <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">{t('plansPage.extras')}</p>
                         <ul className="space-y-2.5">
                           {info.extras.map((extra, index) => (
                             <li key={index} className="flex items-center gap-2.5">
@@ -372,18 +371,18 @@ const Plans = () => {
                       {processing ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Processando...
+                          {t('common.processing')}
                         </>
                       ) : isCurrentPlan ? (
-                        'Plano Atual'
+                        t('plansPage.currentPlan')
                       ) : !user ? (
-                        isFree ? 'Criar Conta Grátis' : 'Criar Conta'
+                        isFree ? t('plansPage.createFreeAccount') : t('plansPage.createAccount')
                       ) : subscription && subscription.plan !== 'free' && plan !== 'free' ? (
-                        'Trocar Plano'
+                        t('plansPage.changePlan')
                       ) : plan === 'free' ? (
-                        'Mudar para Gratuito'
+                        t('plansPage.switchToFree')
                       ) : (
-                        'Fazer Upgrade'
+                        t('plansPage.doUpgrade')
                       )}
                     </Button>
                   </CardFooter>
@@ -415,7 +414,7 @@ const Plans = () => {
           {isAutoVerifying && (
             <Alert className="mb-4">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <AlertDescription>Sincronizando assinatura com o Stripe...</AlertDescription>
+              <AlertDescription>{t('plansPage.syncingSubscription')}</AlertDescription>
             </Alert>
           )}
 
@@ -428,25 +427,25 @@ const Plans = () => {
                 className="gap-2"
               >
                 <Settings className="h-4 w-4" />
-                Gerenciar Assinatura
+                {t('plansPage.manageSubscription')}
               </Button>
             </div>
           )}
 
           <div className="bg-card rounded-xl p-6 border border-border/50 shadow-soft">
-            <h2 className="text-base font-semibold text-foreground mb-4">Formas de Pagamento Aceitas</h2>
+            <h2 className="text-base font-semibold text-foreground mb-4">{t('plansPage.paymentMethods')}</h2>
             <div className="flex flex-wrap gap-6">
               <div className="flex items-center gap-2.5 text-muted-foreground">
                 <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
                   <QrCode className="h-4 w-4" />
                 </div>
-                <span className="text-sm font-medium">PIX</span>
+                <span className="text-sm font-medium">{t('plansPage.pix')}</span>
               </div>
               <div className="flex items-center gap-2.5 text-muted-foreground">
                 <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
                   <CreditCard className="h-4 w-4" />
                 </div>
-                <span className="text-sm font-medium">Cartão de Crédito</span>
+                <span className="text-sm font-medium">{t('plansPage.creditCard')}</span>
               </div>
             </div>
           </div>

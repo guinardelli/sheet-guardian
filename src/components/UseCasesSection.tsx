@@ -1,24 +1,27 @@
+import { useTranslation } from 'react-i18next';
 import { Briefcase, TrendingUp, Users } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 export const UseCasesSection = () => {
+  const { t } = useTranslation();
+
   const useCases = [
     {
       icon: Briefcase,
-      title: 'Consultores Financeiros',
-      description: 'Envie modelos de valuation e análises para clientes sem expor sua metodologia proprietária.',
+      title: t('useCases.consultants'),
+      description: t('useCases.consultantsDesc'),
       gradient: 'from-primary/10 to-accent/10',
     },
     {
       icon: TrendingUp,
-      title: 'Vendedores de Dashboards',
-      description: 'Distribua planilhas na Hotmart/Kiwify com segurança. Seus clientes usam, mas não copiam.',
+      title: t('useCases.sellers'),
+      description: t('useCases.sellersDesc'),
       gradient: 'from-accent/10 to-primary/10',
     },
     {
       icon: Users,
-      title: 'Empresas e Equipes',
-      description: 'Proteja ferramentas internas antes de compartilhar com equipes externas ou terceirizados.',
+      title: t('useCases.teams'),
+      description: t('useCases.teamsDesc'),
       gradient: 'from-primary/10 to-accent/10',
     },
   ];
@@ -28,13 +31,13 @@ export const UseCasesSection = () => {
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-7 sm:mb-10 md:mb-12 lg:mb-14">
           <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-4">
-            Casos de Uso
+            {t('useCases.title')}
           </p>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-5">
-            Ideal para quem vive de Excel
+            {t('useCases.heading')}
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Profissionais que investem tempo criando soluções de valor não podem se dar ao luxo de vê-las copiadas.
+            {t('useCases.subtitle')}
           </p>
         </div>
 

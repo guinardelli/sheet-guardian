@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -7,25 +8,27 @@ interface PasswordStrengthIndicatorProps {
 }
 
 interface Requirement {
-  label: string;
+  key: string;
   test: (password: string) => boolean;
 }
 
-const requirements: Requirement[] = [
-  { label: 'Mínimo de 8 caracteres', test: (p) => p.length >= 8 },
-  { label: 'Uma letra maiúscula', test: (p) => /[A-Z]/.test(p) },
-  { label: 'Uma letra minúscula', test: (p) => /[a-z]/.test(p) },
-  { label: 'Um número', test: (p) => /[0-9]/.test(p) },
-  { label: 'Um caractere especial (!@#$%^&*)', test: (p) => /[^A-Za-z0-9]/.test(p) },
+const requirementTests: Requirement[] = [
+  { key: 'minChars', test: (p) => p.length >= 8 },
+  { key: 'uppercase', test: (p) => /[A-Z]/.test(p) },
+  { key: 'lowercase', test: (p) => /[a-z]/.test(p) },
+  { key: 'number', test: (p) => /[0-9]/.test(p) },
+  { key: 'special', test: (p) => /[^A-Za-z0-9]/.test(p) },
 ];
 
 export function PasswordStrengthIndicator({
   password,
   showRequirements = true
 }: PasswordStrengthIndicatorProps) {
-  const metRequirements = requirements.filter(req => req.test(password));
+  const { t } = useTranslation();
+
+  const metRequirements = requirementTests.filter(req => req.test(password));
   const strength = metRequirements.length;
-  const percentage = (strength / requirements.length) * 100;
+  const percentage = (strength / requirementTests.length) * 100;
 
   const getStrengthColor = () => {
     if (strength <= 2) return 'bg-destructive';
@@ -34,9 +37,9 @@ export function PasswordStrengthIndicator({
   };
 
   const getStrengthLabel = () => {
-    if (strength <= 2) return 'Fraca';
-    if (strength <= 4) return 'Média';
-    return 'Forte';
+    if (strength <= 2) return t('passwordStrength.weak');
+    if (strength <= 4) return t('passwordStrength.medium');
+    return t('passwordStrength.strong');
   };
 
   if (!password && !showRequirements) return null;
@@ -46,7 +49,7 @@ export function PasswordStrengthIndicator({
       {password && (
         <div className="space-y-1">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">Força da senha:</span>
+            <span className="text-muted-foreground">{t('passwordStrength.label')}</span>
             <span className={cn(
               "font-medium",
               strength <= 2 && "text-destructive",
@@ -67,7 +70,7 @@ export function PasswordStrengthIndicator({
 
       {showRequirements && (
         <ul className="space-y-1 text-xs">
-          {requirements.map((req, index) => {
+          {requirementTests.map((req, index) => {
             const isMet = req.test(password);
             return (
               <li
@@ -82,7 +85,7 @@ export function PasswordStrengthIndicator({
                 ) : (
                   <X className="h-3 w-3 flex-shrink-0" />
                 )}
-                <span>{req.label}</span>
+                <span>{t(`passwordStrength.${req.key}`)}</span>
               </li>
             );
           })}

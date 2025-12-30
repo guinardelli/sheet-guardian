@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
@@ -19,15 +20,8 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
-const authSchema = z.object({
-  email: z.string().trim().email({ message: 'Email inválido' }).max(255),
-  password: z
-    .string()
-    .min(6, { message: 'Senha deve ter no mínimo 6 caracteres' })
-    .max(100, { message: 'Senha não pode exceder 100 caracteres' }),
-});
-
 const Auth = () => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -37,6 +31,14 @@ const Auth = () => {
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const authSchema = z.object({
+    email: z.string().trim().email({ message: t('auth.errors.invalidEmail') }).max(255),
+    password: z
+      .string()
+      .min(6, { message: t('auth.errors.passwordMin') })
+      .max(100, { message: t('auth.errors.passwordMax') }),
+  });
 
   useEffect(() => {
     if (user && !isRecoveryMode) {
@@ -55,7 +57,7 @@ const Auth = () => {
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast({
-          title: 'Erro de validação',
+          title: t('auth.errors.validation'),
           description: error.errors[0].message,
           variant: 'destructive',
         });
@@ -74,9 +76,9 @@ const Auth = () => {
 
     if (error) {
       toast({
-        title: 'Erro ao entrar',
+        title: t('auth.errors.signInError'),
         description:
-          error.message === 'Invalid login credentials' ? 'Email ou senha incorretos' : error.message,
+          error.message === 'Invalid login credentials' ? t('auth.errors.invalidCredentials') : error.message,
         variant: 'destructive',
       });
     } else {
@@ -95,17 +97,17 @@ const Auth = () => {
     if (error) {
       let message = error.message;
       if (error.message.includes('already registered')) {
-        message = 'Este email já está cadastrado. Tente fazer login.';
+        message = t('auth.errors.alreadyRegistered');
       }
       toast({
-        title: 'Erro ao cadastrar',
+        title: t('auth.errors.signUpError'),
         description: message,
         variant: 'destructive',
       });
     } else {
       toast({
-        title: 'Conta criada!',
-        description: 'Você já pode acessar o sistema.',
+        title: t('auth.success.accountCreated'),
+        description: t('auth.success.accountCreatedDesc'),
       });
       navigate('/dashboard');
     }
@@ -114,8 +116,8 @@ const Auth = () => {
   const handleForgotPassword = async () => {
     if (!email.trim()) {
       toast({
-        title: 'Email necessário',
-        description: 'Digite seu email para recuperar a senha.',
+        title: t('auth.errors.emailRequired'),
+        description: t('auth.errors.emailRequiredDesc'),
         variant: 'destructive',
       });
       return;
@@ -125,8 +127,8 @@ const Auth = () => {
       z.string().email().parse(email);
     } catch {
       toast({
-        title: 'Email inválido',
-        description: 'Digite um email válido.',
+        title: t('auth.errors.invalidEmailFormat'),
+        description: t('auth.errors.invalidEmailFormatDesc'),
         variant: 'destructive',
       });
       return;
@@ -141,8 +143,8 @@ const Auth = () => {
     setResetLoading(false);
 
     toast({
-      title: 'Email enviado!',
-      description: 'Se o email existir em nossa base, você receberá instruções para redefinir sua senha.',
+      title: t('auth.success.emailSent'),
+      description: t('auth.success.emailSentDesc'),
     });
   };
 
@@ -168,9 +170,9 @@ const Auth = () => {
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center mx-auto">
               <ExcelIcon className="w-10 h-10 text-primary" />
             </div>
-            <CardTitle className="text-2xl">Excel VBA Blocker</CardTitle>
+            <CardTitle className="text-2xl">{t('auth.title')}</CardTitle>
             <CardDescription className="text-base">
-              Faça login ou crie uma conta para continuar
+              {t('auth.subtitle')}
             </CardDescription>
           </CardHeader>
 
@@ -178,10 +180,10 @@ const Auth = () => {
             <Tabs defaultValue="login" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="login" className="transition-all duration-200">
-                  Entrar
+                  {t('auth.loginTab')}
                 </TabsTrigger>
                 <TabsTrigger value="register" className="transition-all duration-200">
-                  Cadastrar
+                  {t('auth.registerTab')}
                 </TabsTrigger>
               </TabsList>
 
@@ -189,12 +191,12 @@ const Auth = () => {
                 <form onSubmit={handleSignIn} className="space-y-5">
                   <div className="space-y-2">
                     <Label htmlFor="login-email" className="text-sm font-medium">
-                      Email
+                      {t('auth.email')}
                     </Label>
                     <Input
                       id="login-email"
                       type="email"
-                      placeholder="seu@email.com"
+                      placeholder={t('auth.emailPlaceholder')}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
@@ -206,12 +208,12 @@ const Auth = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="login-password" className="text-sm font-medium">
-                      Senha
+                      {t('auth.password')}
                     </Label>
                     <Input
                       id="login-password"
                       type="password"
-                      placeholder="••••••••"
+                      placeholder={t('auth.passwordPlaceholder')}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
@@ -229,11 +231,11 @@ const Auth = () => {
                       onClick={handleForgotPassword}
                       disabled={resetLoading}
                     >
-                      {resetLoading ? 'Enviando...' : 'Esqueceu a senha?'}
+                      {resetLoading ? t('auth.sendingReset') : t('auth.forgotPassword')}
                     </Button>
                   </div>
                   <Button type="submit" className="w-full h-11 shadow-soft" disabled={loading}>
-                    {loading ? 'Entrando...' : 'Entrar'}
+                    {loading ? t('auth.signingIn') : t('auth.signIn')}
                   </Button>
                 </form>
               </TabsContent>
@@ -242,12 +244,12 @@ const Auth = () => {
                 <form onSubmit={handleSignUp} className="space-y-5">
                   <div className="space-y-2">
                     <Label htmlFor="register-email" className="text-sm font-medium">
-                      Email
+                      {t('auth.email')}
                     </Label>
                     <Input
                       id="register-email"
                       type="email"
-                      placeholder="seu@email.com"
+                      placeholder={t('auth.emailPlaceholder')}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
@@ -259,12 +261,12 @@ const Auth = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="register-password" className="text-sm font-medium">
-                      Senha
+                      {t('auth.password')}
                     </Label>
                     <Input
                       id="register-password"
                       type="password"
-                      placeholder="••••••••"
+                      placeholder={t('auth.passwordPlaceholder')}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
@@ -276,7 +278,7 @@ const Auth = () => {
                     <PasswordStrengthIndicator password={password} />
                   </div>
                   <Button type="submit" className="w-full h-11 shadow-soft" disabled={loading}>
-                    {loading ? 'Cadastrando...' : 'Criar Conta'}
+                    {loading ? t('auth.creatingAccount') : t('auth.createAccount')}
                   </Button>
                 </form>
               </TabsContent>

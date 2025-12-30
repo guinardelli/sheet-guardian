@@ -1,21 +1,24 @@
+import { useTranslation } from 'react-i18next';
 import { AlertCircle, XCircle, TrendingDown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 export const ProblemSection = () => {
+  const { t } = useTranslation();
+
   const problems = [
     {
       icon: XCircle,
-      text: 'As senhas nativas do Excel são quebradas em instantes.',
+      text: t('problems.problem1'),
       color: 'text-destructive',
     },
     {
       icon: AlertCircle,
-      text: 'Clientes curiosos podem "quebrar" suas fórmulas complexas ao tentar editar.',
+      text: t('problems.problem2'),
       color: 'text-warning',
     },
     {
       icon: TrendingDown,
-      text: 'Concorrentes podem roubar sua lógica e revender seu produto mais barato.',
+      text: t('problems.problem3'),
       color: 'text-destructive',
     },
   ];
@@ -24,8 +27,8 @@ export const ProblemSection = () => {
     <section className="py-12 sm:py-20 md:py-24 lg:py-28 px-4 sm:px-6 lg:px-8 bg-destructive/5">
       <div className="max-w-4xl mx-auto">
         <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-center mb-4 sm:mb-6 md:mb-8">
-          Você gasta horas codificando,{' '}
-          <span className="text-destructive">eles levam segundos para copiar.</span>
+          {t('problems.title1')}{' '}
+          <span className="text-destructive">{t('problems.title2')}</span>
         </h2>
 
         <div className="grid md:grid-cols-3 gap-4 sm:gap-5 md:gap-6 mt-5 sm:mt-8 md:mt-10">
@@ -50,7 +53,7 @@ export const ProblemSection = () => {
             <div className="absolute inset-0 bg-destructive/20 blur-2xl rounded-full" />
             <div className="relative bg-muted/50 backdrop-blur-sm border border-destructive/30 rounded-lg p-4 sm:p-6 text-center">
               <p className="text-sm text-muted-foreground italic">
-                Ferramentas gratuitas online removem proteções nativas em segundos
+                {t('problems.warning')}
               </p>
             </div>
           </div>

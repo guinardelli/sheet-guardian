@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { ProcessingResult } from '@/lib/excel-vba-modifier';
 import { FileCheck, Shield, HardDrive, CheckCircle2 } from 'lucide-react';
 
@@ -6,6 +7,8 @@ interface StatisticsCardProps {
 }
 
 export function StatisticsCard({ result }: StatisticsCardProps) {
+  const { t } = useTranslation();
+
   if (!result) return null;
 
   const formatSize = (bytes: number) => {
@@ -17,25 +20,25 @@ export function StatisticsCard({ result }: StatisticsCardProps) {
   const stats = [
     {
       icon: FileCheck,
-      label: 'VBA Encontrado',
-      value: result.vbaExists ? 'Sim' : 'Não',
+      label: t('statistics.vbaFound'),
+      value: result.vbaExists ? t('common.yes') : t('common.no'),
       color: result.vbaExists ? 'text-primary' : 'text-muted-foreground'
     },
     {
       icon: Shield,
-      label: 'Padrões Modificados',
+      label: t('statistics.patternsModified'),
       value: result.patternsModified.toString(),
       color: result.patternsModified > 0 ? 'text-primary' : 'text-muted-foreground'
     },
     {
       icon: HardDrive,
-      label: 'Tamanho Original',
+      label: t('statistics.originalSize'),
       value: formatSize(result.originalSize),
       color: 'text-muted-foreground'
     },
     {
       icon: CheckCircle2,
-      label: 'Tamanho Final',
+      label: t('statistics.finalSize'),
       value: formatSize(result.modifiedSize),
       color: 'text-primary'
     }

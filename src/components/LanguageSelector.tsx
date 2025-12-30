@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
 import { Globe } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,33 +9,26 @@ import {
 import { Button } from '@/components/ui/button';
 
 export const LanguageSelector = () => {
-  const [lang, setLang] = useState<'pt' | 'en'>('pt');
+  const { i18n, t } = useTranslation();
 
-  useEffect(() => {
-    const stored = localStorage.getItem('language');
-    if (stored === 'pt' || stored === 'en') {
-      setLang(stored);
-    }
-  }, []);
-
-  const toggleLanguage = (newLang: 'pt' | 'en') => {
-    setLang(newLang);
+  const changeLanguage = (newLang: 'pt' | 'en') => {
+    i18n.changeLanguage(newLang);
     localStorage.setItem('language', newLang);
   };
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-2" aria-label="Selecionar idioma">
+        <Button variant="ghost" size="sm" className="gap-2" aria-label={t('header.selectLanguage')}>
           <Globe className="h-4 w-4" />
-          <span className="text-xs font-semibold">{lang.toUpperCase()}</span>
+          <span className="text-xs font-semibold">{i18n.language.toUpperCase()}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => toggleLanguage('pt')}>
+        <DropdownMenuItem onClick={() => changeLanguage('pt')}>
           Português
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => toggleLanguage('en')}>
+        <DropdownMenuItem onClick={() => changeLanguage('en')}>
           English
         </DropdownMenuItem>
       </DropdownMenuContent>

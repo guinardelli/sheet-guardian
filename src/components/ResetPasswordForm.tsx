@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Lock } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ interface ResetPasswordFormProps {
 }
 
 export const ResetPasswordForm = ({ onSuccess }: ResetPasswordFormProps) => {
+  const { t } = useTranslation();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,8 +28,8 @@ export const ResetPasswordForm = ({ onSuccess }: ResetPasswordFormProps) => {
 
     if (password.length < 6) {
       toast({
-        title: 'Senha muito curta',
-        description: 'A senha deve ter no minimo 6 caracteres.',
+        title: t('auth.errors.passwordTooShort'),
+        description: t('auth.errors.passwordTooShortDesc'),
         variant: 'destructive',
       });
       return;
@@ -35,8 +37,8 @@ export const ResetPasswordForm = ({ onSuccess }: ResetPasswordFormProps) => {
 
     if (password !== confirmPassword) {
       toast({
-        title: 'Senhas nao coincidem',
-        description: 'As senhas digitadas sao diferentes.',
+        title: t('auth.errors.passwordMismatch'),
+        description: t('auth.errors.passwordMismatchDesc'),
         variant: 'destructive',
       });
       return;
@@ -48,7 +50,7 @@ export const ResetPasswordForm = ({ onSuccess }: ResetPasswordFormProps) => {
 
     if (error) {
       toast({
-        title: 'Erro ao redefinir senha',
+        title: t('auth.errors.resetError'),
         description: error.message,
         variant: 'destructive',
       });
@@ -56,8 +58,8 @@ export const ResetPasswordForm = ({ onSuccess }: ResetPasswordFormProps) => {
     }
 
     toast({
-      title: 'Senha redefinida',
-      description: 'Sua senha foi atualizada com sucesso.',
+      title: t('auth.success.passwordReset'),
+      description: t('auth.success.passwordResetDesc'),
     });
 
     setTimeout(() => onSuccess(), 1500);
@@ -69,14 +71,14 @@ export const ResetPasswordForm = ({ onSuccess }: ResetPasswordFormProps) => {
         <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center mx-auto">
           <ExcelIcon className="w-10 h-10 text-primary" />
         </div>
-        <CardTitle className="text-2xl">Redefinir Senha</CardTitle>
-        <CardDescription className="text-base">Digite sua nova senha abaixo</CardDescription>
+        <CardTitle className="text-2xl">{t('auth.resetPassword')}</CardTitle>
+        <CardDescription className="text-base">{t('auth.resetPasswordSubtitle')}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="new-password" className="text-sm font-medium">
-              Nova Senha
+              {t('auth.newPassword')}
             </Label>
             <Input
               id="new-password"
@@ -92,7 +94,7 @@ export const ResetPasswordForm = ({ onSuccess }: ResetPasswordFormProps) => {
 
           <div className="space-y-2">
             <Label htmlFor="confirm-password" className="text-sm font-medium">
-              Confirmar Senha
+              {t('auth.confirmPassword')}
             </Label>
             <Input
               id="confirm-password"
@@ -107,11 +109,11 @@ export const ResetPasswordForm = ({ onSuccess }: ResetPasswordFormProps) => {
 
           <Button type="submit" className="w-full h-11 shadow-soft" disabled={loading}>
             {loading ? (
-              'Redefinindo...'
+              t('auth.resetting')
             ) : (
               <>
                 <Lock className="h-4 w-4 mr-2" />
-                Redefinir Senha
+                {t('auth.resetPassword')}
               </>
             )}
           </Button>

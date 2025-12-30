@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LogEntry } from '@/lib/excel-vba-modifier';
 import { cn } from '@/lib/utils';
 import { MoreHorizontal, CheckCircle2, AlertCircle, XCircle, Info } from 'lucide-react';
@@ -22,6 +23,7 @@ const colorMap = {
 };
 
 export function ProcessingLog({ logs }: ProcessingLogProps) {
+  const { t, i18n } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -31,7 +33,7 @@ export function ProcessingLog({ logs }: ProcessingLogProps) {
   }, [logs]);
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('pt-BR', {
+    return date.toLocaleTimeString(i18n.language === 'pt' ? 'pt-BR' : 'en-US', {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
@@ -40,7 +42,7 @@ export function ProcessingLog({ logs }: ProcessingLogProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <h3 className="text-foreground text-lg font-semibold tracking-tight">Log de Processamento</h3>
+      <h3 className="text-foreground text-lg font-semibold tracking-tight">{t('processingLog.title')}</h3>
       <div
         ref={scrollRef}
         className="flex flex-col h-72 w-full rounded-xl bg-muted p-5 font-mono text-sm text-muted-foreground overflow-y-auto shadow-soft-lg"
@@ -48,7 +50,7 @@ export function ProcessingLog({ logs }: ProcessingLogProps) {
         {logs.length === 0 ? (
           <div className="flex items-start gap-3 py-2">
             <MoreHorizontal className="w-4 h-4 text-muted-foreground/80 mt-0.5 animate-pulse" />
-            <p className="flex-1 leading-relaxed text-muted-foreground/70">Aguardando arquivo para iniciar...</p>
+            <p className="flex-1 leading-relaxed text-muted-foreground/70">{t('processingLog.waiting')}</p>
           </div>
         ) : (
           logs.map((log, index) => {

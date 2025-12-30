@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Download, Info, Play, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -25,17 +26,10 @@ import {
 } from '@/lib/excel-vba-modifier';
 import { logger } from '@/lib/logger';
 
-const PROCESSING_MESSAGES = [
-  'Analisando arquivo...',
-  'Verificando estrutura VBA...',
-  'Processando macros...',
-  'Aplicando modificações...',
-  'Finalizando...',
-];
-
 const MAX_LOG_ENTRIES = 100;
 
 const Dashboard = () => {
+  const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [originalFile, setOriginalFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -53,12 +47,20 @@ const Dashboard = () => {
   const { subscription, canProcessSheet, incrementUsage, getUsageStats, isUpdating } = useSubscription();
   const navigate = useNavigate();
 
+  const PROCESSING_MESSAGES = [
+    t('dashboard.processingMessages.analyzing'),
+    t('dashboard.processingMessages.verifying'),
+    t('dashboard.processingMessages.processing'),
+    t('dashboard.processingMessages.applying'),
+    t('dashboard.processingMessages.finalizing'),
+  ];
+
   useEffect(() => {
     if (authError) {
-      toast.error('Erro de autenticação', {
+      toast.error(t('toasts.authError'), {
         description: authError,
         action: {
-          label: 'Entrar',
+          label: t('toasts.signInAction'),
           onClick: () => {
             clearAuthError();
             navigate('/auth');
@@ -66,7 +68,7 @@ const Dashboard = () => {
         },
       });
     }
-  }, [authError, clearAuthError, navigate]);
+  }, [authError, clearAuthError, navigate, t]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -99,22 +101,22 @@ const Dashboard = () => {
     }, interval);
 
     return () => clearInterval(timer);
-  }, [isProcessing, processingComplete]);
+  }, [isProcessing, processingComplete, PROCESSING_MESSAGES]);
 
   useEffect(() => {
     if (processingComplete && result) {
       setDisplayProgress(100);
-      setProcessingMessage('Concluído!');
+      setProcessingMessage(t('dashboard.processingMessages.completed'));
     }
-  }, [processingComplete, result]);
+  }, [processingComplete, result, t]);
 
   const handleFileSelect = useCallback(
     (file: File) => {
       if (!user) {
-        toast.error('Login necessário', {
-          description: 'Faça login para processar planilhas.',
+        toast.error(t('toasts.loginRequired'), {
+          description: t('toasts.loginRequiredDesc'),
           action: {
-            label: 'Entrar',
+            label: t('toasts.signInAction'),
             onClick: () => navigate('/auth'),
           },
         });
@@ -126,15 +128,15 @@ const Dashboard = () => {
 
       if (!allowed) {
         if (suggestUpgrade) {
-          toast.error('Limite atingido', {
+          toast.error(t('toasts.limitReached'), {
             description: reason,
             action: {
-              label: 'Ver Planos',
+              label: t('toasts.viewPlans'),
               onClick: () => navigate('/plans'),
             },
           });
         } else {
-          toast.error('Erro', {
+          toast.error(t('common.error'), {
             description: reason,
           });
         }
@@ -150,7 +152,7 @@ const Dashboard = () => {
       setProcessingComplete(false);
       setDownloadAllowed(false);
     },
-    [user, canProcessSheet, navigate],
+    [user, canProcessSheet, navigate, t],
   );
 
   const handleClearFile = useCallback(() => {
@@ -184,15 +186,15 @@ const Dashboard = () => {
 
     if (!allowed) {
       if (suggestUpgrade) {
-        toast.error('Limite atingido', {
+        toast.error(t('toasts.limitReached'), {
           description: reason,
           action: {
-            label: 'Ver Planos',
+            label: t('toasts.viewPlans'),
             onClick: () => navigate('/plans'),
           },
         });
       } else {
-        toast.error('Erro', {
+        toast.error(t('common.error'), {
           description: reason,
         });
       }
@@ -225,15 +227,15 @@ const Dashboard = () => {
                 userId: user.id,
                 error: usageResult.error,
               });
-              toast.error('Erro crítico', {
-                description: 'Não foi possível registrar o uso. Entre em contato.',
+              toast.error(t('toasts.criticalError'), {
+                description: t('toasts.usageRegisterError'),
               });
               return;
             }
           } catch (usageError) {
             logger.error('Unexpected error incrementing usage', usageError, { userId: user.id });
-            toast.error('Erro crítico', {
-              description: 'Não foi possível registrar o uso. Entre em contato.',
+            toast.error(t('toasts.criticalError'), {
+              description: t('toasts.usageRegisterError'),
             });
             return;
           }
@@ -242,53 +244,53 @@ const Dashboard = () => {
         setDownloadAllowed(true);
 
         if (processingResult.patternsModified === 0) {
-          toast.warning('Processamento concluído', {
-            description: 'Nenhum padrão de proteção VBA foi encontrado ou modificado no arquivo.',
+          toast.warning(t('toasts.processingComplete'), {
+            description: t('toasts.noPatternModified'),
             action: {
-              label: 'Baixar',
+              label: t('toasts.download'),
               onClick: () =>
                 downloadFile(processingResult.modifiedFile!, processingResult.newFileName),
             },
           });
         } else {
-          toast.success('Arquivo processado com sucesso!', {
-            description: `${processingResult.patternsModified} padrão(ões) modificado(s)`,
+          toast.success(t('toasts.fileProcessed'), {
+            description: `${processingResult.patternsModified} ${t('toasts.patternsModified')}`,
             action: {
-              label: 'Baixar',
+              label: t('toasts.download'),
               onClick: () =>
                 downloadFile(processingResult.modifiedFile!, processingResult.newFileName),
             },
           });
         }
       } else if (processingResult.error) {
-        toast.error('Erro ao processar arquivo', {
+        toast.error(t('toasts.processingError'), {
           description: processingResult.error,
         });
       }
     } catch (error) {
       logger.error('Erro inesperado durante processamento', error);
-      toast.error('Erro inesperado', {
-        description: 'Ocorreu um erro durante o processamento. Tente novamente.',
+      toast.error(t('toasts.unexpectedError'), {
+        description: t('toasts.unexpectedErrorDesc'),
       });
     } finally {
       setIsProcessing(false);
       processingLockRef.current = false;
     }
-  }, [selectedFile, user, isProcessing, canProcessSheet, handleLog, incrementUsage, navigate]);
+  }, [selectedFile, user, isProcessing, canProcessSheet, handleLog, incrementUsage, navigate, t]);
 
   const handleDownload = useCallback(() => {
     if (result?.modifiedFile && downloadAllowed) {
       downloadFile(result.modifiedFile, result.newFileName);
-      toast.success('Download iniciado!');
+      toast.success(t('toasts.downloadStarted'));
     }
-  }, [result, downloadAllowed]);
+  }, [result, downloadAllowed, t]);
 
   const handleRestore = useCallback(() => {
     if (originalFile) {
       downloadFile(originalFile, originalFile.name);
-      toast.info('Arquivo original baixado');
+      toast.info(t('toasts.originalDownloaded'));
     }
-  }, [originalFile]);
+  }, [originalFile, t]);
 
   const planLimits = subscription ? PLAN_LIMITS[subscription.plan] : null;
   const usageStats = getUsageStats();
@@ -317,11 +319,11 @@ const Dashboard = () => {
               <ExcelIcon className="h-7 w-7 text-primary" />
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-              Bloqueador de Planilhas
+              {t('dashboard.title')}
             </h1>
           </div>
           <p className="text-muted-foreground text-base md:text-lg max-w-xl mx-auto leading-relaxed">
-            Selecione um arquivo Excel (.xlsm), inicie o processamento e acompanhe o status no log.
+            {t('dashboard.subtitle')}
           </p>
         </div>
 
@@ -330,14 +332,14 @@ const Dashboard = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Info className="h-5 w-5 text-primary" />
-                Informações de Uso
+                {t('dashboard.usageInfo')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {usageStats && usageStats.limit !== null && (
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Uso {usageStats.period}</span>
+                    <span className="text-muted-foreground">{t('dashboard.usage')} {usageStats.period}</span>
                     <span className="font-medium">
                       {usageStats.used} / {usageStats.limit}
                     </span>
@@ -354,12 +356,12 @@ const Dashboard = () => {
               <div className="flex flex-wrap items-center gap-4 text-sm">
                 {planLimits && planLimits.maxFileSizeMB !== null && (
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">Tamanho máximo:</span>
+                    <span className="text-muted-foreground">{t('dashboard.maxSize')}:</span>
                     <span className="font-semibold text-foreground">{planLimits.maxFileSizeMB} MB</span>
                   </div>
                 )}
                 {subscription.plan === 'premium' && (
-                  <span className="text-primary font-semibold">Uso Ilimitado</span>
+                  <span className="text-primary font-semibold">{t('dashboard.unlimitedUsage')}</span>
                 )}
                 {subscription.plan !== 'premium' && (
                   <Button
@@ -368,7 +370,7 @@ const Dashboard = () => {
                     className="h-auto p-0 text-primary hover:text-primary/80 font-medium"
                     onClick={() => navigate('/plans')}
                   >
-                    Fazer upgrade →
+                    {t('dashboard.upgrade')}
                   </Button>
                 )}
               </div>
@@ -398,7 +400,7 @@ const Dashboard = () => {
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
                     </span>
-                    Processando seu arquivo...
+                    {t('dashboard.processingFile')}
                   </div>
                 </div>
               </div>
@@ -414,7 +416,7 @@ const Dashboard = () => {
             className="w-full sm:w-auto sm:min-w-[200px] h-12 shadow-soft"
           >
             <Play className="w-4 h-4 mr-2" />
-            {isProcessing ? 'Processando...' : isUpdating ? 'Aguarde...' : 'Iniciar Processamento'}
+            {isProcessing ? t('common.processing') : isUpdating ? t('common.wait') : t('dashboard.startProcessing')}
           </Button>
 
           {result?.success && result.modifiedFile && processingComplete && downloadAllowed && (
@@ -425,7 +427,7 @@ const Dashboard = () => {
               className="w-full sm:w-auto sm:min-w-[200px] h-12 animate-fade-in"
             >
               <Download className="w-4 h-4 mr-2" />
-              Baixar Arquivo
+              {t('dashboard.downloadFile')}
             </Button>
           )}
 
@@ -437,7 +439,7 @@ const Dashboard = () => {
               className="w-full sm:w-auto sm:min-w-[200px] h-12"
             >
               <RotateCcw className="w-4 h-4 mr-2" />
-              Restaurar Original
+              {t('dashboard.restoreOriginal')}
             </Button>
           )}
         </div>
@@ -452,7 +454,7 @@ const Dashboard = () => {
 
         <footer className="text-center py-8 border-t border-border/50 mt-6">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Bloqueador de Planilhas. Todos os direitos reservados.
+            © {new Date().getFullYear()} {t('dashboard.title')}. {t('common.allRightsReserved')}.
           </p>
         </footer>
       </main>

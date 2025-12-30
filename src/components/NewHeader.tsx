@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, Shield, User, LogOut, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Menu, Shield, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,23 +16,24 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
 import { cn } from '@/lib/utils';
 
-const PLAN_NAMES: Record<string, string> = {
-  free: 'Gratuito',
-  professional: 'Profissional',
-  premium: 'Premium',
-};
-
-const navItems = [
-  { name: 'Início', path: '/' },
-  { name: 'Planos', path: '/plans' },
-];
-
 export const NewHeader = () => {
+  const { t } = useTranslation();
   const { user, signOut } = useAuth();
   const { subscription } = useSubscription();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const PLAN_NAMES: Record<string, string> = {
+    free: t('plans.free'),
+    professional: t('plans.professional'),
+    premium: t('plans.premium'),
+  };
+
+  const navItems = [
+    { name: t('header.home'), path: '/' },
+    { name: t('header.plans'), path: '/plans' },
+  ];
 
   const handleSignOut = async () => {
     await signOut();
@@ -97,16 +99,16 @@ export const NewHeader = () => {
                     </Badge>
                   )}
                   <Button variant="ghost" size="sm" onClick={() => navigate('/account')}>
-                    Conta
+                    {t('header.account')}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={handleSignOut}>
-                    Sair
+                    {t('header.signOut')}
                   </Button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
                   <Button size="sm" onClick={() => navigate('/auth')}>
-                    Entrar
+                    {t('header.signIn')}
                   </Button>
                 </div>
               )}
@@ -114,7 +116,7 @@ export const NewHeader = () => {
 
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden" aria-label="Abrir menu">
+                <Button variant="ghost" size="icon" className="md:hidden" aria-label={t('header.openMenu')}>
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
@@ -129,7 +131,7 @@ export const NewHeader = () => {
                       variant="ghost"
                       size="icon"
                       onClick={() => setIsMobileMenuOpen(false)}
-                      aria-label="Fechar menu"
+                      aria-label={t('header.closeMenu')}
                     >
                       <X className="h-5 w-5" />
                     </Button>
@@ -159,7 +161,7 @@ export const NewHeader = () => {
                         {subscription && (
                           <div className="rounded-lg bg-primary/5 px-4 py-2">
                             <p className="text-sm font-medium text-primary">
-                              Plano: {PLAN_NAMES[subscription.plan]}
+                              {t('header.plan')}: {PLAN_NAMES[subscription.plan]}
                             </p>
                           </div>
                         )}
@@ -171,7 +173,7 @@ export const NewHeader = () => {
                             navigate('/account');
                           }}
                         >
-                          Minha Conta
+                          {t('header.myAccount')}
                         </Button>
                         <Button
                           variant="ghost"
@@ -181,7 +183,7 @@ export const NewHeader = () => {
                             handleSignOut();
                           }}
                         >
-                          Sair
+                          {t('header.signOut')}
                         </Button>
                       </div>
                     ) : (
@@ -194,7 +196,7 @@ export const NewHeader = () => {
                             navigate('/auth');
                           }}
                         >
-                          Entrar
+                          {t('header.signIn')}
                         </Button>
                       </div>
                     )}

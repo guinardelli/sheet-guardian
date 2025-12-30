@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { CreditCard, Crown, Home, Lock, Mail, RefreshCw, Settings, User } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -18,12 +19,6 @@ import { useSubscriptionManagement } from '@/hooks/useSubscriptionManagement';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-const PLAN_NAMES: Record<SubscriptionPlan, string> = {
-  free: 'Gratuito',
-  professional: 'Profissional',
-  premium: 'Premium',
-};
-
 const PLAN_BADGE_STYLES: Record<SubscriptionPlan, string> = {
   free: 'bg-muted text-muted-foreground',
   professional: 'bg-primary/10 text-primary',
@@ -31,10 +26,17 @@ const PLAN_BADGE_STYLES: Record<SubscriptionPlan, string> = {
 };
 
 const Account = () => {
+  const { t } = useTranslation();
   const { user, loading: authLoading } = useAuth();
   const { subscription, loading: subLoading, refetch: refetchSubscription } = useSubscription();
   const navigate = useNavigate();
   const { openCustomerPortal, loading: portalLoading } = useSubscriptionManagement();
+
+  const PLAN_NAMES: Record<SubscriptionPlan, string> = {
+    free: t('plans.free'),
+    professional: t('plans.professional'),
+    premium: t('plans.premium'),
+  };
 
   const [profileLoading, setProfileLoading] = useState(true);
   const [newEmail, setNewEmail] = useState('');
@@ -76,7 +78,7 @@ const Account = () => {
 
   const handleUpdateEmail = async () => {
     if (!newEmail || newEmail === user?.email) {
-      toast.error('Digite um novo email diferente do atual');
+      toast.error(t('account.messages.emailDifferent'));
       return;
     }
 
@@ -84,7 +86,7 @@ const Account = () => {
     const { error } = await supabase.auth.updateUser({ email: newEmail });
 
     if (error) {
-      toast.error('Erro ao atualizar email', {
+      toast.error(t('account.messages.emailUpdateError'), {
         description: error.message,
       });
       setSavingEmail(false);
@@ -97,12 +99,12 @@ const Account = () => {
       .eq('user_id', user.id);
 
     if (profileError) {
-      toast.error('Erro ao sincronizar perfil', {
+      toast.error(t('account.messages.profileSyncError'), {
         description: profileError.message,
       });
     } else {
-      toast.success('Email de confirmação enviado!', {
-        description: 'Verifique sua caixa de entrada para confirmar o novo email.',
+      toast.success(t('account.messages.confirmationSent'), {
+        description: t('account.messages.confirmationSentDesc'),
       });
     }
     setSavingEmail(false);
@@ -110,7 +112,7 @@ const Account = () => {
 
   const handlePasswordReset = async () => {
     if (!user?.email) {
-      toast.error('Email não encontrado');
+      toast.error(t('account.messages.emailNotFound'));
       return;
     }
 
@@ -120,12 +122,12 @@ const Account = () => {
     });
 
     if (error) {
-      toast.error('Erro ao enviar email de redefinição', {
+      toast.error(t('account.messages.resetEmailError'), {
         description: error.message,
       });
     } else {
-      toast.success('Email enviado!', {
-        description: 'Verifique sua caixa de entrada para redefinir sua senha.',
+      toast.success(t('account.messages.resetEmailSent'), {
+        description: t('account.messages.resetEmailSentDesc'),
       });
     }
     setSendingPasswordReset(false);
@@ -133,8 +135,8 @@ const Account = () => {
 
   const handleRetrySubscription = async () => {
     if (retryCount >= 3) {
-      toast.error('Limite de tentativas atingido', {
-        description: 'Entre em contato com o suporte em suporte@sheetguardian.com',
+      toast.error(t('account.messages.retryLimit'), {
+        description: t('account.messages.retryLimitDesc'),
       });
       return;
     }
@@ -146,16 +148,16 @@ const Account = () => {
       const refreshed = await refetchSubscription();
 
       if (refreshed) {
-        toast.success('Assinatura criada com sucesso!');
+        toast.success(t('account.messages.subscriptionCreated'));
         setRetryCount(0);
         setLastError(null);
       } else {
-        setLastError('Nao foi possivel criar a assinatura.');
+        setLastError(t('account.messages.subscriptionError'));
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Erro desconhecido';
+      const message = error instanceof Error ? error.message : t('common.error');
       setLastError(message);
-      toast.error('Erro ao criar assinatura', { description: message });
+      toast.error(t('account.messages.subscriptionError'), { description: message });
     } finally {
       setRetrying(false);
     }
@@ -180,8 +182,8 @@ const Account = () => {
     if (subscription.plan === 'premium') {
       return (
         <div className="text-center p-4 bg-primary/10 rounded-lg">
-          <p className="text-primary font-medium">Uso Ilimitado</p>
-          <p className="text-sm text-muted-foreground">Sem restrições de processamento</p>
+          <p className="text-primary font-medium">{t('dashboard.unlimitedUsage')}</p>
+          <p className="text-sm text-muted-foreground">{t('account.noRestrictions')}</p>
         </div>
       );
     }
@@ -194,7 +196,7 @@ const Account = () => {
       return (
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <span className="text-muted-foreground">Uso mensal:</span>
+            <span className="text-muted-foreground">{t('account.monthlyUsage')}:</span>
             <span className="font-semibold">
               {subscription.sheets_used_month}/{planLimits.sheetsPerMonth}
             </span>
@@ -217,7 +219,7 @@ const Account = () => {
       return (
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <span className="text-muted-foreground">Uso semanal:</span>
+            <span className="text-muted-foreground">{t('account.weeklyUsage')}:</span>
             <span className="font-semibold">
               {subscription.sheets_used_week}/{planLimits.sheetsPerWeek}
             </span>
@@ -257,10 +259,10 @@ const Account = () => {
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-12">
         <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-8">
           <Home className="mr-2 h-4 w-4" />
-          Início
+          {t('common.home')}
         </Button>
 
-        <h1 className="text-3xl font-bold text-foreground mb-10 tracking-tight">Minha Conta</h1>
+        <h1 className="text-3xl font-bold text-foreground mb-10 tracking-tight">{t('account.title')}</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="space-y-6">
@@ -268,13 +270,13 @@ const Account = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <User className="h-5 w-5 text-primary" />
-                  Informações Pessoais
+                  {t('account.personalInfo')}
                 </CardTitle>
-                <CardDescription>Suas informações de conta</CardDescription>
+                <CardDescription>{t('account.personalInfoDesc')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label className="text-sm text-muted-foreground">ID do Usuário</Label>
+                  <Label className="text-sm text-muted-foreground">{t('account.userId')}</Label>
                   <p className="font-mono text-sm text-muted-foreground">{user?.id}</p>
                 </div>
               </CardContent>
@@ -284,20 +286,20 @@ const Account = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Mail className="h-5 w-5 text-primary" />
-                  Email
+                  {t('account.emailSection')}
                 </CardTitle>
-                <CardDescription>Altere seu endereço de email</CardDescription>
+                <CardDescription>{t('account.emailSectionDesc')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Endereço de Email</Label>
+                  <Label htmlFor="email">{t('account.emailAddress')}</Label>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <Input
                       id="email"
                       type="email"
                       value={newEmail}
                       onChange={(e) => setNewEmail(e.target.value)}
-                      placeholder="seu@email.com"
+                      placeholder={t('auth.emailPlaceholder')}
                     />
                     <Button
                       onClick={handleUpdateEmail}
@@ -310,11 +312,11 @@ const Account = () => {
                       ) : (
                         <RefreshCw className="h-4 w-4" />
                       )}
-                      Alterar
+                      {t('common.change')}
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Ao alterar o email, você receberá um link de confirmação no novo endereço.
+                    {t('account.emailChangeNote')}
                   </p>
                 </div>
               </CardContent>
@@ -326,9 +328,9 @@ const Account = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Lock className="h-5 w-5 text-primary" />
-                  Segurança
+                  {t('account.security')}
                 </CardTitle>
-                <CardDescription>Redefina sua senha de acesso</CardDescription>
+                <CardDescription>{t('account.securityDesc')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Button
@@ -338,10 +340,10 @@ const Account = () => {
                   className="w-full gap-2"
                 >
                   {sendingPasswordReset ? <LoadingSpinner /> : <Lock className="h-4 w-4" />}
-                  Enviar Email para Redefinir Senha
+                  {t('account.sendResetEmail')}
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                  Você receberá um email com um link para criar uma nova senha.
+                  {t('account.resetEmailNote')}
                 </p>
               </CardContent>
             </Card>
@@ -350,14 +352,14 @@ const Account = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CreditCard className="h-5 w-5 text-primary" />
-                  Plano Atual
+                  {t('account.currentPlan')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {subLoading ? (
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <LoadingSpinner />
-                    Carregando informações do plano...
+                    {t('account.loadingPlan')}
                   </div>
                 ) : subscription ? (
                   <>
@@ -367,55 +369,55 @@ const Account = () => {
                       </Badge>
                       {subscription.plan === 'premium' && (
                         <span className="text-sm text-muted-foreground">
-                          Todas as funcionalidades desbloqueadas
+                          {t('account.allFeaturesUnlocked')}
                         </span>
                       )}
                     </div>
                     {cancellationInfo && (
                       <div className="text-sm text-muted-foreground">
-                        Cancelamento agendado: seu plano continua ativo ate {cancellationInfo.formattedDate}
-                        {` (${cancellationInfo.daysRemaining} dia${
-                          cancellationInfo.daysRemaining === 1 ? '' : 's'
+                        {t('account.cancellationScheduled')} {cancellationInfo.formattedDate}
+                        {` (${cancellationInfo.daysRemaining} ${
+                          cancellationInfo.daysRemaining === 1 ? t('account.day') : t('account.days')
                         })`}
                         .
                       </div>
                     )}
 
                     <div className="pt-4 border-t">
-                      <h4 className="text-sm font-medium mb-3">Uso do Plano</h4>
+                      <h4 className="text-sm font-medium mb-3">{t('account.planUsage')}</h4>
                       {getUsageDisplay()}
                     </div>
 
                     <div className="pt-4 border-t">
-                      <h4 className="text-sm font-medium mb-3">Limites do Plano</h4>
+                      <h4 className="text-sm font-medium mb-3">{t('account.planLimits')}</h4>
                       <ul className="space-y-2 text-sm">
                         {planLimits && planLimits.sheetsPerMonth !== null && (
                           <li className="flex justify-between">
-                            <span className="text-muted-foreground">Processamentos por mês:</span>
+                            <span className="text-muted-foreground">{t('account.processingsPerMonth')}:</span>
                             <span>{planLimits.sheetsPerMonth}</span>
                           </li>
                         )}
                         {planLimits && planLimits.sheetsPerWeek !== null && (
                           <li className="flex justify-between">
-                            <span className="text-muted-foreground">Processamentos por semana:</span>
+                            <span className="text-muted-foreground">{t('account.processingsPerWeek')}:</span>
                             <span>{planLimits.sheetsPerWeek}</span>
                           </li>
                         )}
                         {planLimits && planLimits.maxFileSizeMB !== null && (
                           <li className="flex justify-between">
-                            <span className="text-muted-foreground">Tamanho máximo de arquivo:</span>
+                            <span className="text-muted-foreground">{t('account.maxFileSize')}:</span>
                             <span>{planLimits.maxFileSizeMB} MB</span>
                           </li>
                         )}
                         {subscription.plan === 'premium' && (
                           <>
                             <li className="flex justify-between">
-                              <span className="text-muted-foreground">Processamentos:</span>
-                              <span>Ilimitados</span>
+                              <span className="text-muted-foreground">{t('account.processings')}:</span>
+                              <span>{t('common.unlimited')}</span>
                             </li>
                             <li className="flex justify-between">
-                              <span className="text-muted-foreground">Tamanho de arquivo:</span>
-                              <span>Sem limite</span>
+                              <span className="text-muted-foreground">{t('account.fileSize')}:</span>
+                              <span>{t('account.noLimit')}</span>
                             </li>
                           </>
                         )}
@@ -425,7 +427,7 @@ const Account = () => {
                       {subscription.plan === 'free' ? (
                         <Button onClick={() => navigate('/plans')} className="w-full">
                           <CreditCard className="h-4 w-4 mr-2" />
-                          Fazer Upgrade
+                          {t('account.doUpgrade')}
                         </Button>
                       ) : subscription.plan === 'professional' ? (
                         <>
@@ -436,7 +438,7 @@ const Account = () => {
                             className="w-full"
                           >
                             <Settings className="h-4 w-4 mr-2" />
-                            Gerenciar Assinatura Profissional
+                            {t('account.manageProSubscription')}
                           </Button>
                           <Button
                             onClick={openCustomerPortal}
@@ -444,11 +446,11 @@ const Account = () => {
                             variant="destructive"
                             className="w-full"
                           >
-                            Cancelar Plano
+                            {t('account.cancelPlan')}
                           </Button>
                           <Button onClick={() => navigate('/plans')} className="w-full">
                             <Crown className="h-4 w-4 mr-2" />
-                            Upgrade para Premium
+                            {t('account.upgradeToPremium')}
                           </Button>
                         </>
                       ) : (
@@ -460,7 +462,7 @@ const Account = () => {
                             className="w-full"
                           >
                             <Settings className="h-4 w-4 mr-2" />
-                            Gerenciar Assinatura Premium
+                            {t('account.managePremiumSubscription')}
                           </Button>
                           <Button
                             onClick={openCustomerPortal}
@@ -468,7 +470,7 @@ const Account = () => {
                             variant="destructive"
                             className="w-full"
                           >
-                            Cancelar Plano
+                            {t('account.cancelPlan')}
                           </Button>
                         </>
                       )}
@@ -476,14 +478,14 @@ const Account = () => {
                   </>
                 ) : (
                   <div className="text-muted-foreground">
-                    <p>Nao foi possivel carregar as informacoes do plano.</p>
+                    <p>{t('account.planLoadError')}</p>
                     {lastError && (
                       <p className="text-xs text-destructive mt-2">
-                        Erro: {lastError}
+                        {t('common.error')}: {lastError}
                       </p>
                     )}
                     <p className="text-xs text-muted-foreground mt-2">
-                      Clique abaixo para tentar criar sua assinatura gratuita.
+                      {t('account.createFreeSubscription')}
                     </p>
                     <Button
                       variant="outline"
@@ -494,10 +496,10 @@ const Account = () => {
                     >
                       {retrying ? <LoadingSpinner /> : <RefreshCw className="h-4 w-4 mr-2" />}
                       {retrying
-                        ? 'Criando assinatura...'
+                        ? t('account.creatingSubscription')
                         : retryCount >= 3
-                          ? 'Limite atingido - Contate o suporte'
-                          : `Criar assinatura${retryCount > 0 ? ` (Tentativa ${retryCount}/3)` : ''}`}
+                          ? t('account.limitReached')
+                          : `${t('account.createSubscription')}${retryCount > 0 ? ` (${t('account.attempt')} ${retryCount}/3)` : ''}`}
                     </Button>
                   </div>
                 )}
@@ -511,13 +513,13 @@ const Account = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CreditCard className="h-5 w-5 text-primary" />
-                Fazer Upgrade
+                {t('account.upgradeSection')}
               </CardTitle>
-              <CardDescription>Desbloqueie mais funcionalidades com um plano superior</CardDescription>
+              <CardDescription>{t('account.upgradeSectionDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
               <Button onClick={() => navigate('/plans')} className="w-full">
-                Ver Planos Disponíveis
+                {t('account.viewPlans')}
               </Button>
             </CardContent>
           </Card>
