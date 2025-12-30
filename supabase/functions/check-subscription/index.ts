@@ -63,7 +63,7 @@ serve(async (req) => {
     logger.info("User authenticated", { userId: user.id, email: user.email });
     logger.info("Starting subscription check", { userId: user.id });
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2024-12-18.acacia" });
     logger.info("Looking up Stripe customer", { email: user.email });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
 
