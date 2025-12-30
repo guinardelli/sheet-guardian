@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
@@ -90,12 +90,16 @@ const Plans = () => {
   const [processing, setProcessing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [retryAttempt, setRetryAttempt] = useState(0);
+  const [isAutoVerifying, setIsAutoVerifying] = useState(false);
+  const autoVerifyStartedRef = useRef(false);
 
-  const checkStripeSubscription = useCallback(async () => {
-    if (!session?.access_token) return;
+  const checkStripeSubscription = useCallback(async (): Promise<boolean> => {
+    if (!session?.access_token) return false;
 
     setSyncStatus('loading');
     setSyncError(null);
+
     try {
       const { data, error } = await supabase.functions.invoke('check-subscription', {
         headers: {
@@ -103,35 +107,38 @@ const Plans = () => {
         },
       });
 
+      await refetch();
+
       if (error) {
         logger.error('Erro ao verificar assinatura', error);
-        setSyncError('Nao foi possivel verificar sua assinatura. Por favor, tente novamente.');
+        setSyncError(
+          'Não foi possível verificar sua assinatura. Clique em "Verificar" para tentar novamente.',
+        );
         setSyncStatus('error');
-        toast({
-          title: 'Erro ao verificar assinatura',
-          description: 'Clique em "Verificar Assinatura" para tentar novamente.',
-          variant: 'destructive',
-        });
-        return;
+        return false;
       }
 
       if (data?.subscribed) {
         setSyncStatus('idle');
+        setSyncError(null);
         toast({
           title: 'Assinatura ativada!',
           description: `Você agora é assinante do plano ${
             PLAN_INFO[data.plan as keyof typeof PLAN_INFO]?.name || data.plan
           }.`,
         });
-        await refetch();
-      } else {
-        setSyncStatus('error');
-        setSyncError('Assinatura nao encontrada. Aguarde alguns minutos e tente novamente.');
+        return true;
       }
+
+      setSyncStatus('error');
+      setSyncError('Aguardando confirmação do pagamento. Isso pode levar alguns segundos...');
+      return false;
     } catch (error) {
       logger.error('Error checking subscription', error);
       setSyncStatus('error');
-      setSyncError('Erro ao conectar com o servidor.');
+      setSyncError('Erro ao conectar com o servidor. Tente novamente.');
+      await refetch();
+      return false;
     }
   }, [session?.access_token, refetch, toast]);
 
@@ -146,12 +153,43 @@ const Plans = () => {
     const success = searchParams.get('success');
     const canceled = searchParams.get('canceled');
 
-    if (success === 'true') {
+    if (success === 'true' && !autoVerifyStartedRef.current) {
+      autoVerifyStartedRef.current = true;
+      setIsAutoVerifying(true);
       toast({
         title: 'Pagamento realizado!',
         description: 'Sua assinatura está sendo processada. Aguarde alguns instantes...',
       });
-      checkStripeSubscription();
+
+      const verifyWithRetry = async () => {
+        const delays = [3000, 5000, 8000, 12000];
+
+        for (let i = 0; i < delays.length; i += 1) {
+          setRetryAttempt(i + 1);
+          await new Promise((resolve) => setTimeout(resolve, delays[i]));
+
+          const verified = await checkStripeSubscription();
+          if (verified) {
+            setIsAutoVerifying(false);
+            setRetryAttempt(0);
+            return;
+          }
+        }
+
+        setIsAutoVerifying(false);
+        setRetryAttempt(0);
+        setSyncStatus('error');
+        setSyncError(
+          'Não foi possível confirmar sua assinatura automaticamente. Use o botão abaixo para verificar manualmente.',
+        );
+        toast({
+          title: 'Verificação automática falhou',
+          description: 'Clique em "Verificar Assinatura" para tentar novamente.',
+          variant: 'destructive',
+        });
+      };
+
+      verifyWithRetry();
     } else if (canceled === 'true') {
       toast({
         title: 'Pagamento cancelado',
@@ -405,13 +443,40 @@ const Plans = () => {
                 onVerify={checkStripeSubscription}
                 isVerifying={syncStatus === 'loading'}
               />
-              {syncError && (
-                <Alert variant="destructive">
+              {syncError && !isAutoVerifying && (
+                <Alert variant="destructive" className="mb-4">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{syncError}</AlertDescription>
+                  <AlertDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <span>{syncError}</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={checkStripeSubscription}
+                      disabled={syncStatus === 'loading'}
+                      className="shrink-0"
+                    >
+                      {syncStatus === 'loading' ? (
+                        <>
+                          <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                          Verificando...
+                        </>
+                      ) : (
+                        'Verificar Assinatura'
+                      )}
+                    </Button>
+                  </AlertDescription>
                 </Alert>
               )}
             </div>
+          )}
+
+          {isAutoVerifying && (
+            <Alert className="mb-4">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <AlertDescription>
+                Verificando assinatura com o Stripe... (tentativa {retryAttempt}/4)
+              </AlertDescription>
+            </Alert>
           )}
 
           {hasActiveSubscription && (
