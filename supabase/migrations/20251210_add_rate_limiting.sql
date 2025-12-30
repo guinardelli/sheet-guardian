@@ -13,15 +13,12 @@ CREATE TABLE IF NOT EXISTS public.auth_attempts (
   -- Index for fast lookups
   CONSTRAINT auth_attempts_ip_address_idx UNIQUE (ip_address, created_at)
 );
-
 -- Create index on ip_address and created_at for rate limit checks
 CREATE INDEX IF NOT EXISTS idx_auth_attempts_ip_time
 ON public.auth_attempts(ip_address, created_at DESC);
-
 -- Create index on email and created_at for per-user rate limiting
 CREATE INDEX IF NOT EXISTS idx_auth_attempts_email_time
 ON public.auth_attempts(email, created_at DESC);
-
 -- Function to check if IP is rate limited
 CREATE OR REPLACE FUNCTION public.check_rate_limit(
   user_ip TEXT,
@@ -42,7 +39,6 @@ BEGIN
   RETURN attempt_count < max_attempts;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
 -- Function to log authentication attempt
 CREATE OR REPLACE FUNCTION public.log_auth_attempt(
   user_ip TEXT,
@@ -70,7 +66,6 @@ BEGIN
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
 -- Function to clean up old auth attempts (keep last 30 days)
 CREATE OR REPLACE FUNCTION public.cleanup_old_auth_attempts()
 RETURNS void AS $$
@@ -79,18 +74,15 @@ BEGIN
   WHERE created_at < NOW() - INTERVAL '30 days';
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
 -- Create a cron job to clean up old attempts daily (requires pg_cron extension)
 -- Note: This requires pg_cron extension which may need to be enabled in Supabase
 -- You can also run this manually or via a scheduled edge function
 COMMENT ON FUNCTION public.cleanup_old_auth_attempts() IS
 'Run this function daily to clean up auth attempts older than 30 days. Can be triggered via Supabase Edge Function cron job.';
-
 -- Grant necessary permissions
 GRANT SELECT, INSERT ON public.auth_attempts TO authenticated;
 GRANT EXECUTE ON FUNCTION public.check_rate_limit TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.log_auth_attempt TO anon, authenticated;
-
 -- Add comment for documentation
 COMMENT ON TABLE public.auth_attempts IS
 'Tracks authentication attempts for rate limiting and security monitoring. Helps prevent brute force attacks.';
