@@ -4,7 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ExcelIcon } from '@/components/ExcelIcon';
 import { NewHeader } from '@/components/NewHeader';
-import { ArrowRight, CheckCircle, FileSpreadsheet, Lock, Shield, Zap } from 'lucide-react';
+import { ProblemSection } from '@/components/ProblemSection';
+import { UseCasesSection } from '@/components/UseCasesSection';
+import { CheckCircle, Lock, Shield, Zap } from 'lucide-react';
 
 const Index = () => {
   const { user } = useAuth();
@@ -29,14 +31,15 @@ const Index = () => {
             </div>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight">
-              <span className="text-gradient-primary">Proteja suas planilhas</span>
+              <span className="text-gradient-primary">Proteja sua Propriedade Intelectual</span>
               <br />
-              com segurança profissional
+              e Torne seu VBA Invisível
             </h1>
 
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              Modifique automaticamente arquivos Excel com VBA, mantendo suas macros seguras,
-              funcionais e prontas para distribuir.
+              A solução definitiva para Desenvolvedores Excel e Infoprodutores.
+              Bloqueie o acesso ao editor VBE, impeça a cópia de macros e distribua
+              suas planilhas com segurança total. Sem instalações, direto no navegador.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -46,7 +49,7 @@ const Index = () => {
                 </Button>
               ) : (
                 <Button size="lg" onClick={() => navigate('/auth')} className="hover-lift">
-                  Começar Gratuitamente
+                  Blindar Minha Planilha Agora
                 </Button>
               )}
               <Button size="lg" variant="outline" onClick={() => navigate('/plans')} className="hover-lift">
@@ -54,70 +57,63 @@ const Index = () => {
               </Button>
             </div>
 
+            <p className="text-sm text-muted-foreground/80 italic">
+              Processamento 100% local. Seu código nunca sai do seu computador.
+            </p>
+
             <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 pt-4">
               <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
                 <CheckCircle className="h-4 w-4 text-primary" />
-                Processamento seguro
+                Bloqueio VBE irreversível
               </div>
               <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
                 <CheckCircle className="h-4 w-4 text-primary" />
-                100% online
+                100% privado no navegador
               </div>
               <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
                 <CheckCircle className="h-4 w-4 text-primary" />
-                Resultado instantâneo
+                Download imediato
               </div>
             </div>
           </div>
         </div>
       </section>
 
+      <ProblemSection />
+
       <section className="py-20 md:py-28 px-4 sm:px-6 lg:px-8 bg-muted/30">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
             <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-4">Recursos</p>
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-5 tracking-tight">
-              Tudo que você precisa para proteger suas planilhas
+              Transforme seu arquivo .xlsm em uma Caixa Preta
             </h2>
             <p className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
-              Design moderno, desempenho rápido e total privacidade no processamento.
+              Tecnologia proprietária que bloqueia o VBE sem quebrar suas macros.
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
             <FeatureCard
               icon={Shield}
-              title="Segurança Garantida"
-              description="Bloqueie macros VBA para evitar execução de código malicioso em suas planilhas Excel."
+              title="Bloqueio VBE Irreversível"
+              description="O editor de código torna-se inacessível para o usuário final. Sem volta, sem gambiarras."
             />
             <FeatureCard
               icon={Zap}
-              title="Processamento Rápido"
-              description="Arquivos processados em segundos com tecnologia otimizada e segura."
+              title="Experiência Frictionless"
+              description="O cliente não precisa instalar nada. O arquivo continua sendo um Excel padrão, não um .exe suspeito."
             />
             <FeatureCard
               icon={Lock}
               title="Privacidade Total"
-              description="Seus arquivos são processados localmente no navegador, sem upload externo."
-            />
-            <FeatureCard
-              icon={FileSpreadsheet}
-              title="Compatibilidade .xlsm"
-              description="Funciona com planilhas Excel com macros habilitadas no formato .xlsm."
-            />
-            <FeatureCard
-              icon={CheckCircle}
-              title="Fácil de Usar"
-              description="Interface intuitiva com drag-and-drop. Arraste seu arquivo e pronto."
-            />
-            <FeatureCard
-              icon={ArrowRight}
-              title="Download Imediato"
-              description="Baixe o arquivo processado instantaneamente após o bloqueio."
+              description="Nossa tecnologia roda no seu navegador. Não fazemos upload do seu arquivo para a nuvem."
             />
           </div>
         </div>
       </section>
+
+      <UseCasesSection />
 
       <section className="py-20 md:py-28 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-t from-primary/5 via-transparent to-transparent pointer-events-none" />

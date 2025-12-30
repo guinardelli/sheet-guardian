@@ -1,0 +1,65 @@
+import { Briefcase, TrendingUp, Users } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+
+export const UseCasesSection = () => {
+  const useCases = [
+    {
+      icon: Briefcase,
+      title: 'Consultores Financeiros',
+      description: 'Envie modelos de valuation e análises para clientes sem expor sua metodologia proprietária.',
+      gradient: 'from-primary/10 to-accent/10',
+    },
+    {
+      icon: TrendingUp,
+      title: 'Vendedores de Dashboards',
+      description: 'Distribua planilhas na Hotmart/Kiwify com segurança. Seus clientes usam, mas não copiam.',
+      gradient: 'from-accent/10 to-primary/10',
+    },
+    {
+      icon: Users,
+      title: 'Empresas e Equipes',
+      description: 'Proteja ferramentas internas antes de compartilhar com equipes externas ou terceirizados.',
+      gradient: 'from-primary/10 to-accent/10',
+    },
+  ];
+
+  return (
+    <section className="py-20 md:py-28 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-14">
+          <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-4">
+            Casos de Uso
+          </p>
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-5">
+            Ideal para quem vive de Excel
+          </h2>
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+            Profissionais que investem tempo criando soluções de valor não podem se dar ao luxo de vê-las copiadas.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-8">
+          {useCases.map((useCase, index) => (
+            <Card
+              key={index}
+              className="border-border/50 shadow-soft hover-lift transition-all duration-300 overflow-hidden"
+            >
+              <div className={`h-2 bg-gradient-to-r ${useCase.gradient}`} />
+              <CardContent className="pt-8 pb-6 space-y-4">
+                <div className="flex justify-center">
+                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                    <useCase.icon className="w-8 h-8 text-primary" />
+                  </div>
+                </div>
+                <h3 className="text-xl font-semibold text-center">{useCase.title}</h3>
+                <p className="text-sm text-muted-foreground text-center leading-relaxed">
+                  {useCase.description}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
