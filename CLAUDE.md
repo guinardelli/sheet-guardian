@@ -441,6 +441,7 @@ When working on this codebase:
 8. **Use existing hooks**: Leverage `useAuth` and `useSubscription` instead of direct Supabase calls
 9. **Keep components simple**: Prefer composition over complex component hierarchies
 10. **Document complex logic**: Add comments for non-obvious binary operations or algorithms
+11. **USE MCP SERVERS**: Always leverage the available MCP servers when applicable (see MCP Servers section below)
 
 ### When to Ask for Clarification
 - Binary VBA modification logic (sensitive and complex)
@@ -448,6 +449,160 @@ When working on this codebase:
 - Database schema modifications (affects existing users)
 - Authentication flow changes
 - Payment integration (not currently implemented)
+
+---
+
+## MCP Servers Available
+
+The project has **10 Model Context Protocol (MCP) servers** configured and active. **Always use these MCPs when applicable** to enhance development workflow and capabilities.
+
+### Active MCP Servers
+
+#### 1. **Sentry MCP** (Error Monitoring)
+- **Purpose**: Monitor and analyze production errors
+- **When to use**:
+  - Investigating production issues
+  - Analyzing error patterns
+  - Tracking performance metrics
+  - Creating/updating issues
+- **Example**: "Check Sentry for errors in the last 24 hours"
+
+#### 2. **Context7 MCP** (Documentation)
+- **Purpose**: Access up-to-date, version-specific documentation
+- **When to use**:
+  - Looking up framework/library documentation
+  - Checking API changes
+  - Finding best practices
+  - Getting code examples
+- **Usage**: Prefix queries with "use context7"
+- **Example**: "use context7 to show React Query best practices"
+
+#### 3. **Filesystem MCP** (File Operations)
+- **Purpose**: Advanced file system operations
+- **When to use**:
+  - Batch file operations
+  - Complex file searches
+  - Reading multiple files efficiently
+- **Scope**: Limited to project directory for security
+
+#### 4. **GitHub MCP** (Repository Management)
+- **Purpose**: Interact with GitHub repositories
+- **When to use**:
+  - Managing issues and PRs
+  - Reviewing commits
+  - Creating/managing branches
+  - Repository insights
+- **Example**: "List all open PRs and their status"
+
+#### 5. **Git MCP** (Local Git Operations)
+- **Purpose**: Local Git version control operations
+- **When to use**:
+  - Checking git status and history
+  - Managing local branches
+  - Viewing diffs and logs
+- **Scope**: Project repository only
+
+#### 6. **PostgreSQL MCP** (Database Queries)
+- **Purpose**: Direct PostgreSQL database access
+- **When to use**:
+  - Complex SQL queries
+  - Database analysis
+  - Data migration tasks
+  - Performance optimization
+- **Connection**: Supabase PostgreSQL database
+- **Example**: "Show me users who exceeded their monthly limit"
+
+#### 7. **Sequential Thinking MCP** (Structured Reasoning)
+- **Purpose**: Step-by-step problem-solving and planning
+- **When to use**:
+  - Complex architectural decisions
+  - Debugging difficult issues
+  - Planning multi-step implementations
+  - Exploring alternative solutions
+- **Example**: "Use sequential thinking to plan the Stripe webhook integration"
+
+#### 8. **Everything MCP** (Testing & Validation)
+- **Purpose**: Exercise all MCP protocol features
+- **When to use**:
+  - Testing MCP functionality
+  - Validating configurations
+  - Development and debugging
+- **Note**: Primarily for testing purposes
+
+#### 9. **Supabase MCP** (Backend Management)
+- **Purpose**: Complete Supabase management via chat
+- **When to use**:
+  - Inspecting database schema
+  - Managing tables and data
+  - Viewing logs
+  - Database migrations
+- **Mode**: Read-only (safe for production)
+- **Example**: "Show me the structure of the subscriptions table"
+
+#### 10. **Stripe MCP** (Payment Processing)
+- **Purpose**: Complete Stripe payment system integration
+- **When to use**:
+  - Managing customers
+  - Creating/managing subscriptions
+  - Processing payments
+  - Handling refunds
+  - Searching Stripe documentation
+- **Mode**: Test mode (safe for development)
+- **Example**: "Create a subscription for customer X on the Professional plan"
+
+### MCP Usage Guidelines
+
+1. **Combine MCPs for Complex Tasks**
+   ```
+   "Use sequential thinking to plan a feature, then use Supabase MCP to check
+   the database schema, and Stripe MCP to set up the payment flow"
+   ```
+
+2. **Use Context7 for Updated Documentation**
+   ```
+   "use context7 to check the latest React Query patterns for 2025"
+   ```
+
+3. **Database Operations: PostgreSQL vs Supabase**
+   - **PostgreSQL MCP**: Complex queries, data analysis, write operations
+   - **Supabase MCP**: Schema inspection, logs, migrations, read-only queries
+
+4. **Version Control Workflow**
+   ```
+   "Use Git MCP to check status, then GitHub MCP to create a PR"
+   ```
+
+5. **Debugging with MCPs**
+   ```
+   "Use Sentry to find recent errors, then use sequential thinking
+   to debug, and PostgreSQL to check database state"
+   ```
+
+### Common MCP Workflows
+
+#### Implementing a New Feature
+1. **Sequential Thinking MCP**: Plan the implementation
+2. **Context7 MCP**: Check latest framework patterns
+3. **Supabase MCP**: Verify database schema
+4. **Git MCP**: Create feature branch
+5. **GitHub MCP**: Create tracking issue
+
+#### Debugging Production Issues
+1. **Sentry MCP**: Identify errors and patterns
+2. **Supabase MCP**: Check database state
+3. **PostgreSQL MCP**: Run diagnostic queries
+4. **Sequential Thinking MCP**: Analyze root cause
+
+#### Payment Integration Development
+1. **Stripe MCP**: Set up products and prices
+2. **Supabase MCP**: Design subscription sync
+3. **Sequential Thinking MCP**: Plan webhook implementation
+4. **PostgreSQL MCP**: Verify data integrity
+
+### MCP Configuration Files
+- **Location**: `.claude.json` (project-specific)
+- **Environment Variables**: `.env` (Stripe, Supabase tokens)
+- **Status Check**: Run `claude mcp list` to verify connections
 
 ---
 
