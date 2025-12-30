@@ -98,6 +98,43 @@ serve(async (req) => {
     }
   };
 
+  const fetchExistingSubscription = async (
+    userId: string | null | undefined,
+    customerId: string | null | undefined
+  ) => {
+    if (userId) {
+      const { data, error } = await supabaseAdmin
+        .from("subscriptions")
+        .select("plan")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (error) {
+        logger.warn("Failed to fetch subscription by user", { error: error.message, userId });
+      }
+
+      if (data) {
+        return data;
+      }
+    }
+
+    if (customerId) {
+      const { data, error } = await supabaseAdmin
+        .from("subscriptions")
+        .select("plan")
+        .eq("stripe_customer_id", customerId)
+        .maybeSingle();
+
+      if (error) {
+        logger.warn("Failed to fetch subscription by customer", { error: error.message, customerId });
+      }
+
+      return data ?? null;
+    }
+
+    return null;
+  };
+
   const updateSubscription = async (
     userId: string | null,
     customerId: string | null,
@@ -227,8 +264,12 @@ serve(async (req) => {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
         const productId = subscription.items.data[0]?.price?.product as string | undefined;
         const plan = getPlanForProduct(productId);
+        const currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+        const cancelAtPeriodEnd = subscription.cancel_at_period_end ?? false;
 
         const resolvedUserId = await resolveUserId(customerId, userId ?? undefined);
+        const existingSubscription = await fetchExistingSubscription(resolvedUserId, customerId);
+        const shouldResetUsage = existingSubscription?.plan === "free" && plan !== "free";
 
         await updateSubscription(resolvedUserId, customerId, {
           plan,
@@ -236,6 +277,15 @@ serve(async (req) => {
           stripe_customer_id: customerId,
           stripe_subscription_id: subscriptionId,
           stripe_product_id: productId ?? null,
+          cancel_at_period_end: cancelAtPeriodEnd,
+          current_period_end: currentPeriodEnd,
+          ...(shouldResetUsage
+            ? {
+                sheets_used_today: 0,
+                sheets_used_week: 0,
+                last_sheet_date: null,
+              }
+            : {}),
           updated_at: new Date().toISOString(),
         });
 
@@ -251,6 +301,8 @@ serve(async (req) => {
         const productId = subscription.items.data[0]?.price?.product as string | undefined;
         const plan = getPlanForProduct(productId);
         const status = subscription.status;
+        const currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+        const cancelAtPeriodEnd = subscription.cancel_at_period_end ?? false;
         const paymentStatus = status === "active" || status === "trialing"
           ? "active"
           : status === "past_due" || status === "unpaid"
@@ -258,6 +310,8 @@ serve(async (req) => {
           : "pending";
 
         const userId = await resolveUserId(customerId);
+        const existingSubscription = await fetchExistingSubscription(userId, customerId);
+        const shouldResetUsage = existingSubscription?.plan === "free" && plan !== "free";
 
         await updateSubscription(userId, customerId, {
           plan,
@@ -265,6 +319,15 @@ serve(async (req) => {
           stripe_customer_id: customerId,
           stripe_subscription_id: subscription.id,
           stripe_product_id: productId ?? null,
+          cancel_at_period_end: cancelAtPeriodEnd,
+          current_period_end: currentPeriodEnd,
+          ...(shouldResetUsage
+            ? {
+                sheets_used_today: 0,
+                sheets_used_week: 0,
+                last_sheet_date: null,
+              }
+            : {}),
           updated_at: new Date().toISOString(),
         });
         break;
@@ -279,6 +342,8 @@ serve(async (req) => {
           payment_status: "pending",
           stripe_subscription_id: null,
           stripe_product_id: null,
+          cancel_at_period_end: false,
+          current_period_end: null,
           updated_at: new Date().toISOString(),
         });
         break;

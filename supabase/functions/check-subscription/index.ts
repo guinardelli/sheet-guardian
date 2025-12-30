@@ -63,6 +63,16 @@ serve(async (req) => {
     logger.info("User authenticated", { userId: user.id, email: user.email });
     logger.info("Starting subscription check", { userId: user.id });
 
+    const { data: existingSubscription, error: existingError } = await supabaseClient
+      .from("subscriptions")
+      .select("plan")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (existingError) {
+      logger.warn("Failed to load existing subscription", { error: existingError.message, userId: user.id });
+    }
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2024-12-18.acacia" });
     logger.info("Looking up Stripe customer", { email: user.email });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
@@ -73,7 +83,8 @@ serve(async (req) => {
         subscribed: false, 
         plan: "free",
         product_id: null,
-        subscription_end: null 
+        subscription_end: null,
+        cancel_at_period_end: false 
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -94,13 +105,17 @@ serve(async (req) => {
     let plan = "free";
     let productId = null;
     let subscriptionEnd = null;
+    let cancelAtPeriodEnd = false;
 
     if (hasActiveSub) {
       const subscription = subscriptions.data[0];
       subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      cancelAtPeriodEnd = subscription.cancel_at_period_end ?? false;
       productId = subscription.items.data[0].price.product as string;
       plan = PRODUCT_TO_PLAN[productId] || "free";
       logger.info("Active subscription found", { subscriptionId: subscription.id, plan, productId });
+
+      const shouldResetUsage = existingSubscription?.plan === "free" && plan !== "free";
 
       // Update local subscription record
       const { error: updateError } = await supabaseClient
@@ -111,6 +126,15 @@ serve(async (req) => {
           stripe_customer_id: customerId,
           stripe_subscription_id: subscription.id,
           stripe_product_id: productId,
+          cancel_at_period_end: cancelAtPeriodEnd,
+          current_period_end: subscriptionEnd,
+          ...(shouldResetUsage
+            ? {
+                sheets_used_today: 0,
+                sheets_used_week: 0,
+                last_sheet_date: null,
+              }
+            : {}),
           updated_at: new Date().toISOString()
         })
         .eq("user_id", user.id);
@@ -137,6 +161,8 @@ serve(async (req) => {
           stripe_customer_id: customerId,
           stripe_subscription_id: null,
           stripe_product_id: null,
+          cancel_at_period_end: false,
+          current_period_end: null,
           updated_at: new Date().toISOString()
         })
         .eq("user_id", user.id);
@@ -152,7 +178,8 @@ serve(async (req) => {
       subscribed: hasActiveSub,
       plan,
       product_id: productId,
-      subscription_end: subscriptionEnd
+      subscription_end: subscriptionEnd,
+      cancel_at_period_end: cancelAtPeriodEnd
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

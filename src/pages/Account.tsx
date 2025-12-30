@@ -235,6 +235,22 @@ const Account = () => {
     return null;
   };
 
+  const cancellationInfo = (() => {
+    if (!subscription?.cancel_at_period_end || !subscription.current_period_end) {
+      return null;
+    }
+
+    const endDate = new Date(subscription.current_period_end);
+    if (Number.isNaN(endDate.getTime())) {
+      return null;
+    }
+
+    const daysRemaining = Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / 86400000));
+    const formattedDate = new Intl.DateTimeFormat('pt-BR').format(endDate);
+
+    return { formattedDate, daysRemaining };
+  })();
+
   return (
     <div className="min-h-screen bg-background pt-20">
       <NewHeader />
@@ -355,6 +371,15 @@ const Account = () => {
                         </span>
                       )}
                     </div>
+                    {cancellationInfo && (
+                      <div className="text-sm text-muted-foreground">
+                        Cancelamento agendado: seu plano continua ativo ate {cancellationInfo.formattedDate}
+                        {` (${cancellationInfo.daysRemaining} dia${
+                          cancellationInfo.daysRemaining === 1 ? '' : 's'
+                        })`}
+                        .
+                      </div>
+                    )}
 
                     <div className="pt-4 border-t">
                       <h4 className="text-sm font-medium mb-3">Uso do Plano</h4>

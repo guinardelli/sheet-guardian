@@ -19,6 +19,8 @@ interface Subscription {
   last_reset_date: string | null;
   payment_method: string | null;
   payment_status: string | null;
+  cancel_at_period_end?: boolean | null;
+  current_period_end?: string | null;
   stripe_customer_id?: string | null;
   stripe_subscription_id?: string | null;
   stripe_product_id?: string | null;
@@ -74,11 +76,15 @@ export const getWeekNumber = (date: Date): string => {
 };
 
 export const useSubscription = () => {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const updateLockRef = useRef(false); // Prevent race conditions
+  const syncLockRef = useRef(false);
+  const lastSyncAtRef = useRef<number | null>(null);
 
   const fetchSubscription = useCallback(async (): Promise<Subscription | null> => {
     if (!user) {
@@ -193,6 +199,75 @@ export const useSubscription = () => {
       setLoading(false);
     }
   }, [user, fetchSubscription]);
+
+  const syncSubscription = useCallback(
+    async (force = false): Promise<boolean> => {
+      if (!user || !session?.access_token) {
+        return false;
+      }
+
+      if (syncLockRef.current) {
+        return false;
+      }
+
+      const now = Date.now();
+      if (!force && lastSyncAtRef.current && now - lastSyncAtRef.current < 30000) {
+        return false;
+      }
+
+      syncLockRef.current = true;
+      setIsSyncing(true);
+      setSyncError(null);
+
+      try {
+        const { data, error } = await supabase.functions.invoke('check-subscription', {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (error) {
+          logger.error('Erro ao sincronizar assinatura', error);
+          setSyncError('Nao foi possivel sincronizar a assinatura agora.');
+          return false;
+        }
+
+        await fetchSubscription();
+        return Boolean(data?.subscribed);
+      } catch (err) {
+        logger.error('Erro inesperado ao sincronizar assinatura', err);
+        setSyncError('Nao foi possivel sincronizar a assinatura agora.');
+        return false;
+      } finally {
+        syncLockRef.current = false;
+        lastSyncAtRef.current = Date.now();
+        setIsSyncing(false);
+      }
+    },
+    [user, session?.access_token, fetchSubscription],
+  );
+
+  useEffect(() => {
+    if (!subscription || !session?.access_token) {
+      return;
+    }
+
+    const hasStripeContext = Boolean(
+      subscription.stripe_customer_id || subscription.stripe_subscription_id || subscription.stripe_product_id,
+    );
+
+    if (!hasStripeContext && subscription.plan === 'free') {
+      return;
+    }
+
+    if (!lastSyncAtRef.current) {
+      syncSubscription();
+    }
+  }, [
+    subscription,
+    session?.access_token,
+    syncSubscription,
+  ]);
 
   const getUsageStats = () => {
     if (!subscription) return null;
@@ -363,9 +438,22 @@ export const useSubscription = () => {
     }
 
     try {
+      const shouldResetUsage = subscription?.plan === 'free' && newPlan !== 'free';
+      const updates = {
+        plan: newPlan,
+        payment_status: newPlan === 'free' ? 'active' : 'pending',
+        ...(shouldResetUsage
+          ? {
+              sheets_used_today: 0,
+              sheets_used_week: 0,
+              last_sheet_date: null,
+            }
+          : {}),
+      };
+
       const { error } = await supabase
         .from('subscriptions')
-        .update({ plan: newPlan, payment_status: newPlan === 'free' ? 'active' : 'pending' })
+        .update(updates)
         .eq('user_id', user.id);
 
       if (error) {
@@ -385,10 +473,13 @@ export const useSubscription = () => {
     subscription,
     loading,
     isUpdating,
+    isSyncing,
+    syncError,
     canProcessSheet,
     incrementUsage,
     updatePlan,
     getUsageStats,
+    syncSubscription,
     refetch: fetchSubscription,
   };
 };

@@ -13,11 +13,22 @@ CREATE TABLE IF NOT EXISTS public.error_logs (
 -- Enable RLS
 ALTER TABLE public.error_logs ENABLE ROW LEVEL SECURITY;
 
--- Allow inserts from anon/authenticated clients
-CREATE POLICY "Allow insert error logs"
-ON public.error_logs FOR INSERT
-TO anon, authenticated
-WITH CHECK (true);
+-- Allow inserts from anon/authenticated clients (idempotent)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'error_logs'
+      AND policyname = 'Allow insert error logs'
+  ) THEN
+    CREATE POLICY "Allow insert error logs"
+    ON public.error_logs FOR INSERT
+    TO anon, authenticated
+    WITH CHECK (true);
+  END IF;
+END $$;
 
 -- Helpful indexes for monitoring
 CREATE INDEX IF NOT EXISTS idx_error_logs_created_at
