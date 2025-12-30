@@ -28,9 +28,22 @@ serve(async (req) => {
     ?? "";
 
   if (!stripeKey || !webhookSecret || !supabaseUrl || !serviceRoleKey) {
-    logger.error("Missing required env vars");
+    logger.error("Missing required env vars", {
+      hasStripeKey: !!stripeKey,
+      hasWebhookSecret: !!webhookSecret,
+      hasSupabaseUrl: !!supabaseUrl,
+      hasServiceRoleKey: !!serviceRoleKey,
+    });
     return new Response("Server misconfigured", { status: 500 });
   }
+
+  logger.info("Environment check", {
+    hasStripeKey: !!stripeKey,
+    hasWebhookSecret: !!webhookSecret,
+    webhookSecretLength: webhookSecret.length,
+    hasSupabaseUrl: !!supabaseUrl,
+    hasServiceRoleKey: !!serviceRoleKey,
+  });
 
   const signature = req.headers.get("stripe-signature");
   if (!signature) {
