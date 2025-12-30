@@ -24,9 +24,9 @@ export const UseCasesSection = () => {
   ];
 
   return (
-    <section className="py-20 md:py-28 px-4 sm:px-6 lg:px-8">
+    <section className="py-12 sm:py-20 md:py-24 lg:py-28 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-14">
+        <div className="text-center mb-7 sm:mb-10 md:mb-12 lg:mb-14">
           <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-4">
             Casos de Uso
           </p>
@@ -38,14 +38,14 @@ export const UseCasesSection = () => {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
           {useCases.map((useCase, index) => (
             <Card
               key={index}
               className="border-border/50 shadow-soft hover-lift transition-all duration-300 overflow-hidden"
             >
               <div className={`h-2 bg-gradient-to-r ${useCase.gradient}`} />
-              <CardContent className="pt-8 pb-6 space-y-4">
+              <CardContent className="pt-5 sm:pt-8 pb-4 sm:pb-6 space-y-4">
                 <div className="flex justify-center">
                   <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
                     <useCase.icon className="w-8 h-8 text-primary" />
