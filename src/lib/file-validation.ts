@@ -2,17 +2,26 @@ import { ALLOWED_MIME_TYPES } from '@/lib/constants';
 
 const ZIP_MAGIC_BYTES = [0x50, 0x4b, 0x03, 0x04];
 const OCTET_STREAM = 'application/octet-stream';
+const ALLOWED_MIME_TYPES_LOWER = ALLOWED_MIME_TYPES.map((type) => type.toLowerCase());
 
 export const isAllowedMimeType = (file: File): boolean => {
   const mimeType = file.type?.toLowerCase?.() ?? '';
   if (!mimeType || mimeType === OCTET_STREAM) {
     return true;
   }
-  return ALLOWED_MIME_TYPES.includes(mimeType as (typeof ALLOWED_MIME_TYPES)[number]);
+  return ALLOWED_MIME_TYPES_LOWER.includes(mimeType);
 };
 
 export const getMagicBytes = async (blob: Blob, length = 4): Promise<Uint8Array> => {
-  const buffer = await blob.slice(0, length).arrayBuffer();
+  const slice = blob.slice(0, length);
+  const buffer = typeof slice.arrayBuffer === 'function'
+    ? await slice.arrayBuffer()
+    : await new Promise<ArrayBuffer>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as ArrayBuffer);
+        reader.onerror = () => reject(reader.error ?? new Error('Failed to read blob'));
+        reader.readAsArrayBuffer(slice);
+      });
   return new Uint8Array(buffer);
 };
 

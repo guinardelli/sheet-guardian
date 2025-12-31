@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Download, Info, Play, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -47,13 +47,16 @@ const Dashboard = () => {
   const { subscription, canProcessSheet, requestProcessingToken, incrementUsage, getUsageStats, isUpdating } = useSubscription();
   const navigate = useNavigate();
 
-  const PROCESSING_MESSAGES = [
-    t('dashboard.processingMessages.analyzing'),
-    t('dashboard.processingMessages.verifying'),
-    t('dashboard.processingMessages.processing'),
-    t('dashboard.processingMessages.applying'),
-    t('dashboard.processingMessages.finalizing'),
-  ];
+  const processingMessages = useMemo(
+    () => [
+      t('dashboard.processingMessages.analyzing'),
+      t('dashboard.processingMessages.verifying'),
+      t('dashboard.processingMessages.processing'),
+      t('dashboard.processingMessages.applying'),
+      t('dashboard.processingMessages.finalizing'),
+    ],
+    [t],
+  );
 
   useEffect(() => {
     if (authError) {
@@ -90,10 +93,10 @@ const Dashboard = () => {
       setDisplayProgress(newProgress);
 
       const messageIndex = Math.min(
-        Math.floor((newProgress / 100) * PROCESSING_MESSAGES.length),
-        PROCESSING_MESSAGES.length - 1,
+        Math.floor((newProgress / 100) * processingMessages.length),
+        processingMessages.length - 1,
       );
-      setProcessingMessage(PROCESSING_MESSAGES[messageIndex]);
+      setProcessingMessage(processingMessages[messageIndex]);
 
       if (currentStep >= steps) {
         clearInterval(timer);
@@ -101,7 +104,7 @@ const Dashboard = () => {
     }, interval);
 
     return () => clearInterval(timer);
-  }, [isProcessing, processingComplete, PROCESSING_MESSAGES]);
+  }, [isProcessing, processingComplete, processingMessages]);
 
   useEffect(() => {
     if (processingComplete && result) {

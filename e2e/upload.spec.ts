@@ -1,3 +1,4 @@
+import fs from 'fs';
 import path from 'path';
 import { test, expect } from '@playwright/test';
 
@@ -25,6 +26,14 @@ test('select file on dashboard', async ({ page }) => {
   await signIn(page);
 
   const filePath = path.resolve(process.cwd(), uploadFile);
-  await page.setInputFiles('input[type="file"]', filePath);
+  await expect(page.getByRole('heading', { name: 'Informações de Uso' })).toBeVisible();
+
+  await page.setInputFiles('input[type="file"]', {
+    name: path.basename(uploadFile),
+    mimeType: 'application/vnd.ms-excel.sheet.macroEnabled.12',
+    buffer: fs.readFileSync(filePath),
+  });
+
+  await expect(page.getByRole('button', { name: 'Iniciar Processamento' })).toBeEnabled();
   await expect(page.getByText(path.basename(uploadFile))).toBeVisible();
 });

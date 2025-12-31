@@ -12,11 +12,13 @@
 Este documento detalha o plano completo para colocar o Sheet Guardian em produção com segurança. O aplicativo é uma SPA React + Supabase que processa arquivos Excel (.xlsm) para modificar padrões binários VBA, com modelo de assinatura (free/professional/premium) integrado ao Stripe.
 
 ### Status Atual
-- **Build/CI**: Funcional, mas falta staging (sourcemaps desabilitados em prod)
-- **Testes**: 4 arquivos unitarios (cobertura a reavaliar)
+- **Build/CI**: Build OK; lint/type-check OK; falta staging (sourcemaps desabilitados em prod)
+- **Testes**: Unitarios OK; E2E OK (smoke/plans/auth/a11y/upload). Checkout pendente (`E2E_CHECKOUT`)
 - **Segurança**: CSP sem `unsafe-eval`; 2FA TOTP implementado (ativar no Supabase)
+- **Dependencias**: `npm audit --omit=dev` OK; `npm audit` mostra moderadas em tools MCP (dev)
 - **Observabilidade**: Sentry SDK integrada; DSN/alerts pendentes (guia `docs/SENTRY_ALERTS.md`)
 - **Backups**: log criado; guia de restore em `BACKUP_RESTORE.md`; restore pendente
+- **Stripe**: `.env` tem apenas key de teste; faltam IDs/segredos live
 - **LGPD**: Paginas de Privacidade/Termos criadas; falta revisao juridica
 
 ### Andamento (2025-12-31)
@@ -35,10 +37,18 @@ Este documento detalha o plano completo para colocar o Sheet Guardian em produç
 - ✅ DAST configurado via workflow manual (OWASP ZAP).
 - ✅ Guia de staging adicionado.
 - ✅ Guias externos criados: Stripe live (`docs/STRIPE_LIVE_SETUP.md`), Sentry alerts (`docs/SENTRY_ALERTS.md`), uptime (`docs/UPTIME_MONITORING.md`), backup restore (`BACKUP_RESTORE.md`), schedule (`docs/SUPABASE_SCHEDULES.md`).
+- ✅ Stripe: IDs agora suportam env (`VITE_STRIPE_*`) com fallback; falta definir IDs live e configurar webhook.
+- ✅ Verificacao de `.env`: apenas `STRIPE_SECRET_KEY` de teste; `STRIPE_WEBHOOK_SECRET` e `VITE_STRIPE_*` ausentes.
+- ✅ Unit tests rodados (vitest --run) e ajuste de validacao de mime/magic bytes; Vitest agora ignora `e2e/**`.
+- ✅ E2E rodado (Playwright): smoke/plans/auth/a11y/upload ok; checkout pendente (`E2E_CHECKOUT=false`).
+- ✅ Lint + type-check + build executados (lint limpo; build ok). Aviso: browserslist DB desatualizado.
+- ✅ Dependencias: MCP tools movidos para `devDependencies`; `npm audit --omit=dev` sem vulnerabilidades.
+- ✅ Browserslist DB atualizado via `update-browserslist-db`.
+- ✅ E2E com credenciais fornecidas executado (upload validado e botao habilitado).
 - ✅ 2FA TOTP opcional implementado (flag `VITE_FEATURE_2FA`).
 - ⏳ Staging: template `.env.staging.example` criado; falta projeto Supabase + Vercel/CI.
 - ⏳ Backup: log criado; teste de restore pendente.
-- ⏳ Stripe live mode, alertas e uptime monitoring dependem de configuracao externa.
+- ⏳ Stripe live mode, alertas e uptime monitoring dependem de configuracao externa (dashboards).
 
 ---
 
@@ -143,7 +153,7 @@ npm install @sentry/react
 #### 2.3 Migrar Stripe para Live Mode
 **Arquivos**: `.env`, `src/lib/stripe.ts`
 
-**Status**: ⏳ Pendente (guia em `docs/STRIPE_LIVE_SETUP.md`; requer credenciais live e IDs de produtos/precos)
+**Status**: ⏳ Em andamento (IDs via env; `.env` com key de teste; faltam credenciais live, webhook e IDs de produtos/precos)
 
 **Checklist**:
 1. [ ] Criar produtos/preços no Stripe Dashboard (live mode)
@@ -151,6 +161,12 @@ npm install @sentry/react
    ```env
    STRIPE_SECRET_KEY=sk_live_XXXXX
    STRIPE_WEBHOOK_SECRET=whsec_XXXXX
+   ```
+   ```env
+   VITE_STRIPE_PROFESSIONAL_PRODUCT_ID=prod_LIVE_ID
+   VITE_STRIPE_PROFESSIONAL_PRICE_ID=price_LIVE_ID
+   VITE_STRIPE_PREMIUM_PRODUCT_ID=prod_LIVE_ID
+   VITE_STRIPE_PREMIUM_PRICE_ID=price_LIVE_ID
    ```
 3. [ ] Atualizar IDs em `src/lib/stripe.ts`:
    ```typescript
@@ -433,7 +449,7 @@ Configurar cron no Supabase Dashboard → Edge Functions → Schedule
 #### 2.14 Testar Restore de Backup
 **Log**: `docs/BACKUP_TEST_LOG.md`
 **Procedimento**:
-**Status**: ⏳ Log criado; guia em `BACKUP_RESTORE.md`; restauracao pendente
+**Status**: ⏳ Log criado; guia em `BACKUP_RESTORE.md`; restauracao pendente (nenhum `.dump` local encontrado; `SUPABASE_DB_URL` ausente)
 1. Baixar último backup de GitHub Actions artifacts
 2. Criar banco PostgreSQL local ou novo projeto Supabase
 3. Executar restore:
@@ -600,6 +616,8 @@ npm install -D @axe-core/playwright
 | Auth Logic | `useAuth.test.ts` | ✅ Existe |
 | Date Utils | `date-utils.test.ts` | ✅ Coberto em `useSubscription.test.ts` |
 
+Ultima execucao: 2025-12-31 (vitest --run)
+
 ### 4.2 Testes E2E (Playwright)
 | Fluxo | Arquivo | Prioridade |
 |-------|---------|------------|
@@ -608,6 +626,23 @@ npm install -D @axe-core/playwright
 | Checkout | `e2e/checkout.spec.ts` | P0 |
 | Rate Limiting | `e2e/rate-limit.spec.ts` | P1 |
 | Acessibilidade | `e2e/a11y.spec.ts` | P2 |
+
+Nota: E2E deve rodar via Playwright (`npm run test:e2e`), separado do Vitest.
+Ultima execucao: 2025-12-31 (Playwright) -> 6 passed, 1 skipped (checkout desativado por `E2E_CHECKOUT`).
+
+Lint/Type-check/Build: 2025-12-31 (lint OK, type-check OK, build OK; browserslist DB desatualizado).
+
+Encerramento:
+- Sessao finalizada a pedido do usuario. Todos os passos automatizaveis concluidos.
+- Itens pendentes exigem configuracoes externas ou credenciais (ver pendencias abaixo).
+
+Pendencias para proxima etapa:
+- Stripe live mode: credenciais e IDs live + webhook no Stripe Dashboard.
+- Sentry: definir `VITE_SENTRY_DSN` e configurar alertas.
+- Uptime monitoring: configurar provedor (ex.: Better Stack) com endpoints.
+- Staging: criar projeto Supabase + Vercel preview/CI.
+- Backup restore: obter `.dump` e `SUPABASE_DB_URL` e registrar resultado no log.
+- E2E checkout: habilitar `E2E_CHECKOUT=true` para validar fluxo com pagamento.
 
 ### 4.3 Testes de Segurança
 | Teste | Ferramenta | Status |

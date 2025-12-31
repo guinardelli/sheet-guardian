@@ -36,7 +36,7 @@ export const UseCasesSection = () => {
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-5">
             {t('useCases.heading')}
           </h2>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+          <p className="text-foreground/80 text-lg max-w-2xl mx-auto">
             {t('useCases.subtitle')}
           </p>
         </div>
@@ -55,7 +55,7 @@ export const UseCasesSection = () => {
                   </div>
                 </div>
                 <h3 className="text-xl font-semibold text-center">{useCase.title}</h3>
-                <p className="text-sm text-muted-foreground text-center leading-relaxed">
+                <p className="text-sm text-foreground/80 text-center leading-relaxed">
                   {useCase.description}
                 </p>
               </CardContent>

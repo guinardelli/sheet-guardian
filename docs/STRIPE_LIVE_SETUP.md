@@ -5,8 +5,8 @@ Migrar para live mode com produtos, precos e webhook ativos.
 
 ## Checklist rapido
 1. Criar produtos e precos no Stripe (live mode).
-2. Atualizar IDs em `src/lib/stripe.ts`.
-3. Atualizar variaveis no ambiente (Vercel/Supabase).
+2. Atualizar IDs publicos via env (`VITE_STRIPE_*`).
+3. Atualizar secrets no ambiente (Vercel/Supabase).
 4. Configurar webhook para `stripe-webhook`.
 5. Testar checkout em live mode.
 
@@ -16,22 +16,16 @@ Migrar para live mode com produtos, precos e webhook ativos.
 - Criar produto Professional e Premium.
 - Anotar `product_id` e `price_id`.
 
-### 2) Atualizar IDs no codigo
-Editar `src/lib/stripe.ts`:
-```ts
-export const STRIPE_PLANS = {
-  professional: {
-    product_id: 'prod_LIVE_ID',
-    price_id: 'price_LIVE_ID',
-  },
-  premium: {
-    product_id: 'prod_LIVE_ID',
-    price_id: 'price_LIVE_ID',
-  },
-} as const;
+### 2) Atualizar IDs publicos via env
+Atualizar no ambiente de producao:
+```
+VITE_STRIPE_PROFESSIONAL_PRODUCT_ID=prod_live_professional
+VITE_STRIPE_PROFESSIONAL_PRICE_ID=price_live_professional
+VITE_STRIPE_PREMIUM_PRODUCT_ID=prod_live_premium
+VITE_STRIPE_PREMIUM_PRICE_ID=price_live_premium
 ```
 
-### 3) Variaveis de ambiente
+### 3) Variaveis de ambiente (secrets)
 Atualizar no ambiente de producao:
 ```
 STRIPE_SECRET_KEY=sk_live_...

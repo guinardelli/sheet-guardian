@@ -59,7 +59,7 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? '';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '';
 const FUNCTIONS_BASE_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1` : '';
 
-const invokeFunctionWithRetry = async <T>(
+const invokeFunctionWithRetry = async <T,>(
   functionName: string,
   accessToken: string,
   body?: unknown,

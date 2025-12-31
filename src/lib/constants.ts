@@ -16,6 +16,7 @@ export const ALLOWED_FILE_EXTENSIONS = ['.xlsm'] as const;
 // MIME types are used as secondary validation when available
 export const ALLOWED_MIME_TYPES = [
   'application/vnd.ms-excel.sheet.macroEnabled.12',
+  'application/vnd.ms-excel',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   // Note: application/octet-stream removed as it's too broad
   // File extension validation is the primary check

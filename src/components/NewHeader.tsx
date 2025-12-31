@@ -76,7 +76,7 @@ export const NewHeader = () => {
                           'group inline-flex h-9 w-max items-center justify-center rounded-md bg-transparent px-4 py-2 text-sm font-medium transition-all',
                           'hover:bg-accent/50 hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none',
                           'disabled:pointer-events-none disabled:opacity-50',
-                          isActive(item.path) && 'bg-primary/10 text-primary',
+                          isActive(item.path) && 'bg-primary/10 text-foreground font-semibold',
                         )}
                       >
                         {item.name}

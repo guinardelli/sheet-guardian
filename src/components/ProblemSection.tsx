@@ -52,7 +52,7 @@ export const ProblemSection = () => {
           <div className="relative max-w-md w-full">
             <div className="absolute inset-0 bg-destructive/20 blur-2xl rounded-full" />
             <div className="relative bg-muted/50 backdrop-blur-sm border border-destructive/30 rounded-lg p-4 sm:p-6 text-center">
-              <p className="text-sm text-muted-foreground italic">
+              <p className="text-sm text-foreground/80 italic">
                 {t('problems.warning')}
               </p>
             </div>
