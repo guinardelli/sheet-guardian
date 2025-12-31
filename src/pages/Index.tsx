@@ -20,7 +20,7 @@ const Index = () => {
 
       <section className="relative py-12 sm:py-20 md:py-24 lg:py-28 overflow-hidden">
         <div className="absolute inset-0 -z-10">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-accent/5 to-background animate-gradient-shift" />
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-accent/5 to-background" />
           <div className="absolute -top-28 -right-24 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
           <div className="absolute -bottom-28 -left-24 h-72 w-72 rounded-full bg-accent/10 blur-3xl" />
         </div>
