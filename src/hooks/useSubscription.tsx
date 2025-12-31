@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { logger } from '@/lib/logger';
 import { trackSubscriptionIssue } from '@/lib/error-tracker';
+import { fetchWithRetry } from '@/lib/fetch-with-retry';
 
 export type SubscriptionPlan = 'free' | 'professional' | 'premium';
 
@@ -52,6 +53,51 @@ export const PLAN_PRICES: Record<SubscriptionPlan, number> = {
   free: 0,
   professional: 32,
   premium: 38,
+};
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? '';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '';
+const FUNCTIONS_BASE_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1` : '';
+
+const invokeFunctionWithRetry = async <T>(
+  functionName: string,
+  accessToken: string,
+  body?: unknown,
+): Promise<{ data: T | null; error: Error | null }> => {
+  if (!FUNCTIONS_BASE_URL || !SUPABASE_ANON_KEY) {
+    return { data: null, error: new Error('Supabase env not configured') };
+  }
+
+  try {
+    const response = await fetchWithRetry(`${FUNCTIONS_BASE_URL}/${functionName}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        apikey: SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+
+    const text = await response.text();
+    let parsed: T | null = null;
+    if (text) {
+      try {
+        parsed = JSON.parse(text) as T;
+      } catch {
+        parsed = null;
+      }
+    }
+
+    if (!response.ok) {
+      const errorMessage = (parsed as { error?: string } | null)?.error ?? text ?? `HTTP ${response.status}`;
+      return { data: null, error: new Error(errorMessage) };
+    }
+
+    return { data: parsed, error: null };
+  } catch (err) {
+    return { data: null, error: err instanceof Error ? err : new Error('Unknown error') };
+  }
 };
 
 // Helper to get local date string (YYYY-MM-DD) without timezone issues
@@ -229,11 +275,10 @@ export const useSubscription = () => {
       setSyncError(null);
 
       try {
-        const { data, error } = await supabase.functions.invoke('check-subscription', {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
+        const { data, error } = await invokeFunctionWithRetry<{ subscribed?: boolean }>(
+          'check-subscription',
+          session.access_token,
+        );
 
         if (error) {
           logger.error('Erro ao sincronizar assinatura', error);
@@ -319,11 +364,10 @@ export const useSubscription = () => {
       }
 
       try {
-        const { data, error } = await supabase.functions.invoke('validate-processing', {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: {
+        const { data, error } = await invokeFunctionWithRetry<ProcessingTokenResponse>(
+          'validate-processing',
+          session.access_token,
+          {
             action: 'validate',
             file: {
               name: file.name,
@@ -331,7 +375,7 @@ export const useSubscription = () => {
               mimeType: file.type || null,
             },
           },
-        });
+        );
 
         if (error) {
           logger.error('Erro ao validar processamento', error);
@@ -435,15 +479,14 @@ export const useSubscription = () => {
     setIsUpdating(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('validate-processing', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: {
+      const { data, error } = await invokeFunctionWithRetry<{ success?: boolean; error?: string }>(
+        'validate-processing',
+        session.access_token,
+        {
           action: 'consume',
           processingToken,
         },
-      });
+      );
 
       if (error) {
         logger.error('Erro ao registrar uso', error);

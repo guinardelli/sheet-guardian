@@ -27,6 +27,11 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
+  const [mfaVerifying, setMfaVerifying] = useState(false);
+  const [mfaCheckPending, setMfaCheckPending] = useState(false);
   const [searchParams] = useSearchParams();
   const [isRecoveryMode, setIsRecoveryMode] = useState(() => searchParams.get('mode') === 'reset');
   const { signIn, signUp, user } = useAuth();
@@ -42,10 +47,10 @@ const Auth = () => {
   });
 
   useEffect(() => {
-    if (user && !isRecoveryMode) {
+    if (user && !isRecoveryMode && !mfaRequired && !mfaCheckPending) {
       navigate('/dashboard');
     }
-  }, [user, isRecoveryMode, navigate]);
+  }, [user, isRecoveryMode, mfaRequired, mfaCheckPending, navigate]);
 
   useEffect(() => {
     setIsRecoveryMode(searchParams.get('mode') === 'reset');
@@ -76,6 +81,7 @@ const Auth = () => {
     setLoading(false);
 
     if (error) {
+      setMfaCheckPending(false);
       toast({
         title: t('auth.errors.signInError'),
         description:
@@ -83,8 +89,85 @@ const Auth = () => {
         variant: 'destructive',
       });
     } else {
+      setMfaCheckPending(true);
+      const { data: aalData, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (!aalError && aalData?.nextLevel === 'aal2') {
+        const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
+        const factor = factorsData?.totp?.[0] ?? null;
+
+        if (factorsError || !factor) {
+          await supabase.auth.signOut();
+          setMfaCheckPending(false);
+          toast({
+            title: t('auth.errors.signInError'),
+            description: t('auth.mfa.errors.missingFactor'),
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        setMfaRequired(true);
+        setMfaFactorId(factor.id);
+        setMfaCheckPending(false);
+        return;
+      }
+
+      setMfaCheckPending(false);
       navigate('/dashboard');
     }
+  };
+
+  const handleVerifyMfa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mfaFactorId) {
+      return;
+    }
+
+    const code = mfaCode.replace(/\s+/g, '');
+    if (code.length < 6) {
+      toast({
+        title: t('auth.errors.signInError'),
+        description: t('auth.mfa.errors.invalidCode'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setMfaVerifying(true);
+    const { data, error } = await supabase.auth.mfa.challengeAndVerify({
+      factorId: mfaFactorId,
+      code,
+    });
+
+    if (error || !data) {
+      toast({
+        title: t('auth.errors.signInError'),
+        description: error?.message ?? t('auth.mfa.errors.invalidCode'),
+        variant: 'destructive',
+      });
+      setMfaVerifying(false);
+      return;
+    }
+
+    await supabase.auth.setSession({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+    });
+
+    setMfaVerifying(false);
+    setMfaRequired(false);
+    setMfaFactorId(null);
+    setMfaCode('');
+    setMfaCheckPending(false);
+    navigate('/dashboard');
+  };
+
+  const handleCancelMfa = async () => {
+    await supabase.auth.signOut();
+    setMfaRequired(false);
+    setMfaFactorId(null);
+    setMfaCode('');
+    setMfaCheckPending(false);
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -155,6 +238,47 @@ const Auth = () => {
         <NewHeader />
         <div className="relative flex min-h-[calc(100vh-5rem)] items-center justify-center p-4 sm:p-6 lg:p-8">
           <ResetPasswordForm onSuccess={() => navigate('/dashboard')} />
+        </div>
+      </div>
+    );
+  }
+
+  if (mfaRequired) {
+    return (
+      <div className="min-h-screen bg-background pt-20">
+        <NewHeader />
+        <div className="relative flex min-h-[calc(100vh-5rem)] items-center justify-center p-4 sm:p-6 lg:p-8">
+          <Card className="w-full max-w-md border-border/50 shadow-soft-lg bg-background/95 backdrop-blur-sm relative">
+            <CardHeader className="space-y-2 text-center">
+              <CardTitle className="text-2xl">{t('auth.mfa.title')}</CardTitle>
+              <CardDescription className="text-base">
+                {t('auth.mfa.subtitle')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleVerifyMfa} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="mfa-code">{t('auth.mfa.codeLabel')}</Label>
+                  <Input
+                    id="mfa-code"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder={t('auth.mfa.codePlaceholder')}
+                    value={mfaCode}
+                    onChange={(event) => setMfaCode(event.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Button type="submit" disabled={mfaVerifying}>
+                    {mfaVerifying ? t('auth.mfa.verifying') : t('auth.mfa.verify')}
+                  </Button>
+                  <Button type="button" variant="ghost" onClick={handleCancelMfa}>
+                    {t('auth.mfa.cancel')}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );

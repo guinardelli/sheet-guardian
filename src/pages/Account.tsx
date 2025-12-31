@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
+import { MFASetup } from '@/components/MFASetup';
 import { NewHeader } from '@/components/NewHeader';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -18,6 +19,7 @@ import { useSubscriptionManagement } from '@/hooks/useSubscriptionManagement';
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { FLAGS } from '@/lib/feature-flags';
 
 const PLAN_BADGE_STYLES: Record<SubscriptionPlan, string> = {
   free: 'bg-muted text-muted-foreground',
@@ -347,6 +349,8 @@ const Account = () => {
                 </p>
               </CardContent>
             </Card>
+
+            {FLAGS.ENABLE_2FA && <MFASetup />}
 
             <Card className="border-border/50 shadow-soft bg-gradient-to-br from-background to-muted/20">
               <CardHeader>

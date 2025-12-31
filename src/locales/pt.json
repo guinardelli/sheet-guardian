@@ -143,6 +143,19 @@
       "emailSentDesc": "Se o email existir em nossa base, você receberá instruções para redefinir sua senha.",
       "passwordReset": "Senha redefinida",
       "passwordResetDesc": "Sua senha foi atualizada com sucesso."
+    },
+    "mfa": {
+      "title": "Verificação em duas etapas",
+      "subtitle": "Digite o código do seu app autenticador para continuar.",
+      "codeLabel": "Código de verificação",
+      "codePlaceholder": "123456",
+      "verify": "Verificar",
+      "verifying": "Verificando...",
+      "cancel": "Cancelar",
+      "errors": {
+        "missingFactor": "Não foi possível localizar seu fator de autenticação.",
+        "invalidCode": "Código inválido. Tente novamente."
+      }
     }
   },
   "plansPage": {
@@ -220,6 +233,32 @@
     "securityDesc": "Redefina sua senha de acesso",
     "sendResetEmail": "Enviar Email para Redefinir Senha",
     "resetEmailNote": "Você receberá um email com um link para criar uma nova senha.",
+    "mfa": {
+      "title": "Autenticação em duas etapas",
+      "description": "Adicione uma camada extra de segurança com um app autenticador.",
+      "loading": "Carregando status do 2FA...",
+      "statusEnabled": "2FA ativo",
+      "statusDisabled": "2FA desativado",
+      "enable": "Ativar 2FA",
+      "disable": "Desativar 2FA",
+      "preparing": "Preparando...",
+      "verifying": "Verificando...",
+      "setupIntro": "Escaneie o QR code no seu app autenticador e informe o código gerado.",
+      "secretLabel": "Chave secreta",
+      "codeLabel": "Código do app",
+      "qrAlt": "QR code para autenticação",
+      "disablePrompt": "Confirme o código do app para desativar o 2FA.",
+      "enabled": "2FA ativado com sucesso.",
+      "disabled": "2FA desativado.",
+      "defaultName": "Authenticator",
+      "errors": {
+        "load": "Não foi possível carregar o status do 2FA.",
+        "enroll": "Não foi possível iniciar o 2FA.",
+        "verify": "Não foi possível verificar o código.",
+        "disable": "Não foi possível desativar o 2FA.",
+        "invalidCode": "Digite um código válido."
+      }
+    },
     "currentPlan": "Plano Atual",
     "allFeaturesUnlocked": "Todas as funcionalidades desbloqueadas",
     "cancellationScheduled": "Cancelamento agendado: seu plano continua ativo até",

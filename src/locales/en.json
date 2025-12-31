@@ -143,6 +143,19 @@
       "emailSentDesc": "If the email exists in our database, you will receive instructions to reset your password.",
       "passwordReset": "Password reset",
       "passwordResetDesc": "Your password has been successfully updated."
+    },
+    "mfa": {
+      "title": "Two-step verification",
+      "subtitle": "Enter the code from your authenticator app to continue.",
+      "codeLabel": "Verification code",
+      "codePlaceholder": "123456",
+      "verify": "Verify",
+      "verifying": "Verifying...",
+      "cancel": "Cancel",
+      "errors": {
+        "missingFactor": "Could not find your authentication factor.",
+        "invalidCode": "Invalid code. Try again."
+      }
     }
   },
   "plansPage": {
@@ -220,6 +233,32 @@
     "securityDesc": "Reset your access password",
     "sendResetEmail": "Send Password Reset Email",
     "resetEmailNote": "You will receive an email with a link to create a new password.",
+    "mfa": {
+      "title": "Two-step authentication",
+      "description": "Add an extra layer of security with an authenticator app.",
+      "loading": "Loading 2FA status...",
+      "statusEnabled": "2FA enabled",
+      "statusDisabled": "2FA disabled",
+      "enable": "Enable 2FA",
+      "disable": "Disable 2FA",
+      "preparing": "Preparing...",
+      "verifying": "Verifying...",
+      "setupIntro": "Scan the QR code in your authenticator app and enter the generated code.",
+      "secretLabel": "Secret key",
+      "codeLabel": "App code",
+      "qrAlt": "Authentication QR code",
+      "disablePrompt": "Confirm the code from your app to disable 2FA.",
+      "enabled": "2FA enabled successfully.",
+      "disabled": "2FA disabled.",
+      "defaultName": "Authenticator",
+      "errors": {
+        "load": "Could not load the 2FA status.",
+        "enroll": "Could not start 2FA.",
+        "verify": "Could not verify the code.",
+        "disable": "Could not disable 2FA.",
+        "invalidCode": "Enter a valid code."
+      }
+    },
     "currentPlan": "Current Plan",
     "allFeaturesUnlocked": "All features unlocked",
     "cancellationScheduled": "Cancellation scheduled: your plan remains active until",

@@ -13,9 +13,15 @@ dist-ssr
 *.local
 backups
 
+# Playwright
+playwright-report/
+test-results/
+blob-report/
+
 # Environment variables (use .env.example as template)
 .env
 .env.local
+.env.staging
 .env.*.local
 
 # Editor directories and files

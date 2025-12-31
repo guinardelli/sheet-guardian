@@ -1,6 +1,8 @@
+import { fetchWithRetry } from '@/lib/fetch-with-retry';
+
 export const getUserIP = async (): Promise<string> => {
   try {
-    const response = await fetch('https://api.ipify.org?format=json');
+    const response = await fetchWithRetry('https://api.ipify.org?format=json', { method: 'GET' });
     if (!response.ok) {
       return 'unknown';
     }

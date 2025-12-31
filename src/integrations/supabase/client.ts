@@ -32,6 +32,14 @@ const createMockClient = (): SupabaseClient<Database> => {
     updateUser: () => Promise.resolve({ data: { user: null }, error: notConfiguredError }),
     getUser: () => Promise.resolve({ data: { user: null }, error: null }),
     refreshSession: () => Promise.resolve({ data: { session: null, user: null }, error: notConfiguredError }),
+    setSession: () => Promise.resolve({ data: { user: null, session: null }, error: notConfiguredError }),
+    mfa: {
+      listFactors: () => Promise.resolve({ data: null, error: notConfiguredError }),
+      enroll: () => Promise.resolve({ data: null, error: notConfiguredError }),
+      challengeAndVerify: () => Promise.resolve({ data: null, error: notConfiguredError }),
+      unenroll: () => Promise.resolve({ data: null, error: notConfiguredError }),
+      getAuthenticatorAssuranceLevel: () => Promise.resolve({ data: null, error: notConfiguredError }),
+    },
   };
 
   return {
