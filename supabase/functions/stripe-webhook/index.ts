@@ -10,21 +10,80 @@ const PRODUCT_TO_PLAN: Record<string, PlanName> = {
   "prod_TaJsysi99Q1g2J": "premium",
 };
 
-const logger = createLogger("STRIPE-WEBHOOK");
+const baseLogger = createLogger("STRIPE-WEBHOOK");
 
 const getPlanForProduct = (productId: string | null | undefined): PlanName =>
   productId && PRODUCT_TO_PLAN[productId] ? PRODUCT_TO_PLAN[productId] : "free";
 
-serve(async (req) => {
+type EnvGetter = {
+  get: (key: string) => string | undefined;
+};
+
+type LoggerLike = {
+  info: (message: string, meta?: Record<string, unknown>) => void;
+  warn: (message: string, meta?: Record<string, unknown>) => void;
+  error: (message: string, meta?: Record<string, unknown>) => void;
+};
+
+type SupabaseError = {
+  message: string;
+  code?: string;
+} | null;
+
+type SupabaseQuery = {
+  select: (columns: string) => {
+    eq: (column: string, value: string) => {
+      maybeSingle: () => Promise<{ data: Record<string, unknown> | null; error: SupabaseError }>;
+    };
+  };
+  update: (updates: Record<string, unknown>) => {
+    eq: (column: string, value: string) => Promise<{ error: SupabaseError }>;
+  };
+  insert: (values: Record<string, unknown>) => Promise<{ error: SupabaseError }>;
+};
+
+type SupabaseLike = {
+  from: (table: string) => SupabaseQuery;
+};
+
+type StripeCustomer = Stripe.Customer | Stripe.DeletedCustomer;
+
+type StripeLike = {
+  webhooks: {
+    constructEvent: (body: string, signature: string, secret: string) => Stripe.Event;
+  };
+  subscriptions: {
+    retrieve: (id: string) => Promise<Stripe.Subscription>;
+  };
+  customers: {
+    retrieve: (id: string) => Promise<StripeCustomer>;
+  };
+};
+
+export type WebhookDependencies = {
+  env: EnvGetter;
+  logger: LoggerLike;
+  stripe: StripeLike;
+  supabaseAdmin: SupabaseLike;
+  now: () => Date;
+};
+
+export const createWebhookHandler = (
+  overrides: Partial<WebhookDependencies> = {},
+) => async (req: Request) => {
+  const env = overrides.env ?? Deno.env;
+  const logger = overrides.logger ?? baseLogger;
+  const now = overrides.now ?? (() => new Date());
+
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
   }
 
-  const stripeKey = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
-  const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "";
-  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const serviceRoleKey = Deno.env.get("SERVICE_ROLE_KEY")
-    ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+  const stripeKey = env.get("STRIPE_SECRET_KEY") ?? "";
+  const webhookSecret = env.get("STRIPE_WEBHOOK_SECRET") ?? "";
+  const supabaseUrl = env.get("SUPABASE_URL") ?? "";
+  const serviceRoleKey = env.get("SERVICE_ROLE_KEY")
+    ?? env.get("SUPABASE_SERVICE_ROLE_KEY")
     ?? "";
 
   if (!stripeKey || !webhookSecret || !supabaseUrl || !serviceRoleKey) {
@@ -50,7 +109,8 @@ serve(async (req) => {
     return new Response("Missing Stripe signature", { status: 400 });
   }
 
-  const stripe = new Stripe(stripeKey, { apiVersion: "2024-12-18.acacia" });
+  const stripe = overrides.stripe
+    ?? new Stripe(stripeKey, { apiVersion: "2024-12-18.acacia" });
   const body = await req.text();
 
   let event: Stripe.Event;
@@ -64,9 +124,48 @@ serve(async (req) => {
 
   logger.info("Webhook received", { eventType: event.type, eventId: event.id });
 
-  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+  const supabaseAdmin = overrides.supabaseAdmin ?? createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false },
   });
+
+  const registerWebhookEvent = async (incomingEvent: Stripe.Event) => {
+    const { error } = await supabaseAdmin
+      .from("stripe_webhook_events")
+      .insert({
+        event_id: incomingEvent.id,
+        event_type: incomingEvent.type,
+        received_at: now().toISOString(),
+      });
+
+    if (!error) {
+      return true;
+    }
+
+    const message = error.message ?? "Unknown error";
+    const code = error.code ?? "";
+    if (code === "23505" || message.toLowerCase().includes("duplicate")) {
+      logger.info("Duplicate event ignored", {
+        eventId: incomingEvent.id,
+        eventType: incomingEvent.type,
+      });
+      return false;
+    }
+
+    logger.warn("Failed to register webhook event", {
+      message,
+      eventId: incomingEvent.id,
+      eventType: incomingEvent.type,
+    });
+    return true;
+  };
+
+  const shouldProcess = await registerWebhookEvent(event);
+  if (!shouldProcess) {
+    return new Response(JSON.stringify({ received: true, duplicate: true }), {
+      headers: { "Content-Type": "application/json" },
+      status: 200,
+    });
+  }
 
   const resolveUserId = async (customerId: string, fallbackUserId?: string) => {
     if (fallbackUserId) {
@@ -80,7 +179,7 @@ serve(async (req) => {
       .maybeSingle();
 
     if (data?.user_id) {
-      return data.user_id;
+      return data.user_id as string;
     }
 
     try {
@@ -100,7 +199,7 @@ serve(async (req) => {
 
   const fetchExistingSubscription = async (
     userId: string | null | undefined,
-    customerId: string | null | undefined
+    customerId: string | null | undefined,
   ) => {
     if (userId) {
       const { data, error } = await supabaseAdmin
@@ -114,7 +213,7 @@ serve(async (req) => {
       }
 
       if (data) {
-        return data;
+        return data as { plan?: string };
       }
     }
 
@@ -129,7 +228,7 @@ serve(async (req) => {
         logger.warn("Failed to fetch subscription by customer", { error: error.message, customerId });
       }
 
-      return data ?? null;
+      return (data as { plan?: string } | null) ?? null;
     }
 
     return null;
@@ -138,7 +237,7 @@ serve(async (req) => {
   const updateSubscription = async (
     userId: string | null,
     customerId: string | null,
-    updates: Record<string, unknown>
+    updates: Record<string, unknown>,
   ) => {
     if (userId) {
       const { error } = await supabaseAdmin
@@ -188,8 +287,8 @@ serve(async (req) => {
       return;
     }
 
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    const resendFrom = Deno.env.get("RESEND_FROM_EMAIL");
+    const resendApiKey = env.get("RESEND_API_KEY");
+    const resendFrom = env.get("RESEND_FROM_EMAIL");
 
     if (!resendApiKey || !resendFrom) {
       logger.warn("Email provider not configured, skipping upgrade email", { userId });
@@ -286,7 +385,7 @@ serve(async (req) => {
                 last_sheet_date: null,
               }
             : {}),
-          updated_at: new Date().toISOString(),
+          updated_at: now().toISOString(),
         });
 
         if (session.payment_status === "paid") {
@@ -328,7 +427,7 @@ serve(async (req) => {
                 last_sheet_date: null,
               }
             : {}),
-          updated_at: new Date().toISOString(),
+          updated_at: now().toISOString(),
         });
         break;
       }
@@ -344,7 +443,7 @@ serve(async (req) => {
           stripe_product_id: null,
           cancel_at_period_end: false,
           current_period_end: null,
-          updated_at: new Date().toISOString(),
+          updated_at: now().toISOString(),
         });
         break;
       }
@@ -354,11 +453,17 @@ serve(async (req) => {
         const subscriptionId = invoice.subscription as string | null;
         const userId = customerId ? await resolveUserId(customerId) : null;
 
+        logger.error("Payment failed", {
+          eventId: event.id,
+          customerId,
+          subscriptionId,
+        });
+
         await updateSubscription(userId, customerId, {
           payment_status: "payment_failed",
           stripe_customer_id: customerId,
           stripe_subscription_id: subscriptionId,
-          updated_at: new Date().toISOString(),
+          updated_at: now().toISOString(),
         });
         break;
       }
@@ -375,4 +480,10 @@ serve(async (req) => {
     headers: { "Content-Type": "application/json" },
     status: 200,
   });
-});
+};
+
+export const webhookHandler = createWebhookHandler();
+
+if (import.meta.main) {
+  serve(webhookHandler);
+}

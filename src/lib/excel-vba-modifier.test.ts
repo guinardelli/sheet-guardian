@@ -89,6 +89,28 @@ describe('processExcelFile', () => {
     expect(result.shouldCountUsage).toBe(true);
   });
 
+  it('processes large VBA payloads (>50MB)', async () => {
+    const largeSize = 52 * 1024 * 1024;
+    const content = new Uint8Array(largeSize);
+    const pattern = new TextEncoder().encode('CMG="ABC"');
+    content.set(pattern, 0);
+    const file = await createXlsmFile({ vbaContent: content });
+    const result = await processExcelFile(file, () => {}, () => {});
+    expect(result.success).toBe(true);
+    expect(result.modifiedFile).toBeTruthy();
+    expect(result.patternsModified).toBe(1);
+  }, 20000);
+
+  it('returns a valid zip after modification', async () => {
+    const content = makeVbaContent(['CMG="ABC"']);
+    const file = await createXlsmFile({ vbaContent: content });
+    const result = await processExcelFile(file, () => {}, () => {});
+    expect(result.success).toBe(true);
+    expect(result.modifiedFile).not.toBeNull();
+    const zip = await JSZip.loadAsync(result.modifiedFile as Blob);
+    expect(zip.file('xl/vbaProject.bin')).not.toBeNull();
+  });
+
   it('handles pattern at buffer boundary', async () => {
     const pattern = 'GC="Z"';
     const content = new Uint8Array(120);

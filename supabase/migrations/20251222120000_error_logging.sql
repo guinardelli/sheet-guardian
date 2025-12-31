@@ -9,10 +9,8 @@ CREATE TABLE IF NOT EXISTS public.error_logs (
   context JSONB,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
-
 -- Enable RLS
 ALTER TABLE public.error_logs ENABLE ROW LEVEL SECURITY;
-
 -- Allow inserts from anon/authenticated clients (idempotent)
 DO $$
 BEGIN
@@ -29,13 +27,10 @@ BEGIN
     WITH CHECK (true);
   END IF;
 END $$;
-
 -- Helpful indexes for monitoring
 CREATE INDEX IF NOT EXISTS idx_error_logs_created_at
 ON public.error_logs(created_at DESC);
-
 CREATE INDEX IF NOT EXISTS idx_error_logs_user_id
 ON public.error_logs(user_id);
-
 COMMENT ON TABLE public.error_logs IS
 'Client-side error logs for monitoring and troubleshooting.';
