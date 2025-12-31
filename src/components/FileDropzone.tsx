@@ -4,6 +4,7 @@ import { Upload, FileSpreadsheet, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { MAX_FILE_SIZE_BYTES, LARGE_FILE_WARNING_BYTES } from '@/lib/constants';
+import { getMagicBytes, hasZipMagicBytes, isAllowedMimeType } from '@/lib/file-validation';
 import { toast } from 'sonner';
 
 interface FileDropzoneProps {
@@ -41,11 +42,18 @@ export function FileDropzone({
     }
   }, []);
 
-  const validateAndSelectFile = useCallback((file: File): boolean => {
+  const validateAndSelectFile = useCallback(async (file: File): Promise<boolean> => {
     // Validate file extension
     if (!file.name.toLowerCase().endsWith('.xlsm')) {
       toast.error(t('dropzone.errors.invalidType'), {
         description: t('dropzone.errors.invalidTypeDesc')
+      });
+      return false;
+    }
+
+    if (!isAllowedMimeType(file)) {
+      toast.error(t('dropzone.errors.invalidMimeType'), {
+        description: t('dropzone.errors.invalidMimeTypeDesc')
       });
       return false;
     }
@@ -73,6 +81,21 @@ export function FileDropzone({
       });
     }
 
+    try {
+      const magicBytes = await getMagicBytes(file);
+      if (!hasZipMagicBytes(magicBytes)) {
+        toast.error(t('dropzone.errors.invalidSignature'), {
+          description: t('dropzone.errors.invalidSignatureDesc')
+        });
+        return false;
+      }
+    } catch (error) {
+      toast.error(t('dropzone.errors.readError'), {
+        description: t('dropzone.errors.readErrorDesc')
+      });
+      return false;
+    }
+
     onFileSelect(file);
     return true;
   }, [onFileSelect, t]);
@@ -85,14 +108,14 @@ export function FileDropzone({
 
     const files = e.dataTransfer.files;
     if (files.length > 0) {
-      validateAndSelectFile(files[0]);
+      void validateAndSelectFile(files[0]);
     }
   }, [validateAndSelectFile, disabled]);
 
-  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileInput = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      validateAndSelectFile(files[0]);
+      await validateAndSelectFile(files[0]);
     }
     // Always reset input value to allow re-selecting the same file
     e.target.value = '';

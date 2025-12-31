@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@/lib/constants';
 
 const Auth = () => {
   const { t } = useTranslation();
@@ -36,8 +37,8 @@ const Auth = () => {
     email: z.string().trim().email({ message: t('auth.errors.invalidEmail') }).max(255),
     password: z
       .string()
-      .min(6, { message: t('auth.errors.passwordMin') })
-      .max(100, { message: t('auth.errors.passwordMax') }),
+      .min(PASSWORD_MIN_LENGTH, { message: t('auth.errors.passwordMin') })
+      .max(PASSWORD_MAX_LENGTH, { message: t('auth.errors.passwordMax') }),
   });
 
   useEffect(() => {

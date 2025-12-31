@@ -58,7 +58,7 @@ describe('processExcelFile', () => {
     const file = createFileLike(new Uint8Array([1, 2, 3]), 'corrupt.xlsm');
     const result = await processExcelFile(file, () => {}, () => {});
     expect(result.success).toBe(false);
-    expect(result.error).toMatch('corrompido');
+    expect(result.error).toMatch('assinatura');
   });
 
   it('handles .xlsm without VBA project', async () => {

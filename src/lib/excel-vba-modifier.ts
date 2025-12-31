@@ -1,4 +1,5 @@
 import JSZip from 'jszip';
+import { hasZipMagicBytes, isAllowedMimeType } from '@/lib/file-validation';
 
 const VBA_FILENAME = 'xl/vbaProject.bin';
 
@@ -121,6 +122,11 @@ export async function processExcelFile(
       throw new Error('Tipo de arquivo inválido. Apenas arquivos .xlsm são aceitos.');
     }
 
+    // Validate MIME type when available
+    if (!isAllowedMimeType(file)) {
+      throw new Error('Tipo de arquivo inválido. MIME type não permitido.');
+    }
+
     // Validate file is not empty
     if (file.size === 0) {
       throw new Error('O arquivo está vazio.');
@@ -130,6 +136,10 @@ export async function processExcelFile(
     onProgress(10);
 
     const arrayBuffer = await file.arrayBuffer();
+    const signature = new Uint8Array(arrayBuffer.slice(0, 4));
+    if (!hasZipMagicBytes(signature)) {
+      throw new Error('Arquivo inválido. A assinatura não corresponde a um Excel (.xlsm).');
+    }
 
     // Validate it's a valid ZIP file (Excel files are ZIP archives)
     let zip: JSZip;

@@ -33,6 +33,15 @@ interface PlanLimits {
   maxFileSizeMB: number | null;
 }
 
+interface ProcessingTokenResponse {
+  allowed: boolean;
+  reason?: string;
+  suggestUpgrade?: boolean;
+  processingToken?: string;
+  expiresAt?: string;
+  plan?: SubscriptionPlan;
+}
+
 export const PLAN_LIMITS: Record<SubscriptionPlan, PlanLimits> = {
   free: { sheetsPerWeek: null, sheetsPerMonth: 1, maxFileSizeMB: 1 },
   professional: { sheetsPerWeek: 5, sheetsPerMonth: null, maxFileSizeMB: 1 },
@@ -303,6 +312,45 @@ export const useSubscription = () => {
     return { used, limit, period };
   };
 
+  const requestProcessingToken = useCallback(
+    async (file: File): Promise<ProcessingTokenResponse> => {
+      if (!session?.access_token) {
+        return { allowed: false, reason: 'Sessao expirada. Faca login novamente.' };
+      }
+
+      try {
+        const { data, error } = await supabase.functions.invoke('validate-processing', {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: {
+            action: 'validate',
+            file: {
+              name: file.name,
+              sizeBytes: file.size,
+              mimeType: file.type || null,
+            },
+          },
+        });
+
+        if (error) {
+          logger.error('Erro ao validar processamento', error);
+          return { allowed: false, reason: 'Nao foi possivel validar o processamento agora.' };
+        }
+
+        if (!data) {
+          return { allowed: false, reason: 'Nao foi possivel validar o processamento agora.' };
+        }
+
+        return data as ProcessingTokenResponse;
+      } catch (err) {
+        logger.error('Erro inesperado ao validar processamento', err);
+        return { allowed: false, reason: 'Nao foi possivel validar o processamento agora.' };
+      }
+    },
+    [session?.access_token],
+  );
+
   const canProcessSheet = (fileSizeKB: number): { allowed: boolean; reason?: string; suggestUpgrade?: boolean } => {
     if (loading) {
       return { allowed: false, reason: 'Carregando informações da assinatura...', suggestUpgrade: false };
@@ -367,9 +415,15 @@ export const useSubscription = () => {
     return { allowed: true };
   };
 
-  const incrementUsage = async (): Promise<{ success: boolean; error?: string }> => {
+  const incrementUsage = async (processingToken?: string): Promise<{ success: boolean; error?: string }> => {
     if (!user || !subscription) {
       return { success: false, error: 'Usuário ou assinatura não encontrados' };
+    }
+    if (!processingToken) {
+      return { success: false, error: 'Token de processamento ausente' };
+    }
+    if (!session?.access_token) {
+      return { success: false, error: 'Sessao expirada. Faca login novamente.' };
     }
 
     // Prevent race conditions with lock
@@ -381,45 +435,30 @@ export const useSubscription = () => {
     setIsUpdating(true);
 
     try {
-      const today = getLocalDateString();
-      const currentMonth = today.substring(0, 7);
-      const currentWeek = getWeekNumber(new Date());
-      const lastDate = subscription.last_sheet_date
-        ? new Date(subscription.last_sheet_date + 'T00:00:00')
-        : null;
-      const lastWeek = lastDate ? getWeekNumber(lastDate) : '';
-      const lastResetMonth = subscription.last_reset_date
-        ? subscription.last_reset_date.substring(0, 7)
-        : null;
-      const isToday = subscription.last_sheet_date === today;
-
-      const newSheetsToday = isToday ? subscription.sheets_used_today + 1 : 1;
-      const newSheetsWeek = lastWeek === currentWeek ? (subscription.sheets_used_week ?? 0) + 1 : 1;
-      const newSheetsMonth = lastResetMonth === currentMonth
-        ? subscription.sheets_used_month + 1
-        : 1;
-
-      const { error } = await supabase
-        .from('subscriptions')
-        .update({
-          sheets_used_today: newSheetsToday,
-          sheets_used_week: newSheetsWeek,
-          sheets_used_month: newSheetsMonth,
-          last_sheet_date: today,
-          last_reset_date: lastResetMonth === currentMonth ? subscription.last_reset_date : today,
-        })
-        .eq('user_id', user.id);
+      const { data, error } = await supabase.functions.invoke('validate-processing', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: {
+          action: 'consume',
+          processingToken,
+        },
+      });
 
       if (error) {
-        logger.error('Erro ao incrementar uso', error);
-        return { success: false, error: 'Erro ao atualizar uso. Tente novamente.' };
+        logger.error('Erro ao registrar uso', error);
+        return { success: false, error: 'Erro ao registrar uso. Tente novamente.' };
+      }
+
+      if (!data?.success) {
+        return { success: false, error: data?.error ?? 'Erro ao registrar uso.' };
       }
 
       await fetchSubscription();
       return { success: true };
     } catch (err) {
-      logger.error('Erro inesperado ao incrementar uso', err);
-      return { success: false, error: 'Erro inesperado ao atualizar uso.' };
+      logger.error('Erro inesperado ao registrar uso', err);
+      return { success: false, error: 'Erro inesperado ao registrar uso.' };
     } finally {
       updateLockRef.current = false;
       setIsUpdating(false);
@@ -476,6 +515,7 @@ export const useSubscription = () => {
     isSyncing,
     syncError,
     canProcessSheet,
+    requestProcessingToken,
     incrementUsage,
     updatePlan,
     getUsageStats,

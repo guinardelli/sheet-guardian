@@ -44,7 +44,7 @@ const Dashboard = () => {
   const processingLockRef = useRef(false);
 
   const { user, loading: authLoading, authError, clearAuthError } = useAuth();
-  const { subscription, canProcessSheet, incrementUsage, getUsageStats, isUpdating } = useSubscription();
+  const { subscription, canProcessSheet, requestProcessingToken, incrementUsage, getUsageStats, isUpdating } = useSubscription();
   const navigate = useNavigate();
 
   const PROCESSING_MESSAGES = [
@@ -202,15 +202,44 @@ const Dashboard = () => {
     }
 
     processingLockRef.current = true;
-    setIsProcessing(true);
-    setLogs([]);
-    setProgress(0);
-    setDisplayProgress(0);
-    setResult(null);
-    setProcessingComplete(false);
-    setDownloadAllowed(false);
 
     try {
+      const validation = await requestProcessingToken(selectedFile);
+      if (!validation.allowed) {
+        if (validation.suggestUpgrade) {
+          toast.error(t('toasts.limitReached'), {
+            description: validation.reason,
+            action: {
+              label: t('toasts.viewPlans'),
+              onClick: () => navigate('/plans'),
+            },
+          });
+        } else {
+          toast.error(t('common.error'), {
+            description: validation.reason,
+          });
+        }
+        processingLockRef.current = false;
+        return;
+      }
+
+      if (!validation.processingToken) {
+        toast.error(t('toasts.criticalError'), {
+          description: t('toasts.unexpectedErrorDesc'),
+        });
+        processingLockRef.current = false;
+        return;
+      }
+
+      processingLockRef.current = true;
+      setIsProcessing(true);
+      setLogs([]);
+      setProgress(0);
+      setDisplayProgress(0);
+      setResult(null);
+      setProcessingComplete(false);
+      setDownloadAllowed(false);
+
       const processingResult = await processExcelFile(selectedFile, handleLog, setProgress);
 
       await new Promise((resolve) => setTimeout(resolve, 4500));
@@ -221,7 +250,7 @@ const Dashboard = () => {
       if (processingResult.success && processingResult.modifiedFile) {
         if (processingResult.shouldCountUsage) {
           try {
-            const usageResult = await incrementUsage();
+            const usageResult = await incrementUsage(validation.processingToken);
             if (!usageResult.success) {
               logger.error('Failed to increment usage', undefined, {
                 userId: user.id,
@@ -276,7 +305,7 @@ const Dashboard = () => {
       setIsProcessing(false);
       processingLockRef.current = false;
     }
-  }, [selectedFile, user, isProcessing, canProcessSheet, handleLog, incrementUsage, navigate, t]);
+  }, [selectedFile, user, isProcessing, canProcessSheet, requestProcessingToken, handleLog, incrementUsage, navigate, t]);
 
   const handleDownload = useCallback(() => {
     if (result?.modifiedFile && downloadAllowed) {

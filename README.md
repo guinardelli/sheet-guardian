@@ -28,8 +28,14 @@ Sheet Guardian is a web app that processes Excel .xlsm files in the browser and 
 - `npm run type-check` - TypeScript checks
 - `npm test -- --run` - run unit tests
 
+## Backups
+- Backup: `./backup.sh`
+- Restore: see `BACKUP_RESTORE.md`
+
 ## Deployment
 See `DEPLOYMENT.md` for the full checklist, environment variables, and Supabase steps.
+
+Primary hosting is Vercel. The Netlify configuration was removed to avoid CI/CD ambiguity.
 
 ## Monitoring
 Client errors are captured in the `error_logs` table (see `RUNBOOK.md`).

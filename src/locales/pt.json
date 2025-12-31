@@ -119,7 +119,7 @@
     "resetting": "Redefinindo...",
     "errors": {
       "invalidEmail": "Email inválido",
-      "passwordMin": "Senha deve ter no mínimo 6 caracteres",
+      "passwordMin": "Senha deve ter no mínimo 8 caracteres",
       "passwordMax": "Senha não pode exceder 100 caracteres",
       "validation": "Erro de validação",
       "signInError": "Erro ao entrar",
@@ -131,7 +131,7 @@
       "invalidEmailFormat": "Email inválido",
       "invalidEmailFormatDesc": "Digite um email válido.",
       "passwordTooShort": "Senha muito curta",
-      "passwordTooShortDesc": "A senha deve ter no mínimo 6 caracteres.",
+      "passwordTooShortDesc": "A senha deve ter no mínimo 8 caracteres.",
       "passwordMismatch": "Senhas não coincidem",
       "passwordMismatchDesc": "As senhas digitadas são diferentes.",
       "resetError": "Erro ao redefinir senha"
@@ -275,6 +275,12 @@
     "errors": {
       "invalidType": "Tipo de arquivo inválido",
       "invalidTypeDesc": "Apenas arquivos .xlsm são aceitos.",
+      "invalidMimeType": "Tipo MIME inválido",
+      "invalidMimeTypeDesc": "O arquivo selecionado não parece ser um Excel .xlsm.",
+      "invalidSignature": "Assinatura inválida",
+      "invalidSignatureDesc": "O arquivo não possui a assinatura de um Excel válido (.xlsm).",
+      "readError": "Não foi possível ler o arquivo",
+      "readErrorDesc": "Tente selecionar o arquivo novamente.",
       "emptyFile": "Arquivo vazio",
       "emptyFileDesc": "O arquivo selecionado está vazio.",
       "fileTooLarge": "Arquivo muito grande",
@@ -320,6 +326,11 @@
     "pastDue": "Atrasada",
     "unknown": "Desconhecido",
     "activeUntil": "Ativa até"
+  },
+  "errorBoundary": {
+    "title": "Algo deu errado",
+    "description": "Ocorreu um erro inesperado ao renderizar a página. Recarregue para continuar.",
+    "reload": "Recarregar página"
   },
   "notFound": {
     "title": "404",

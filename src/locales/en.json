@@ -119,7 +119,7 @@
     "resetting": "Resetting...",
     "errors": {
       "invalidEmail": "Invalid email",
-      "passwordMin": "Password must be at least 6 characters",
+      "passwordMin": "Password must be at least 8 characters",
       "passwordMax": "Password cannot exceed 100 characters",
       "validation": "Validation error",
       "signInError": "Sign in error",
@@ -131,7 +131,7 @@
       "invalidEmailFormat": "Invalid email",
       "invalidEmailFormatDesc": "Enter a valid email.",
       "passwordTooShort": "Password too short",
-      "passwordTooShortDesc": "Password must be at least 6 characters.",
+      "passwordTooShortDesc": "Password must be at least 8 characters.",
       "passwordMismatch": "Passwords don't match",
       "passwordMismatchDesc": "The passwords entered are different.",
       "resetError": "Error resetting password"
@@ -275,6 +275,12 @@
     "errors": {
       "invalidType": "Invalid file type",
       "invalidTypeDesc": "Only .xlsm files are accepted.",
+      "invalidMimeType": "Invalid MIME type",
+      "invalidMimeTypeDesc": "The selected file does not look like an Excel .xlsm.",
+      "invalidSignature": "Invalid signature",
+      "invalidSignatureDesc": "The file does not contain a valid Excel (.xlsm) signature.",
+      "readError": "Unable to read the file",
+      "readErrorDesc": "Try selecting the file again.",
       "emptyFile": "Empty file",
       "emptyFileDesc": "The selected file is empty.",
       "fileTooLarge": "File too large",
@@ -320,6 +326,11 @@
     "pastDue": "Past Due",
     "unknown": "Unknown",
     "activeUntil": "Active until"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "description": "An unexpected error occurred while rendering the page. Reload to continue.",
+    "reload": "Reload page"
   },
   "notFound": {
     "title": "404",

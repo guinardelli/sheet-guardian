@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { isSupabaseConfigured } from "@/integrations/supabase/client";
+import ErrorBoundary, { ErrorBoundaryFallback } from "@/components/ErrorBoundary";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -40,24 +42,40 @@ const App = () => (
       <AuthProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
-          <Suspense
-            fallback={
-              <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-              </div>
-            }
-          >
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/plans" element={<Plans />} />
-              <Route path="/account" element={<Account />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
+        <ErrorBoundary fallback={<ErrorBoundaryFallback />}>
+          <BrowserRouter>
+            <Suspense
+              fallback={
+                <div className="min-h-screen flex items-center justify-center">
+                  <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+                </div>
+              }
+            >
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route
+                  path="/dashboard"
+                  element={(
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/plans" element={<Plans />} />
+                <Route
+                  path="/account"
+                  element={(
+                    <ProtectedRoute>
+                      <Account />
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+        </ErrorBoundary>
         {!isSupabaseConfigured && <ConfigurationWarning />}
       </AuthProvider>
     </TooltipProvider>

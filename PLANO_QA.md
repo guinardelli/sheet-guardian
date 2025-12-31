@@ -2,13 +2,21 @@
 Autor: QA Lead / SRE
 Data: 31/12/2025
 Versão: 1.0
-Status: DRAFT (Aguardando Validação)
+Status: APROVADO (P0/P1 implementados)
+Atualizado: 20/01/2026
+0. Atualizações Implementadas (P0/P1)
+- Padronização de hospedagem: Vercel confirmado e netlify.toml removido.
+- Edge Function validate-processing + migração processing_tokens para tokens de processamento atômicos.
+- Validação profunda de arquivos (MIME + magic bytes) no upload e no processamento.
+- ErrorBoundary e ProtectedRoute adicionados e integrados ao App.
+- CI com npm audit e CodeQL SAST.
+- Documentação de backup/restore (BACKUP_RESTORE.md).
 1. Contexto e Arquitetura Inferida
 Baseado na análise estática do repositório, esta é a topologia do sistema:
 Frontend: SPA (Single Page Application) em React + TypeScript (Vite), utilizando TailwindCSS e Shadcn/UI.
 Backend / Infra: Serverless e BaaS (Backend-as-a-Service).
 Supabase: Banco de dados PostgreSQL, Autenticação, Storage e Edge Functions.
-Hospedagem Frontend: Indefinido (ambíguo: presença de netlify.toml e vercel.json).
+Hospedagem Frontend: Vercel (netlify.toml removido; vercel.json permanece).
 Core Logic:
 A lógica de modificação de VBA parece residir no cliente (src/lib/excel-vba-modifier.ts), o que implica processamento local no navegador.
 As validações de assinatura ocorrem via Edge Functions (supabase/functions/check-subscription).
@@ -25,9 +33,9 @@ Item de Verificação
 Referência no Código
 Critério Passa/Falha
 Build & Deploy
-Definir infraestrutura de Frontend (Vercel vs Netlify). Remover arquivo de config não utilizado.
-netlify.toml vs vercel.json
-🔴 Falha se ambos existirem.
+Definir infraestrutura de Frontend (Vercel vs Netlify). Remover arquivo de config não utilizado. (Implementado: Vercel padronizado; netlify.toml removido.)
+vercel.json
+🟢 Passa se netlify.toml estiver ausente.
 Build & Deploy
 Verificar ci.yml: O build deve passar sem warnings críticos de lint/type.
 .github/workflows/ci.yml
@@ -54,8 +62,8 @@ supabase/functions/stripe-webhook/index.ts
 🔴 Falha se endpoint for público sem validação.
 Confiabilidade
 Fallback de UI para falha no carregamento de componentes (Error Boundaries).
-src/App.tsx
-🟡 Passa com aviso (verificar existência).
+src/components/ErrorBoundary.tsx, src/App.tsx
+🟢 Passa (implementado).
 Dados
 Política de retenção de arquivos no Storage (se houver upload).
 supabase/storage (inferido)
@@ -106,7 +114,7 @@ Upload de Malware
 Crítico
 Baixa
 Antivírus do usuário
-Validar MIME types e "magic bytes" do arquivo antes de processar.
+Validar MIME types e "magic bytes" do arquivo antes de processar. (Implementado: FileDropzone + excel-vba-modifier.)
 QA/Sec
 Conflito de Migrations
 Alto (Downtime)
@@ -160,7 +168,7 @@ Dependências Vulneráveis
 Médio (Segurança)
 Média
 Dependabot
-Rodar npm audit no CI.
+Rodar npm audit no CI. (Implementado no ci.yml.)
 Dev
 
 C. Plano de Testes por Nível
@@ -189,7 +197,7 @@ Dashboard -> Tentativa de upload (Sucesso/Falha).
 Upgrade Plan -> Checkout Stripe (Mockado/Test Mode) -> Sucesso -> Dashboard (Pro).
 Logout.
 5. Testes de Segurança (SAST/DAST)
-SAST: Rodar SonarQube ou CodeQL no repositório.
+SAST: CodeQL configurado no workflow .github/workflows/codeql.yml.
 Manual: Tentar acessar /dashboard sem estar logado (bypass de rota). Tentar chamar a Function de create-checkout sem token de auth.
 D. Testes Específicos do Contexto do App
 Baseado na funcionalidade "Sheet Guardian" (Desbloqueio de planilhas):
@@ -227,13 +235,13 @@ Linting (npm run lint - verificar eslint.config.js).
 Type Checking (tsc --noEmit).
 Unit Tests (npm run test ou vitest run). Cobertura mínima sugerida: 70%.
 Job 2: Security Audit
-npm audit --audit-level=high.
+npm audit --audit-level=high. (Implementado no ci.yml.)
 Job 3: Build Preview
 npm run build.
 Verificar tamanho do bundle (Performance budget).
 3. Perguntas Bloqueantes (P0)
 Antes de autorizar o deploy para Produção, preciso das seguintes respostas:
-Hospedagem: O repositório contém netlify.toml E vercel.json. Qual é a plataforma oficial de produção? Isso define os scripts de build e configuração de headers de segurança.
+Hospedagem: Vercel (netlify.toml removido) como plataforma oficial de produção.
 Lógica de Desbloqueio: Onde ocorre a remoção da senha do VBA? O arquivo src/lib/excel-vba-modifier.ts sugere que é no browser. Se for no browser, temos um risco de Propriedade Intelectual (o código de desbloqueio é exposto ao usuário). Isso é intencional?
 Persistência: Os arquivos enviados pelos usuários são salvos no Supabase Storage ou apenas processados em memória (RAM do browser)? Se salvos, temos cron jobs para deletá-los (custo/privacidade)?
 Environment: Onde estão as variáveis de produção? O env.example é genérico. Quem tem acesso ao dashboard do Supabase Prod?
