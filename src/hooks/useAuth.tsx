@@ -120,7 +120,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const checkRateLimit = async (userIp: string, attemptType: AuthAttemptType) => {
     const { data, error } = await supabase.rpc('check_rate_limit', {
       user_ip: userIp,
-      attempt_type: attemptType,
+      p_attempt_type: attemptType,
       max_attempts: 5,
       window_minutes: 15,
     });
