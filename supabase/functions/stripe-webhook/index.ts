@@ -20,6 +20,7 @@ type LoggerLike = {
   info: (message: string, meta?: Record<string, unknown>) => void;
   warn: (message: string, meta?: Record<string, unknown>) => void;
   error: (message: string, meta?: Record<string, unknown>) => void;
+  withContext?: (context: { requestId?: string }) => LoggerLike;
 };
 
 type SupabaseError = {
@@ -68,12 +69,29 @@ export type WebhookDependencies = {
 export const createWebhookHandler = (
   overrides: Partial<WebhookDependencies> = {},
 ) => async (req: Request): Promise<Response> => {
+  const requestId = crypto.randomUUID();
   const env = overrides.env ?? Deno.env;
-  const logger = overrides.logger ?? baseLogger;
+  const loggerBase = overrides.logger ?? baseLogger;
+  const logger = loggerBase.withContext
+    ? loggerBase.withContext({ requestId })
+    : {
+        info: (message: string, meta?: Record<string, unknown>) =>
+          loggerBase.info(message, { ...(meta ?? {}), requestId }),
+        warn: (message: string, meta?: Record<string, unknown>) =>
+          loggerBase.warn(message, { ...(meta ?? {}), requestId }),
+        error: (message: string, meta?: Record<string, unknown>) =>
+          loggerBase.error(message, { ...(meta ?? {}), requestId }),
+      };
   const now = overrides.now ?? (() => new Date());
 
+  const jsonResponse = (body: Record<string, unknown>, status: number) =>
+    new Response(JSON.stringify({ ...body, requestId }), {
+      headers: { "Content-Type": "application/json" },
+      status,
+    });
+
   if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
+    return jsonResponse({ error: "Method not allowed" }, 405);
   }
 
   let stripeKey: string;
@@ -89,7 +107,7 @@ export const createWebhookHandler = (
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error("Missing required env vars", { message });
-    return new Response("Server misconfigured", { status: 500 });
+    return jsonResponse({ error: "Server misconfigured" }, 500);
   }
 
   logger.info("Environment check", {
@@ -102,7 +120,7 @@ export const createWebhookHandler = (
 
   const signature = req.headers.get("stripe-signature");
   if (!signature) {
-    return new Response("Missing Stripe signature", { status: 400 });
+    return jsonResponse({ error: "Missing Stripe signature" }, 400);
   }
 
   const stripe = overrides.stripe
@@ -115,7 +133,7 @@ export const createWebhookHandler = (
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error("Invalid signature", { message });
-    return new Response("Invalid signature", { status: 400 });
+    return jsonResponse({ error: "Invalid signature" }, 400);
   }
 
   logger.info("Webhook received", { eventType: event.type, eventId: event.id });
@@ -157,10 +175,7 @@ export const createWebhookHandler = (
 
   const shouldProcess = await registerWebhookEvent(event);
   if (!shouldProcess) {
-    return new Response(JSON.stringify({ received: true, duplicate: true }), {
-      headers: { "Content-Type": "application/json" },
-      status: 200,
-    });
+    return jsonResponse({ received: true, duplicate: true }, 200);
   }
 
   const resolveUserId = async (customerId: string, fallbackUserId?: string) => {
@@ -469,13 +484,10 @@ export const createWebhookHandler = (
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error("Handler error", { message, eventType: event.type });
-    return new Response("Webhook handler failed", { status: 500 });
+    return jsonResponse({ error: "Webhook handler failed" }, 500);
   }
 
-  return new Response(JSON.stringify({ received: true }), {
-    headers: { "Content-Type": "application/json" },
-    status: 200,
-  });
+  return jsonResponse({ received: true }, 200);
 };
 
 export const webhookHandler = createWebhookHandler();

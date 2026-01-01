@@ -4,9 +4,12 @@ export interface ErrorResponse {
   error: string;
   errorCode?: string;
   details?: string;
+  requestId: string;
 }
 
-export type TokenResponse =
+type ResponseWithRequestId<T> = T & { requestId: string };
+
+export type TokenResponse = ResponseWithRequestId<
   | {
       allowed: true;
       processingToken: string;
@@ -18,9 +21,10 @@ export type TokenResponse =
       reason: string;
       suggestUpgrade?: boolean;
       errorCode: string;
-    };
+    }
+>;
 
-export type TokenConsumeResponse =
+export type TokenConsumeResponse = ResponseWithRequestId<
   | {
       success: true;
     }
@@ -28,9 +32,10 @@ export type TokenConsumeResponse =
       success: false;
       error: string;
       errorCode: string;
-    };
+    }
+>;
 
-export type SubscriptionResponse =
+export type SubscriptionResponse = ResponseWithRequestId<
   | {
       subscribed: boolean;
       plan: SubscriptionPlan;
@@ -42,13 +47,14 @@ export type SubscriptionResponse =
       subscribed: false;
       error: string;
       details?: string;
-    };
+    }
+>;
 
-export type CheckoutResponse = { url: string } | ErrorResponse;
-export type CustomerPortalResponse = { url: string } | ErrorResponse;
-export type CleanupTokensResponse = { deleted: number; cutoff: string } | ErrorResponse;
+export type CheckoutResponse = ResponseWithRequestId<{ url: string } | ErrorResponse>;
+export type CustomerPortalResponse = ResponseWithRequestId<{ url: string } | ErrorResponse>;
+export type CleanupTokensResponse = ResponseWithRequestId<{ deleted: number; cutoff: string } | ErrorResponse>;
 
-export type ProcessFileResponse =
+export type ProcessFileResponse = ResponseWithRequestId<
   | {
       success: true;
       fileBase64: string;
@@ -66,10 +72,11 @@ export type ProcessFileResponse =
       success: false;
       error: string;
       errorCode?: string;
-    };
+    }
+>;
 
 export type HealthCheckUser = { id: string; email?: string | null };
-export type HealthCheckResponse =
+export type HealthCheckResponse = ResponseWithRequestId<
   | {
       status: 'healthy' | 'degraded';
       timestamp: string;
@@ -80,4 +87,5 @@ export type HealthCheckResponse =
       status: 'error';
       timestamp: string;
       error: string;
-    };
+    }
+>;

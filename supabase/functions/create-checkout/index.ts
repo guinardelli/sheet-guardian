@@ -33,7 +33,7 @@ const getCorsHeaders = (origin: string | null) => {
   return headers;
 };
 
-const logger = createLogger("CREATE-CHECKOUT");
+const baseLogger = createLogger("CREATE-CHECKOUT");
 
 type CreateCheckoutPayload = {
   priceId?: string | null;
@@ -51,6 +51,8 @@ const parseCheckoutPayload = async (req: Request): Promise<CreateCheckoutPayload
 };
 
 serve(async (req: Request): Promise<Response> => {
+  const requestId = crypto.randomUUID();
+  const logger = baseLogger.withContext({ requestId });
   const requestOrigin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(requestOrigin);
 
@@ -82,7 +84,7 @@ serve(async (req: Request): Promise<Response> => {
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      const body: CheckoutResponse = { error: "Unauthorized" };
+      const body: CheckoutResponse = { error: "Unauthorized", requestId };
       return new Response(JSON.stringify(body), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 401,
@@ -92,7 +94,7 @@ serve(async (req: Request): Promise<Response> => {
     const { data, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError) {
       logger.warn("Auth getUser failed", { error: userError.message });
-      const body: CheckoutResponse = { error: "Unauthorized" };
+      const body: CheckoutResponse = { error: "Unauthorized", requestId };
       return new Response(JSON.stringify(body), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 401,
@@ -160,7 +162,7 @@ serve(async (req: Request): Promise<Response> => {
 
     logger.info("Checkout session created", { sessionId: session.id, url: session.url });
 
-    const body: CheckoutResponse = { url: session.url };
+    const body: CheckoutResponse = { url: session.url, requestId };
     return new Response(JSON.stringify(body), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
@@ -168,7 +170,7 @@ serve(async (req: Request): Promise<Response> => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error("Error", { message: errorMessage });
-    const body: CheckoutResponse = { error: errorMessage };
+    const body: CheckoutResponse = { error: errorMessage, requestId };
     return new Response(JSON.stringify(body), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,

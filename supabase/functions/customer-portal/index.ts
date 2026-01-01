@@ -23,9 +23,11 @@ const getCorsHeaders = (origin: string | null) => {
   return headers;
 };
 
-const logger = createLogger("CUSTOMER-PORTAL");
+const baseLogger = createLogger("CUSTOMER-PORTAL");
 
 serve(async (req: Request): Promise<Response> => {
+  const requestId = crypto.randomUUID();
+  const logger = baseLogger.withContext({ requestId });
   const requestOrigin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(requestOrigin);
 
@@ -75,7 +77,7 @@ serve(async (req: Request): Promise<Response> => {
     });
     logger.info("Portal session created", { sessionId: portalSession.id });
 
-    const body: CustomerPortalResponse = { url: portalSession.url };
+    const body: CustomerPortalResponse = { url: portalSession.url, requestId };
     return new Response(JSON.stringify(body), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
@@ -83,7 +85,7 @@ serve(async (req: Request): Promise<Response> => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error("Error", { message: errorMessage });
-    const body: CustomerPortalResponse = { error: errorMessage };
+    const body: CustomerPortalResponse = { error: errorMessage, requestId };
     return new Response(JSON.stringify(body), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,

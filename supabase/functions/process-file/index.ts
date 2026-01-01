@@ -6,7 +6,7 @@ import { createLogger } from "../_shared/logger.ts";
 import { getServiceRoleKey, getSupabaseUrl } from "../_shared/env.ts";
 import type { ProcessFileResponse } from "../_shared/response-types.ts";
 
-const logger = createLogger("PROCESS-FILE");
+const baseLogger = createLogger("PROCESS-FILE");
 
 const allowedOrigins = new Set([
   "https://vbablocker.vercel.app",
@@ -77,8 +77,9 @@ const errorResponse = (
   status: number,
   errorCode: string,
   corsHeaders: Record<string, string>,
+  requestId: string,
 ) => {
-  const body: ProcessFileResponse = { success: false, error: message, errorCode };
+  const body: ProcessFileResponse = { requestId, success: false, error: message, errorCode };
   return jsonResponse(body, status, corsHeaders);
 };
 
@@ -205,6 +206,8 @@ const modifyVbaContent = (content: Uint8Array): ModifyVbaResult => {
 };
 
 serve(async (req: Request): Promise<Response> => {
+  const requestId = crypto.randomUUID();
+  const logger = baseLogger.withContext({ requestId });
   const requestOrigin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(requestOrigin);
 
@@ -214,12 +217,12 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     if (req.method !== "POST") {
-      return errorResponse("Method not allowed", 405, "METHOD_NOT_ALLOWED", corsHeaders);
+      return errorResponse("Method not allowed", 405, "METHOD_NOT_ALLOWED", corsHeaders, requestId);
     }
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return errorResponse("Unauthorized", 401, "UNAUTHORIZED", corsHeaders);
+      return errorResponse("Unauthorized", 401, "UNAUTHORIZED", corsHeaders, requestId);
     }
 
     const supabaseUrl = getSupabaseUrl();
@@ -231,7 +234,7 @@ serve(async (req: Request): Promise<Response> => {
     const accessToken = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
     if (userError || !userData.user) {
-      return errorResponse("Unauthorized", 401, "UNAUTHORIZED", corsHeaders);
+      return errorResponse("Unauthorized", 401, "UNAUTHORIZED", corsHeaders, requestId);
     }
 
     let upload: UploadedFile;
@@ -240,21 +243,33 @@ serve(async (req: Request): Promise<Response> => {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const mapped = mapUploadError(message);
-      return errorResponse(message, mapped.status, mapped.code, corsHeaders);
+      return errorResponse(message, mapped.status, mapped.code, corsHeaders, requestId);
     }
     const fileName = upload.fileName;
     const originalSize = upload.fileBytes.length;
 
     if (originalSize === 0) {
-      return errorResponse("Arquivo vazio.", 400, "EMPTY_FILE", corsHeaders);
+      return errorResponse("Arquivo vazio.", 400, "EMPTY_FILE", corsHeaders, requestId);
     }
 
     if (!fileName.toLowerCase().endsWith(".xlsm")) {
-      return errorResponse("Tipo de arquivo invalido. Apenas .xlsm e permitido.", 400, "INVALID_EXTENSION", corsHeaders);
+      return errorResponse(
+        "Tipo de arquivo invalido. Apenas .xlsm e permitido.",
+        400,
+        "INVALID_EXTENSION",
+        corsHeaders,
+        requestId,
+      );
     }
 
     if (!hasZipMagicBytes(upload.fileBytes)) {
-      return errorResponse("Arquivo invalido. A assinatura nao corresponde a um Excel (.xlsm).", 400, "INVALID_SIGNATURE", corsHeaders);
+      return errorResponse(
+        "Arquivo invalido. A assinatura nao corresponde a um Excel (.xlsm).",
+        400,
+        "INVALID_SIGNATURE",
+        corsHeaders,
+        requestId,
+      );
     }
 
     let zip: JSZip;
@@ -262,7 +277,13 @@ serve(async (req: Request): Promise<Response> => {
       zip = await JSZip.loadAsync(upload.fileBytes);
     } catch (zipError) {
       logger.warn("Invalid ZIP file", { message: zipError instanceof Error ? zipError.message : String(zipError) });
-      return errorResponse("Arquivo invalido ou corrompido. Verifique se e um arquivo Excel valido (.xlsm).", 400, "INVALID_ZIP", corsHeaders);
+      return errorResponse(
+        "Arquivo invalido ou corrompido. Verifique se e um arquivo Excel valido (.xlsm).",
+        400,
+        "INVALID_ZIP",
+        corsHeaders,
+        requestId,
+      );
     }
 
     const vbaFile = zip.file(VBA_FILENAME);
@@ -272,6 +293,7 @@ serve(async (req: Request): Promise<Response> => {
     if (!vbaExists) {
       const output = await zip.generateAsync({ type: "uint8array" });
       const response: ProcessFileResponse = {
+        requestId,
         success: true,
         fileBase64: encodeBase64(toArrayBuffer(output)),
         originalFileName: fileName,
@@ -304,6 +326,7 @@ serve(async (req: Request): Promise<Response> => {
     });
 
     const response: ProcessFileResponse = {
+      requestId,
       success: true,
       fileBase64: encodeBase64(toArrayBuffer(output)),
       originalFileName: fileName,
@@ -321,6 +344,6 @@ serve(async (req: Request): Promise<Response> => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error("Unexpected error", { message });
-    return errorResponse("Erro ao processar arquivo.", 500, "PROCESSING_FAILED", corsHeaders);
+    return errorResponse("Erro ao processar arquivo.", 500, "PROCESSING_FAILED", corsHeaders, requestId);
   }
 });

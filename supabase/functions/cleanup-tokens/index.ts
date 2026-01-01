@@ -4,12 +4,14 @@ import { createLogger } from "../_shared/logger.ts";
 import { getServiceRoleKey, getSupabaseUrl } from "../_shared/env.ts";
 import type { CleanupTokensResponse } from "../_shared/response-types.ts";
 
-const logger = createLogger("CLEANUP-TOKENS");
+const baseLogger = createLogger("CLEANUP-TOKENS");
 const TTL_MS = 24 * 60 * 60 * 1000;
 
 serve(async (req: Request): Promise<Response> => {
+  const requestId = crypto.randomUUID();
+  const logger = baseLogger.withContext({ requestId });
   if (req.method !== "GET" && req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+    return new Response(JSON.stringify({ error: "Method not allowed", requestId }), {
       status: 405,
       headers: { "Content-Type": "application/json" },
     });
@@ -22,7 +24,7 @@ serve(async (req: Request): Promise<Response> => {
     serviceRoleKey = getServiceRoleKey();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    const body: CleanupTokensResponse = { error: message };
+    const body: CleanupTokensResponse = { error: message, requestId };
     return new Response(JSON.stringify(body), {
       status: 500,
       headers: { "Content-Type": "application/json" },
@@ -43,14 +45,14 @@ serve(async (req: Request): Promise<Response> => {
 
     if (error) {
       logger.error("Failed to cleanup tokens", { message: error.message });
-      const body: CleanupTokensResponse = { error: error.message };
+      const body: CleanupTokensResponse = { error: error.message, requestId };
       return new Response(JSON.stringify(body), {
         status: 500,
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    const body: CleanupTokensResponse = { deleted: count ?? 0, cutoff };
+    const body: CleanupTokensResponse = { deleted: count ?? 0, cutoff, requestId };
     return new Response(JSON.stringify(body), {
       status: 200,
       headers: { "Content-Type": "application/json" },
@@ -58,7 +60,7 @@ serve(async (req: Request): Promise<Response> => {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error("Unexpected cleanup error", { message });
-    const body: CleanupTokensResponse = { error: message };
+    const body: CleanupTokensResponse = { error: message, requestId };
     return new Response(JSON.stringify(body), {
       status: 500,
       headers: { "Content-Type": "application/json" },

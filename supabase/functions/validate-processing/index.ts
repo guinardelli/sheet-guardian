@@ -27,7 +27,7 @@ const PLAN_LIMITS: Record<SubscriptionPlan, { sheetsPerWeek: number | null; shee
 
 const TOKEN_TTL_MS = 5 * 60 * 1000;
 
-const logger = createLogger("VALIDATE-PROCESSING");
+const baseLogger = createLogger("VALIDATE-PROCESSING");
 
 const getCorsHeaders = (origin: string | null) => {
   const headers: Record<string, string> = {
@@ -74,14 +74,21 @@ const errorResponse = (
   status: number,
   errorCode: string,
   corsHeaders: Record<string, string>,
+  requestId: string,
 ) => {
-  const body: ErrorResponse = { error: message, errorCode };
+  const body: ErrorResponse = { error: message, errorCode, requestId };
   return jsonResponse(body, status, corsHeaders);
 };
 
 serve(async (req: Request): Promise<Response> => {
+  const requestId = crypto.randomUUID();
+  const logger = baseLogger.withContext({ requestId });
   const requestOrigin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(requestOrigin);
+  const withRequestId = <T extends Record<string, unknown>>(body: T): T & { requestId: string } => ({
+    ...body,
+    requestId,
+  });
 
   try {
     if (req.method === "OPTIONS") {
@@ -89,7 +96,7 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     if (req.method !== "POST") {
-      return errorResponse("Method not allowed", 405, "METHOD_NOT_ALLOWED", corsHeaders);
+      return errorResponse("Method not allowed", 405, "METHOD_NOT_ALLOWED", corsHeaders, requestId);
     }
 
     let payload: ValidatePayload = {};
@@ -97,17 +104,17 @@ serve(async (req: Request): Promise<Response> => {
       payload = (await req.json()) as ValidatePayload;
     } catch (error) {
       logger.warn("Invalid JSON body", { message: error instanceof Error ? error.message : String(error) });
-      return errorResponse("Invalid JSON body", 400, "INVALID_JSON", corsHeaders);
+      return errorResponse("Invalid JSON body", 400, "INVALID_JSON", corsHeaders, requestId);
     }
 
     const action = payload.action ?? "validate";
     if (action !== "validate" && action !== "consume") {
-      return errorResponse("Invalid action", 400, "INVALID_ACTION", corsHeaders);
+      return errorResponse("Invalid action", 400, "INVALID_ACTION", corsHeaders, requestId);
     }
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return errorResponse("Unauthorized", 401, "UNAUTHORIZED", corsHeaders);
+      return errorResponse("Unauthorized", 401, "UNAUTHORIZED", corsHeaders, requestId);
     }
 
     const supabaseUrl = getSupabaseUrl();
@@ -121,7 +128,7 @@ serve(async (req: Request): Promise<Response> => {
     const { data: userData, error: userError } = await supabase.auth.getUser(token);
     if (userError || !userData.user) {
       logger.warn("Auth failure", { message: userError?.message });
-      return errorResponse("Unauthorized", 401, "UNAUTHORIZED", corsHeaders);
+      return errorResponse("Unauthorized", 401, "UNAUTHORIZED", corsHeaders, requestId);
     }
 
     const user = userData.user;
@@ -134,7 +141,7 @@ serve(async (req: Request): Promise<Response> => {
 
     if (subscriptionError || !subscription) {
       logger.warn("Subscription not found", { userId: user.id, message: subscriptionError?.message });
-      return errorResponse("Subscription not found", 403, "SUBSCRIPTION_NOT_FOUND", corsHeaders);
+      return errorResponse("Subscription not found", 403, "SUBSCRIPTION_NOT_FOUND", corsHeaders, requestId);
     }
 
     const plan = (subscription.plan as SubscriptionPlan) ?? "free";
@@ -158,11 +165,11 @@ serve(async (req: Request): Promise<Response> => {
 
     const failValidation = (reason: string, errorCode: string) => {
       if (action === "consume") {
-        const body: TokenConsumeResponse = { success: false, error: reason, errorCode };
+        const body: TokenConsumeResponse = withRequestId({ success: false, error: reason, errorCode });
         return jsonResponse(body, 400, corsHeaders);
       }
 
-      const body: TokenResponse = { allowed: false, reason, suggestUpgrade: true, errorCode };
+      const body: TokenResponse = withRequestId({ allowed: false, reason, suggestUpgrade: true, errorCode });
       return jsonResponse(body, 400, corsHeaders);
     };
 
@@ -181,11 +188,11 @@ serve(async (req: Request): Promise<Response> => {
     if (action === "consume") {
       const processingToken = payload.processingToken;
       if (!processingToken) {
-        const body: TokenConsumeResponse = {
+        const body: TokenConsumeResponse = withRequestId({
           success: false,
           error: "Missing processing token",
           errorCode: "MISSING_PROCESSING_TOKEN",
-        };
+        });
         return jsonResponse(body, 400, corsHeaders);
       }
 
@@ -198,15 +205,15 @@ serve(async (req: Request): Promise<Response> => {
 
       if (tokenError || !tokenRow) {
         logger.warn("Processing token not found", { userId: user.id });
-        return errorResponse("Invalid processing token", 403, "INVALID_PROCESSING_TOKEN", corsHeaders);
+        return errorResponse("Invalid processing token", 403, "INVALID_PROCESSING_TOKEN", corsHeaders, requestId);
       }
 
       if (tokenRow.used_at) {
-        return errorResponse("Processing token already used", 403, "PROCESSING_TOKEN_USED", corsHeaders);
+        return errorResponse("Processing token already used", 403, "PROCESSING_TOKEN_USED", corsHeaders, requestId);
       }
 
       if (new Date(tokenRow.expires_at).getTime() < Date.now()) {
-        return errorResponse("Processing token expired", 403, "PROCESSING_TOKEN_EXPIRED", corsHeaders);
+        return errorResponse("Processing token expired", 403, "PROCESSING_TOKEN_EXPIRED", corsHeaders, requestId);
       }
 
       const { error: tokenUpdateError } = await supabase
@@ -216,7 +223,7 @@ serve(async (req: Request): Promise<Response> => {
 
       if (tokenUpdateError) {
         logger.error("Failed to mark processing token as used", { message: tokenUpdateError.message });
-        return errorResponse("Failed to update processing token", 500, "TOKEN_UPDATE_FAILED", corsHeaders);
+        return errorResponse("Failed to update processing token", 500, "TOKEN_UPDATE_FAILED", corsHeaders, requestId);
       }
 
       const isToday = subscription.last_sheet_date === todayStr;
@@ -239,10 +246,10 @@ serve(async (req: Request): Promise<Response> => {
 
       if (usageError) {
         logger.error("Failed to update usage", { message: usageError.message, userId: user.id });
-        return errorResponse("Failed to update usage", 500, "USAGE_UPDATE_FAILED", corsHeaders);
+        return errorResponse("Failed to update usage", 500, "USAGE_UPDATE_FAILED", corsHeaders, requestId);
       }
 
-      const body: TokenConsumeResponse = { success: true };
+      const body: TokenConsumeResponse = withRequestId({ success: true });
       return jsonResponse(body, 200, corsHeaders);
     }
 
@@ -259,18 +266,18 @@ serve(async (req: Request): Promise<Response> => {
 
     if (tokenInsertError) {
       logger.error("Failed to create processing token", { message: tokenInsertError.message, userId: user.id });
-      return errorResponse("Failed to create processing token", 500, "TOKEN_CREATE_FAILED", corsHeaders);
+      return errorResponse("Failed to create processing token", 500, "TOKEN_CREATE_FAILED", corsHeaders, requestId);
     }
 
-    const body: TokenResponse = {
+    const body: TokenResponse = withRequestId({
       allowed: true,
       processingToken,
       expiresAt,
       plan,
-    };
+    });
     return jsonResponse(body, 200, corsHeaders);
   } catch (error) {
     logger.error("Unexpected error", { message: error instanceof Error ? error.message : String(error) });
-    return errorResponse("Internal server error", 500, "UNEXPECTED_ERROR", corsHeaders);
+    return errorResponse("Internal server error", 500, "UNEXPECTED_ERROR", corsHeaders, requestId);
   }
 });

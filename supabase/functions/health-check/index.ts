@@ -22,9 +22,11 @@ const getCorsHeaders = (origin: string | null) => {
   return headers;
 };
 
-const logger = createLogger("HEALTH-CHECK");
+const baseLogger = createLogger("HEALTH-CHECK");
 
 serve(async (req: Request): Promise<Response> => {
+  const requestId = crypto.randomUUID();
+  const logger = baseLogger.withContext({ requestId });
   const requestOrigin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(requestOrigin);
 
@@ -40,6 +42,7 @@ serve(async (req: Request): Promise<Response> => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const body: HealthCheckResponse = {
+      requestId,
       status: "error",
       error: message,
       timestamp: new Date().toISOString(),
@@ -77,6 +80,7 @@ serve(async (req: Request): Promise<Response> => {
     const usersWithoutSubscription = typedUsers.filter((user) => !subscriptionIds.has(user.id));
 
     const response: HealthCheckResponse = {
+      requestId,
       status: usersWithoutSubscription.length === 0 ? "healthy" : "degraded",
       timestamp: new Date().toISOString(),
       usersWithoutSubscription: usersWithoutSubscription.length,
@@ -92,6 +96,7 @@ serve(async (req: Request): Promise<Response> => {
     logger.error("Health check error", { message });
 
     const response: HealthCheckResponse = {
+      requestId,
       status: "error",
       error: message,
       timestamp: new Date().toISOString(),

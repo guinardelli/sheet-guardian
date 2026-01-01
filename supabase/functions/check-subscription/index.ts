@@ -23,7 +23,7 @@ const getCorsHeaders = (origin: string | null) => {
   return headers;
 };
 
-const logger = createLogger("CHECK-SUBSCRIPTION");
+const baseLogger = createLogger("CHECK-SUBSCRIPTION");
 
 // Map Stripe product IDs to plan names
 const PRODUCT_TO_PLAN: Record<string, SubscriptionPlan> = {
@@ -32,6 +32,8 @@ const PRODUCT_TO_PLAN: Record<string, SubscriptionPlan> = {
 };
 
 serve(async (req: Request): Promise<Response> => {
+  const requestId = crypto.randomUUID();
+  const logger = baseLogger.withContext({ requestId });
   const requestOrigin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(requestOrigin);
 
@@ -81,6 +83,7 @@ serve(async (req: Request): Promise<Response> => {
     if (customers.data.length === 0) {
       logger.info("No Stripe customer found, returning free plan");
       const body: SubscriptionResponse = {
+        requestId,
         subscribed: false,
         plan: "free",
         product_id: null,
@@ -177,6 +180,7 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     const body: SubscriptionResponse = {
+      requestId,
       subscribed: hasActiveSub,
       plan,
       product_id: productId,
@@ -191,6 +195,7 @@ serve(async (req: Request): Promise<Response> => {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error("Error", { message: errorMessage });
     const body: SubscriptionResponse = {
+      requestId,
       subscribed: false,
       error: errorMessage,
       details: "Erro ao verificar assinatura. Tente novamente em alguns segundos."
