@@ -30,7 +30,7 @@ import { useToast } from '@/hooks/use-toast';
 
 import { supabase } from '@/services/supabase/client';
 import { logger } from '@/lib/logger';
-import { PLANS_CONFIG, AVAILABLE_PLANS, STRIPE_PLANS } from '@/config/plans';
+import { PLANS_CONFIG, AVAILABLE_PLANS, validateStripeConfig, type StripePlan } from '@/config/plans';
 import { cn } from '@/lib/utils';
 
 interface PlanInfo {
@@ -203,7 +203,9 @@ const Plans = () => {
     }
     setProcessing(true);
     try {
-      const priceId = STRIPE_PLANS[plan].price_id;
+      // Valida configuracao do Stripe antes de prosseguir
+      const stripeConfig = validateStripeConfig(plan as StripePlan);
+      const priceId = stripeConfig.priceId;
 
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { priceId },
