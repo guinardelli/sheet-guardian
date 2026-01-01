@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { CreditCard, Crown, Home, Lock, Mail, RefreshCw, Settings, User } from 'lucide-react';
+import { Copy, CreditCard, Crown, Eye, EyeOff, Home, Lock, Mail, RefreshCw, Settings, User } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,19 @@ const PLAN_BADGE_STYLES: Record<SubscriptionPlan, string> = {
   anual: 'bg-gradient-to-r from-primary to-accent text-white',
 };
 
+/**
+ * Mascara um ID sensível, mostrando apenas os primeiros e últimos caracteres.
+ * Ex: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" -> "a1b2••••7890"
+ */
+const maskSensitiveId = (id: string, showFirst = 4, showLast = 4): string => {
+  if (!id || id.length <= showFirst + showLast) {
+    return id;
+  }
+  const first = id.slice(0, showFirst);
+  const last = id.slice(-showLast);
+  return `${first}••••${last}`;
+};
+
 const Account = () => {
   const { t } = useTranslation();
   const { user, loading: authLoading } = useAuth();
@@ -47,6 +60,17 @@ const Account = () => {
   const [retrying, setRetrying] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [lastError, setLastError] = useState<string | null>(null);
+  const [showFullId, setShowFullId] = useState(false);
+
+  const handleCopyId = async () => {
+    if (!user?.id) return;
+    try {
+      await navigator.clipboard.writeText(user.id);
+      toast.success(t('account.idCopied'));
+    } catch {
+      toast.error(t('common.error'));
+    }
+  };
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -279,7 +303,36 @@ const Account = () => {
               <CardContent className="space-y-4">
                 <div>
                   <Label className="text-sm text-muted-foreground">{t('account.userId')}</Label>
-                  <p className="font-mono text-sm text-muted-foreground">{user?.id}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="font-mono text-sm text-muted-foreground">
+                      {showFullId ? user?.id : maskSensitiveId(user?.id ?? '')}
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => setShowFullId(!showFullId)}
+                      title={showFullId ? t('account.hideId') : t('account.showId')}
+                    >
+                      {showFullId ? (
+                        <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={handleCopyId}
+                      title={t('account.copyId')}
+                    >
+                      <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t('account.idNote')}
+                  </p>
                 </div>
               </CardContent>
             </Card>
