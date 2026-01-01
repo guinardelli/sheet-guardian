@@ -1,6 +1,6 @@
-import { supabase, isSupabaseConfigured } from "@/integrations/supabase/client";
+import { supabase, isSupabaseConfigured } from "@/services/supabase/client";
 import { logger } from "@/lib/logger";
-import type { Json, TablesInsert } from "@/integrations/supabase/types";
+import type { Json, TablesInsert } from "@/services/supabase/types";
 
 type ErrorContext = Record<string, unknown>;
 
@@ -105,3 +105,4 @@ export const initErrorTracker = () => {
     });
   });
 };
+

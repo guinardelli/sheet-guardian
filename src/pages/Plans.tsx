@@ -28,7 +28,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { useSubscriptionManagement } from '@/hooks/useSubscriptionManagement';
 import { useToast } from '@/hooks/use-toast';
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/services/supabase/client';
 import { logger } from '@/lib/logger';
 import { STRIPE_PLANS } from '@/lib/stripe';
 import { cn } from '@/lib/utils';
@@ -480,3 +480,4 @@ const Plans = () => {
 };
 
 export default Plans;
+

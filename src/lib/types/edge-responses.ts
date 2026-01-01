@@ -1,4 +1,4 @@
-import type { SubscriptionPlan } from '@/types/subscription';
+import type { SubscriptionPlan } from '@/lib/types/subscription';
 
 export interface ErrorResponse {
   error: string;
@@ -66,3 +66,4 @@ export type ProcessFileResponse =
       error: string;
       errorCode?: string;
     };
+

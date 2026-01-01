@@ -1,8 +1,8 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
-import ptTranslations from '@/locales/pt.json';
-import enTranslations from '@/locales/en.json';
+import ptTranslations from '@/lib/locales/pt.json';
+import enTranslations from '@/lib/locales/en.json';
 
 const savedLanguage = localStorage.getItem('language') || 'pt';
 
@@ -21,3 +21,4 @@ i18n
   });
 
 export default i18n;
+

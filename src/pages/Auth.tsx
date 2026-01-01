@@ -17,7 +17,7 @@ import { ResetPasswordForm } from '@/components/ResetPasswordForm';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/services/supabase/client';
 import { cn } from '@/lib/utils';
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@/lib/constants';
 
@@ -416,3 +416,4 @@ const Auth = () => {
 };
 
 export default Auth;
+

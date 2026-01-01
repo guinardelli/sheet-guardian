@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/services/supabase/client';
 import { logger } from '@/lib/logger';
 
 export const useSubscriptionManagement = () => {
@@ -48,3 +48,4 @@ export const useSubscriptionManagement = () => {
 
   return { openCustomerPortal, loading };
 };
+

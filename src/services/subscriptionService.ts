@@ -1,13 +1,13 @@
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/services/supabase/client';
 import { logger } from '@/lib/logger';
 import { trackSubscriptionIssue } from '@/lib/error-tracker';
 import { fetchWithRetry } from '@/lib/fetch-with-retry';
-import type { SubscriptionPlan, SubscriptionState } from '@/types/subscription';
-import type { SubscriptionResponse, TokenConsumeResponse, TokenResponse } from '@/types/edge-responses';
+import type { SubscriptionPlan, SubscriptionState } from '@/lib/types/subscription';
+import type { SubscriptionResponse, TokenConsumeResponse, TokenResponse } from '@/lib/types/edge-responses';
 
-export type { SubscriptionPlan, SubscriptionState } from '@/types/subscription';
-export type { SubscriptionResponse, TokenConsumeResponse, TokenResponse } from '@/types/edge-responses';
+export type { SubscriptionPlan, SubscriptionState } from '@/lib/types/subscription';
+export type { SubscriptionResponse, TokenConsumeResponse, TokenResponse } from '@/lib/types/edge-responses';
 export type TokenResult = TokenResponse;
 
 const VALID_PLANS: SubscriptionPlan[] = ['free', 'professional', 'premium'];
@@ -546,3 +546,5 @@ export const createSubscriptionService = (deps: SubscriptionServiceDeps) => {
 };
 
 export type SubscriptionService = ReturnType<typeof createSubscriptionService>;
+
+

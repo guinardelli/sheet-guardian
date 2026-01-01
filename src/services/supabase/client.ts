@@ -16,7 +16,7 @@ if (!isSupabaseConfigured) {
 }
 
 // Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
+// import { supabase } from "@/services/supabase/client";
 
 // Create a mock client for when Supabase is not configured
 const createMockClient = (): SupabaseClient<Database> => {
@@ -76,3 +76,4 @@ export const supabase = isSupabaseConfigured
       }
     })
   : createMockClient();
+

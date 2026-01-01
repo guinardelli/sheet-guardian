@@ -10,7 +10,7 @@ import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicato
 import { ExcelIcon } from '@/components/ExcelIcon';
 
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/services/supabase/client';
 
 interface ResetPasswordFormProps {
   onSuccess: () => void;
@@ -122,3 +122,4 @@ export const ResetPasswordForm = ({ onSuccess }: ResetPasswordFormProps) => {
     </Card>
   );
 };
+

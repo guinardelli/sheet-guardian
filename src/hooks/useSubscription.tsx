@@ -10,7 +10,7 @@ import {
   type TokenResult,
   type UsageStats,
 } from '@/services/subscriptionService';
-import type { AsyncState } from '@/types/async';
+import type { AsyncState } from '@/lib/types/async';
 
 export {
   PLAN_LIMITS,
@@ -164,3 +164,4 @@ export const useSubscription = (): SubscriptionHook => {
     refetch: fetchSubscription,
   };
 };
+

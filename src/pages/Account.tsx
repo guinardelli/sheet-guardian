@@ -17,7 +17,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { PLAN_LIMITS, SubscriptionPlan, useSubscription } from '@/hooks/useSubscription';
 import { useSubscriptionManagement } from '@/hooks/useSubscriptionManagement';
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/services/supabase/client';
 import { toast } from 'sonner';
 import { FLAGS } from '@/lib/feature-flags';
 
@@ -536,3 +536,4 @@ const Account = () => {
 const LoadingSpinner = () => <RefreshCw className="h-4 w-4 animate-spin" />;
 
 export default Account;
+

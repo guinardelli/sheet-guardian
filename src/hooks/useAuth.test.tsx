@@ -21,7 +21,7 @@ const supabase = vi.hoisted(() => ({
   rpc: (...args: unknown[]) => mockRpc(...args),
 }));
 
-vi.mock('@/integrations/supabase/client', () => ({ supabase }));
+vi.mock('@/services/supabase/client', () => ({ supabase }));
 vi.mock('@/lib/ip', () => ({ getUserIP: mockGetUserIP }));
 
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
@@ -84,3 +84,4 @@ describe('useAuth', () => {
     expect(result.current.authError).toBeNull();
   });
 });
+

@@ -20,7 +20,7 @@ import { PLAN_LIMITS, useSubscription } from '@/hooks/useSubscription';
 
 import { downloadFile, LogEntry, ProcessingResult } from '@/lib/excel-vba-modifier';
 import { logger } from '@/lib/logger';
-import type { ProcessFileResponse } from '@/types/edge-responses';
+import type { ProcessFileResponse } from '@/lib/types/edge-responses';
 
 const MAX_LOG_ENTRIES = 100;
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? '';
@@ -661,3 +661,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+

@@ -1,10 +1,10 @@
 /* eslint-disable react-refresh/only-export-components */
 import { useState, useEffect, createContext, useContext, ReactNode, useRef, useCallback } from 'react';
 import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/services/supabase/client';
 import { logger } from '@/lib/logger';
 import { getUserIP } from '@/lib/ip';
-import type { AsyncState } from '@/types/async';
+import type { AsyncState } from '@/lib/types/async';
 
 interface AuthContextType {
   user: User | null;
@@ -243,3 +243,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+

@@ -48,7 +48,7 @@ const supabase = vi.hoisted(() => ({
   rpc: mockRpc,
 }));
 
-vi.mock('@/integrations/supabase/client', () => ({ supabase }));
+vi.mock('@/services/supabase/client', () => ({ supabase }));
 vi.mock('./useAuth', () => ({
   useAuth: () => ({ user: { id: 'user-1', email: 'test@example.com' } }),
 }));
@@ -294,3 +294,4 @@ describe('useSubscription logic', () => {
     expect(result.current.subscription?.plan).toBe('free');
   });
 });
+
