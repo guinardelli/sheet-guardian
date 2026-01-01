@@ -19,7 +19,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { PLAN_LIMITS, useSubscription } from '@/hooks/useSubscription';
 
 import { downloadFile, LogEntry, ProcessingResult } from '@/lib/excel-vba-modifier';
-import { fetchWithRetry } from '@/lib/fetch-with-retry';
 import { logger } from '@/lib/logger';
 import type { ProcessFileResponse } from '@/types/edge-responses';
 
@@ -50,6 +49,35 @@ const parseProcessFileResponse = async (response: Response): Promise<{ data: Pro
   }
 };
 
+const fetchProcessFile = async (
+  url: string,
+  options: RequestInit,
+  maxRetries = 2,
+  baseDelay = 1000,
+): Promise<Response> => {
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt < maxRetries; attempt += 1) {
+    try {
+      const response = await fetch(url, options);
+      if (response.ok || response.status < 500 || attempt === maxRetries - 1) {
+        return response;
+      }
+      lastError = new Error(`HTTP ${response.status}`);
+    } catch (error) {
+      lastError = error;
+      if (attempt === maxRetries - 1) {
+        throw error;
+      }
+    }
+
+    const delay = baseDelay * Math.pow(2, attempt);
+    await new Promise((resolve) => setTimeout(resolve, delay));
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('Process-file request failed');
+};
+
 const invokeProcessFile = async (file: File, accessToken: string): Promise<ProcessFileResponse> => {
   if (!FUNCTIONS_BASE_URL || !SUPABASE_ANON_KEY) {
     return { success: false, error: 'Supabase env not configured' };
@@ -58,14 +86,20 @@ const invokeProcessFile = async (file: File, accessToken: string): Promise<Proce
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetchWithRetry(`${FUNCTIONS_BASE_URL}/process-file`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      apikey: SUPABASE_ANON_KEY,
-    },
-    body: formData,
-  });
+  let response: Response;
+  try {
+    response = await fetchProcessFile(`${FUNCTIONS_BASE_URL}/process-file`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        apikey: SUPABASE_ANON_KEY,
+      },
+      body: formData,
+    });
+  } catch (error) {
+    logger.error('Falha ao chamar process-file', error);
+    return { success: false, error: 'Falha ao comunicar com o servidor.' };
+  }
 
   const { data, rawText } = await parseProcessFileResponse(response);
 

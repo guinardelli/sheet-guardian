@@ -140,6 +140,16 @@ const extractUpload = async (req: Request): Promise<UploadedFile> => {
   throw new Error("Unsupported content type");
 };
 
+const mapUploadError = (message: string) => {
+  if (message.includes("Missing file") || message.includes("Missing fileBase64")) {
+    return { status: 400, code: "MISSING_FILE" };
+  }
+  if (message.includes("Unsupported content type")) {
+    return { status: 415, code: "UNSUPPORTED_CONTENT_TYPE" };
+  }
+  return { status: 400, code: "INVALID_UPLOAD" };
+};
+
 const buildFileName = (originalName: string) => {
   const baseName = originalName.replace(/\.xlsm$/i, "");
   const timestamp = new Date().toISOString().replace(/[:.]/g, "").slice(0, 15);
@@ -221,7 +231,14 @@ serve(async (req: Request): Promise<Response> => {
       return errorResponse("Unauthorized", 401, "UNAUTHORIZED", corsHeaders);
     }
 
-    const upload = await extractUpload(req);
+    let upload: UploadedFile;
+    try {
+      upload = await extractUpload(req);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const mapped = mapUploadError(message);
+      return errorResponse(message, mapped.status, mapped.code, corsHeaders);
+    }
     const fileName = upload.fileName;
     const originalSize = upload.fileBytes.length;
 
