@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createLogger } from "../_shared/logger.ts";
+import { getServiceRoleKey, getSupabaseUrl } from "../_shared/env.ts";
 
 type SubscriptionPlan = "free" | "professional" | "premium";
 
@@ -113,10 +114,8 @@ serve(async (req) => {
       return errorResponse("Unauthorized", 401, "UNAUTHORIZED", corsHeaders);
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const serviceRoleKey = Deno.env.get("SERVICE_ROLE_KEY")
-      ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
-      ?? "";
+    const supabaseUrl = getSupabaseUrl();
+    const serviceRoleKey = getServiceRoleKey();
 
     const supabase = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false },

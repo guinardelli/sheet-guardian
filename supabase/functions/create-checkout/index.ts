@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createLogger } from "../_shared/logger.ts";
+import { getServiceRoleKey, getStripeSecretKey, getSupabaseAnonKey, getSupabaseUrl } from "../_shared/env.ts";
 
 const ANNUAL_PRICE_ID = (Deno.env.get("STRIPE_ANNUAL_PRICE_ID")
   ?? Deno.env.get("VITE_STRIPE_ANNUAL_PRICE_ID")
@@ -41,19 +42,18 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-  const supabaseServiceRoleKey = Deno.env.get("SERVICE_ROLE_KEY")
-    ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
-    ?? "";
-
-  const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
-  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: { persistSession: false },
-  });
-
   try {
     logger.info("Function started");
+
+    const supabaseUrl = getSupabaseUrl();
+    const supabaseAnonKey = getSupabaseAnonKey();
+    const supabaseServiceRoleKey = getServiceRoleKey();
+    const stripeSecretKey = getStripeSecretKey();
+
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
+      auth: { persistSession: false },
+    });
     
     const { priceId } = await req.json();
     const normalizedPriceId = typeof priceId === "string" ? priceId.trim() : "";
@@ -84,7 +84,7 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logger.info("User authenticated", { userId: user.id, email: user.email });
 
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+    const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2024-12-18.acacia",
     });
 

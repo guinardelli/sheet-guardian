@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createLogger } from "../_shared/logger.ts";
+import { getServiceRoleKey, getStripeSecretKey, getStripeWebhookSecret, getSupabaseUrl } from "../_shared/env.ts";
 
 type PlanName = "free" | "professional" | "premium";
 
@@ -79,20 +80,19 @@ export const createWebhookHandler = (
     return new Response("Method not allowed", { status: 405 });
   }
 
-  const stripeKey = env.get("STRIPE_SECRET_KEY") ?? "";
-  const webhookSecret = env.get("STRIPE_WEBHOOK_SECRET") ?? "";
-  const supabaseUrl = env.get("SUPABASE_URL") ?? "";
-  const serviceRoleKey = env.get("SERVICE_ROLE_KEY")
-    ?? env.get("SUPABASE_SERVICE_ROLE_KEY")
-    ?? "";
+  let stripeKey: string;
+  let webhookSecret: string;
+  let supabaseUrl: string;
+  let serviceRoleKey: string;
 
-  if (!stripeKey || !webhookSecret || !supabaseUrl || !serviceRoleKey) {
-    logger.error("Missing required env vars", {
-      hasStripeKey: !!stripeKey,
-      hasWebhookSecret: !!webhookSecret,
-      hasSupabaseUrl: !!supabaseUrl,
-      hasServiceRoleKey: !!serviceRoleKey,
-    });
+  try {
+    stripeKey = getStripeSecretKey(env);
+    webhookSecret = getStripeWebhookSecret(env);
+    supabaseUrl = getSupabaseUrl(env);
+    serviceRoleKey = getServiceRoleKey(env);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error("Missing required env vars", { message });
     return new Response("Server misconfigured", { status: 500 });
   }
 

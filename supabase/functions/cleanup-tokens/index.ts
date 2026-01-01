@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createLogger } from "../_shared/logger.ts";
+import { getServiceRoleKey, getSupabaseUrl } from "../_shared/env.ts";
 
 const logger = createLogger("CLEANUP-TOKENS");
 const TTL_MS = 24 * 60 * 60 * 1000;
@@ -13,14 +14,15 @@ serve(async (req) => {
     });
   }
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const serviceRoleKey = Deno.env.get("SERVICE_ROLE_KEY")
-    ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
-    ?? "";
-
-  if (!supabaseUrl || !serviceRoleKey) {
+  let supabaseUrl: string;
+  let serviceRoleKey: string;
+  try {
+    supabaseUrl = getSupabaseUrl();
+    serviceRoleKey = getServiceRoleKey();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     return new Response(JSON.stringify({
-      error: "Missing SUPABASE_URL or SERVICE_ROLE_KEY",
+      error: message,
     }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
