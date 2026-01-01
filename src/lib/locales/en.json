@@ -13,7 +13,8 @@
     "unlimited": "Unlimited",
     "allRightsReserved": "All rights reserved",
     "processing": "Processing...",
-    "wait": "Please wait..."
+    "wait": "Please wait...",
+    "verifyingAuth": "Verifying authentication..."
   },
   "header": {
     "home": "Home",

@@ -13,7 +13,8 @@
     "unlimited": "Ilimitado",
     "allRightsReserved": "Todos os direitos reservados",
     "processing": "Processando...",
-    "wait": "Aguarde..."
+    "wait": "Aguarde...",
+    "verifyingAuth": "Verificando autenticação..."
   },
   "header": {
     "home": "Início",
