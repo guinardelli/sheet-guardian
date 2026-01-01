@@ -3,9 +3,9 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createLogger } from "../_shared/logger.ts";
 
-const ANNUAL_PRICE_ID = Deno.env.get("STRIPE_ANNUAL_PRICE_ID")
+const ANNUAL_PRICE_ID = (Deno.env.get("STRIPE_ANNUAL_PRICE_ID")
   ?? Deno.env.get("VITE_STRIPE_ANNUAL_PRICE_ID")
-  ?? "";
+  ?? "").trim();
 
 const ALLOWED_PRICE_TO_PRODUCT: Record<string, string> = {
   "price_1Sd9EhJkxX3Me4wlrU22rZwM": "prod_TaJslOsZAWnhcN", // professional
@@ -56,12 +56,13 @@ serve(async (req) => {
     logger.info("Function started");
     
     const { priceId } = await req.json();
-    if (!priceId) throw new Error("Price ID is required");
-    const allowedProduct = ALLOWED_PRICE_TO_PRODUCT[priceId];
+    const normalizedPriceId = typeof priceId === "string" ? priceId.trim() : "";
+    if (!normalizedPriceId) throw new Error("Price ID is required");
+    const allowedProduct = ALLOWED_PRICE_TO_PRODUCT[normalizedPriceId];
     if (!allowedProduct) {
       throw new Error("Invalid priceId");
     }
-    logger.info("Price ID received", { priceId });
+    logger.info("Price ID received", { priceId: normalizedPriceId });
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
@@ -101,7 +102,7 @@ serve(async (req) => {
       logger.info("New customer created", { customerId });
     }
 
-    const price = await stripe.prices.retrieve(priceId);
+    const price = await stripe.prices.retrieve(normalizedPriceId);
     const productId = typeof price.product === "string" ? price.product : price.product.id;
     if (productId !== allowedProduct) {
       throw new Error("Price/product mismatch");
@@ -127,7 +128,7 @@ serve(async (req) => {
       customer: customerId,
       line_items: [
         {
-          price: priceId,
+          price: normalizedPriceId,
           quantity: 1,
         },
       ],

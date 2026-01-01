@@ -1,14 +1,19 @@
+const normalizeEnvValue = (value?: string) => {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+};
+
 const stripeEnv = {
   professional: {
-    productId: import.meta.env.VITE_STRIPE_PROFESSIONAL_PRODUCT_ID,
-    priceId: import.meta.env.VITE_STRIPE_PROFESSIONAL_PRICE_ID,
+    productId: normalizeEnvValue(import.meta.env.VITE_STRIPE_PROFESSIONAL_PRODUCT_ID),
+    priceId: normalizeEnvValue(import.meta.env.VITE_STRIPE_PROFESSIONAL_PRICE_ID),
   },
   premium: {
-    productId: import.meta.env.VITE_STRIPE_PREMIUM_PRODUCT_ID,
-    priceId: import.meta.env.VITE_STRIPE_PREMIUM_PRICE_ID,
+    productId: normalizeEnvValue(import.meta.env.VITE_STRIPE_PREMIUM_PRODUCT_ID),
+    priceId: normalizeEnvValue(import.meta.env.VITE_STRIPE_PREMIUM_PRICE_ID),
   },
   anual: {
-    priceId: import.meta.env.VITE_STRIPE_ANNUAL_PRICE_ID,
+    priceId: normalizeEnvValue(import.meta.env.VITE_STRIPE_ANNUAL_PRICE_ID),
   },
 };
 
