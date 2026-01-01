@@ -188,6 +188,64 @@ describe('useSubscription logic', () => {
     expect(response.suggestUpgrade).toBe(true);
   });
 
+  it('uses updated monthly limit for free plan', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2025, 11, 5));
+    mockSubscriptionRef.current = {
+      ...baseSubscription,
+      plan: 'free',
+      sheets_used_month: 1,
+      last_reset_date: '2025-12-01',
+    };
+
+    const { result } = renderHook(() => useSubscription());
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    const stats = result.current.getUsageStats();
+    expect(stats?.limit).toBe(2);
+  });
+
+  it('allows processing within professional file size limit', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2025, 11, 5));
+    mockSubscriptionRef.current = {
+      ...baseSubscription,
+      plan: 'professional',
+      sheets_used_week: 0,
+      last_sheet_date: '2025-12-02',
+    };
+
+    const { result } = renderHook(() => useSubscription());
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    const response = result.current.canProcessSheet(3000);
+    expect(response.allowed).toBe(true);
+  });
+
+  it('blocks processing when professional file exceeds 3 MB', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2025, 11, 5));
+    mockSubscriptionRef.current = {
+      ...baseSubscription,
+      plan: 'professional',
+      sheets_used_week: 0,
+      last_sheet_date: '2025-12-02',
+    };
+
+    const { result } = renderHook(() => useSubscription());
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    const response = result.current.canProcessSheet(3073);
+    expect(response.allowed).toBe(false);
+    expect(response.reason).toContain('Limite do seu plano: 3 MB');
+  });
+
   it('returns a stable local date string', () => {
     const value = getLocalDateString(new Date(2025, 0, 5));
     expect(value).toBe('2025-01-05');

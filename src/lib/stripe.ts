@@ -36,7 +36,7 @@ export const STRIPE_PLANS = {
   },
   anual: {
     product_id: stripeEnv.premium.productId ?? 'prod_TaJsysi99Q1g2J',
-    price_id: stripeEnv.anual.priceId ?? 'price_ANNUAL_PLACEHOLDER',
+    price_id: stripeEnv.anual.priceId ?? 'price_1SkkH3JkxX3Me4wlLuYefRSD',
   },
 } as const;
 

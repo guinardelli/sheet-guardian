@@ -3,9 +3,14 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createLogger } from "../_shared/logger.ts";
 
+const ANNUAL_PRICE_ID = Deno.env.get("STRIPE_ANNUAL_PRICE_ID")
+  ?? Deno.env.get("VITE_STRIPE_ANNUAL_PRICE_ID")
+  ?? "";
+
 const ALLOWED_PRICE_TO_PRODUCT: Record<string, string> = {
   "price_1Sd9EhJkxX3Me4wlrU22rZwM": "prod_TaJslOsZAWnhcN", // professional
   "price_1Sd9F5JkxX3Me4wl1xNRb5Kh": "prod_TaJsysi99Q1g2J", // premium
+  ...(ANNUAL_PRICE_ID ? { [ANNUAL_PRICE_ID]: "prod_TaJsysi99Q1g2J" } : {}),
 };
 
 const allowedOrigins = new Set([

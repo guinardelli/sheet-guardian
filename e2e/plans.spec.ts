@@ -12,4 +12,5 @@ test('plans page renders plan cards', async ({ page }) => {
   await expect(page.getByText('Gratuito').first()).toBeVisible();
   await expect(page.getByText('Profissional').first()).toBeVisible();
   await expect(page.getByText('Premium').first()).toBeVisible();
+  await expect(page.getByText('Anual').first()).toBeVisible();
 });

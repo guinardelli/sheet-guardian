@@ -24,7 +24,8 @@ test('start checkout flow', async ({ page }) => {
   await signIn(page);
   await page.goto('/plans');
 
-  const upgradeButton = page.getByRole('button', { name: 'Fazer Upgrade' }).first();
+  const annualCard = page.getByRole('heading', { name: 'Anual' }).locator('..').locator('..');
+  const upgradeButton = annualCard.getByRole('button', { name: /Fazer Upgrade|Trocar Plano/ }).first();
   const [popup] = await Promise.all([
     page.waitForEvent('popup'),
     upgradeButton.click(),
