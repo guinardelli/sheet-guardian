@@ -18,15 +18,69 @@ import { StatisticsCard } from '@/components/StatisticsCard';
 import { useAuth } from '@/hooks/useAuth';
 import { PLAN_LIMITS, useSubscription } from '@/hooks/useSubscription';
 
-import {
-  downloadFile,
-  LogEntry,
-  processExcelFile,
-  ProcessingResult,
-} from '@/lib/excel-vba-modifier';
+import { downloadFile, LogEntry, ProcessingResult } from '@/lib/excel-vba-modifier';
+import { fetchWithRetry } from '@/lib/fetch-with-retry';
 import { logger } from '@/lib/logger';
+import type { ProcessFileResponse } from '@/types/edge-responses';
 
 const MAX_LOG_ENTRIES = 100;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? '';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '';
+const FUNCTIONS_BASE_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1` : '';
+
+const decodeBase64ToBlob = (base64: string, mimeType: string): Blob => {
+  const normalized = base64.includes(',') ? base64.split(',')[1] : base64;
+  const binary = atob(normalized);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new Blob([bytes], { type: mimeType || 'application/octet-stream' });
+};
+
+const parseProcessFileResponse = async (response: Response): Promise<{ data: ProcessFileResponse | null; rawText: string }> => {
+  const rawText = await response.text();
+  if (!rawText) {
+    return { data: null, rawText: '' };
+  }
+  try {
+    return { data: JSON.parse(rawText) as ProcessFileResponse, rawText };
+  } catch {
+    return { data: null, rawText };
+  }
+};
+
+const invokeProcessFile = async (file: File, accessToken: string): Promise<ProcessFileResponse> => {
+  if (!FUNCTIONS_BASE_URL || !SUPABASE_ANON_KEY) {
+    return { success: false, error: 'Supabase env not configured' };
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetchWithRetry(`${FUNCTIONS_BASE_URL}/process-file`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      apikey: SUPABASE_ANON_KEY,
+    },
+    body: formData,
+  });
+
+  const { data, rawText } = await parseProcessFileResponse(response);
+
+  if (!response.ok) {
+    if (data) {
+      return data;
+    }
+    return { success: false, error: rawText || `HTTP ${response.status}` };
+  }
+
+  if (data) {
+    return data;
+  }
+  return { success: false, error: 'Resposta invalida do servidor.' };
+};
 
 const Dashboard = () => {
   const { t } = useTranslation();
@@ -43,7 +97,7 @@ const Dashboard = () => {
 
   const processingLockRef = useRef(false);
 
-  const { user, loading: authLoading, authError, clearAuthError } = useAuth();
+  const { user, session, loading: authLoading, authError, clearAuthError } = useAuth();
   const { subscription, canProcessSheet, requestProcessingToken, incrementUsage, getUsageStats, isUpdating } = useSubscription();
   const navigate = useNavigate();
 
@@ -234,7 +288,14 @@ const Dashboard = () => {
         return;
       }
 
-      processingLockRef.current = true;
+      if (!session?.access_token) {
+        toast.error(t('toasts.criticalError'), {
+          description: t('toasts.unexpectedErrorDesc'),
+        });
+        processingLockRef.current = false;
+        return;
+      }
+
       setIsProcessing(true);
       setLogs([]);
       setProgress(0);
@@ -243,8 +304,68 @@ const Dashboard = () => {
       setProcessingComplete(false);
       setDownloadAllowed(false);
 
-      const processingResult = await processExcelFile(selectedFile, handleLog, setProgress);
+      const log = (message: string, type: LogEntry['type'] = 'info') => {
+        handleLog({ timestamp: new Date(), message, type });
+      };
 
+      log('Iniciando processo de modificacao no servidor...', 'info');
+      setProgress(10);
+
+      const response = await invokeProcessFile(selectedFile, session.access_token);
+      setProgress(70);
+
+      if (!response.success) {
+        const failedResult: ProcessingResult = {
+          success: false,
+          modifiedFile: null,
+          originalFileName: selectedFile.name,
+          newFileName: '',
+          vbaExists: false,
+          patternsModified: 0,
+          shouldCountUsage: false,
+          originalSize: selectedFile.size,
+          modifiedSize: 0,
+          error: response.error,
+        };
+
+        setResult(failedResult);
+        setProcessingComplete(true);
+
+        toast.error(t('toasts.processingError'), {
+          description: response.error,
+        });
+        return;
+      }
+
+      const resultBlob = decodeBase64ToBlob(response.fileBase64, response.mimeType || selectedFile.type);
+      const processingResult: ProcessingResult = {
+        success: true,
+        modifiedFile: resultBlob,
+        originalFileName: response.originalFileName,
+        newFileName: response.newFileName,
+        vbaExists: response.vbaExists,
+        patternsModified: response.patternsModified,
+        shouldCountUsage: response.shouldCountUsage,
+        originalSize: response.originalSize,
+        modifiedSize: response.modifiedSize,
+        warnings: response.warnings,
+      };
+
+      if (response.warnings?.length) {
+        response.warnings.forEach((warning) => {
+          log(`AVISO: ${warning}`, 'warning');
+        });
+      }
+
+      if (!response.vbaExists) {
+        log('AVISO: Nenhum arquivo VBA encontrado no Excel!', 'warning');
+      } else if (response.patternsModified > 0) {
+        log(`${response.patternsModified} padrao(oes) de protecao modificado(s)`, 'success');
+      } else {
+        log('VBA encontrado, mas nenhum padrao de protecao foi modificado', 'warning');
+      }
+
+      setProgress(90);
       await new Promise((resolve) => setTimeout(resolve, 4500));
 
       setResult(processingResult);
@@ -308,7 +429,18 @@ const Dashboard = () => {
       setIsProcessing(false);
       processingLockRef.current = false;
     }
-  }, [selectedFile, user, isProcessing, canProcessSheet, requestProcessingToken, handleLog, incrementUsage, navigate, t]);
+  }, [
+    selectedFile,
+    user,
+    session?.access_token,
+    isProcessing,
+    canProcessSheet,
+    requestProcessingToken,
+    handleLog,
+    incrementUsage,
+    navigate,
+    t,
+  ]);
 
   const handleDownload = useCallback(() => {
     if (result?.modifiedFile && downloadAllowed) {

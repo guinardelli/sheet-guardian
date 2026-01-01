@@ -46,3 +46,23 @@ export type SubscriptionResponse =
 
 export type CheckoutResponse = { url: string } | ErrorResponse;
 export type CustomerPortalResponse = { url: string } | ErrorResponse;
+
+export type ProcessFileResponse =
+  | {
+      success: true;
+      fileBase64: string;
+      originalFileName: string;
+      newFileName: string;
+      vbaExists: boolean;
+      patternsModified: number;
+      shouldCountUsage: boolean;
+      originalSize: number;
+      modifiedSize: number;
+      warnings?: string[];
+      mimeType: string;
+    }
+  | {
+      success: false;
+      error: string;
+      errorCode?: string;
+    };
