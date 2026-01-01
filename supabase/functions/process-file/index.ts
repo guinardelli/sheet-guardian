@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { encodeBase64, decodeBase64 } from "https://deno.land/std@0.190.0/encoding/base64.ts";
+import { encode as encodeBase64, decode as decodeBase64 } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 import JSZip from "https://esm.sh/jszip@3.10.1?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createLogger } from "../_shared/logger.ts";
@@ -26,6 +26,9 @@ const BINARY_PATTERNS = [
 
 const QUOTE_BYTE = 34;
 const F_BYTE = 70;
+
+const toArrayBuffer = (bytes: Uint8Array): ArrayBuffer =>
+  Uint8Array.from(bytes).buffer;
 
 type ProcessPayload = {
   fileBase64?: string | null;
@@ -270,7 +273,7 @@ serve(async (req: Request): Promise<Response> => {
       const output = await zip.generateAsync({ type: "uint8array" });
       const response: ProcessFileResponse = {
         success: true,
-        fileBase64: encodeBase64(output),
+        fileBase64: encodeBase64(toArrayBuffer(output)),
         originalFileName: fileName,
         newFileName: buildFileName(fileName),
         vbaExists: false,
@@ -302,7 +305,7 @@ serve(async (req: Request): Promise<Response> => {
 
     const response: ProcessFileResponse = {
       success: true,
-      fileBase64: encodeBase64(output),
+      fileBase64: encodeBase64(toArrayBuffer(output)),
       originalFileName: fileName,
       newFileName: buildFileName(fileName),
       vbaExists: true,
