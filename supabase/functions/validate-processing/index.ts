@@ -20,8 +20,8 @@ const allowedOrigins = new Set([
 ]);
 
 const PLAN_LIMITS: Record<SubscriptionPlan, { sheetsPerWeek: number | null; sheetsPerMonth: number | null; maxFileSizeMB: number | null }> = {
-  free: { sheetsPerWeek: null, sheetsPerMonth: 1, maxFileSizeMB: 1 },
-  professional: { sheetsPerWeek: 5, sheetsPerMonth: null, maxFileSizeMB: 1 },
+  free: { sheetsPerWeek: null, sheetsPerMonth: 2, maxFileSizeMB: 1 },
+  professional: { sheetsPerWeek: 5, sheetsPerMonth: null, maxFileSizeMB: 3 },
   premium: { sheetsPerWeek: null, sheetsPerMonth: null, maxFileSizeMB: null },
 };
 
@@ -59,66 +59,74 @@ const getWeekNumber = (date: Date): string => {
   return `${d.getFullYear()}-W${String(weekNo).padStart(2, "0")}`;
 };
 
+const jsonResponse = (
+  body: Record<string, unknown>,
+  status: number,
+  corsHeaders: Record<string, string>,
+) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+const errorResponse = (
+  message: string,
+  status: number,
+  errorCode: string,
+  corsHeaders: Record<string, string>,
+) => jsonResponse({ error: message, errorCode }, status, corsHeaders);
+
+const validationResponse = (
+  body: Record<string, unknown>,
+  errorCode: string,
+  corsHeaders: Record<string, string>,
+) => jsonResponse({ ...body, errorCode }, 400, corsHeaders);
+
 serve(async (req) => {
   const requestOrigin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(requestOrigin);
 
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  let payload: ValidatePayload = {};
   try {
-    payload = (await req.json()) as ValidatePayload;
-  } catch (error) {
-    logger.warn("Invalid JSON body", { message: error instanceof Error ? error.message : String(error) });
-    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    if (req.method === "OPTIONS") {
+      return new Response(null, { headers: corsHeaders });
+    }
+
+    if (req.method !== "POST") {
+      return errorResponse("Method not allowed", 405, "METHOD_NOT_ALLOWED", corsHeaders);
+    }
+
+    let payload: ValidatePayload = {};
+    try {
+      payload = (await req.json()) as ValidatePayload;
+    } catch (error) {
+      logger.warn("Invalid JSON body", { message: error instanceof Error ? error.message : String(error) });
+      return errorResponse("Invalid JSON body", 400, "INVALID_JSON", corsHeaders);
+    }
+
+    const action = payload.action ?? "validate";
+    if (action !== "validate" && action !== "consume") {
+      return errorResponse("Invalid action", 400, "INVALID_ACTION", corsHeaders);
+    }
+
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return errorResponse("Unauthorized", 401, "UNAUTHORIZED", corsHeaders);
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const serviceRoleKey = Deno.env.get("SERVICE_ROLE_KEY")
+      ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+      ?? "";
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false },
     });
-  }
 
-  const action = payload.action ?? "validate";
-  if (action !== "validate" && action !== "consume") {
-    return new Response(JSON.stringify({ error: "Invalid action" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const serviceRoleKey = Deno.env.get("SERVICE_ROLE_KEY")
-    ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
-    ?? "";
-
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false },
-  });
-
-  try {
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabase.auth.getUser(token);
     if (userError || !userData.user) {
       logger.warn("Auth failure", { message: userError?.message });
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse("Unauthorized", 401, "UNAUTHORIZED", corsHeaders);
     }
 
     const user = userData.user;
@@ -131,10 +139,7 @@ serve(async (req) => {
 
     if (subscriptionError || !subscription) {
       logger.warn("Subscription not found", { userId: user.id, message: subscriptionError?.message });
-      return new Response(JSON.stringify({ error: "Subscription not found" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse("Subscription not found", 403, "SUBSCRIPTION_NOT_FOUND", corsHeaders);
     }
 
     const plan = (subscription.plan as SubscriptionPlan) ?? "free";
@@ -156,36 +161,34 @@ serve(async (req) => {
     const usedThisWeek = lastWeek === currentWeek ? (subscription.sheets_used_week ?? 0) : 0;
     const usedThisMonth = lastResetMonth === currentMonth ? (subscription.sheets_used_month ?? 0) : 0;
 
-    const failValidation = (reason: string) => {
+    const failValidation = (reason: string, errorCode: string) => {
       const body = action === "consume"
         ? { success: false, error: reason }
         : { allowed: false, reason, suggestUpgrade: true };
 
-      return new Response(JSON.stringify(body), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return validationResponse(body, errorCode, corsHeaders);
     };
 
     if (limits.maxFileSizeMB && payload.file?.sizeBytes && payload.file.sizeBytes > limits.maxFileSizeMB * 1024 * 1024) {
-      return failValidation(`Arquivo muito grande. Limite do plano: ${limits.maxFileSizeMB} MB.`);
+      return failValidation(`Arquivo muito grande. Limite do plano: ${limits.maxFileSizeMB} MB.`, "FILE_TOO_LARGE");
     }
 
     if (limits.sheetsPerWeek !== null && usedThisWeek >= limits.sheetsPerWeek) {
-      return failValidation(`Limite semanal atingido (${usedThisWeek}/${limits.sheetsPerWeek}).`);
+      return failValidation(`Limite semanal atingido (${usedThisWeek}/${limits.sheetsPerWeek}).`, "WEEKLY_LIMIT_REACHED");
     }
 
     if (limits.sheetsPerMonth !== null && usedThisMonth >= limits.sheetsPerMonth) {
-      return failValidation(`Limite mensal atingido (${usedThisMonth}/${limits.sheetsPerMonth}).`);
+      return failValidation(`Limite mensal atingido (${usedThisMonth}/${limits.sheetsPerMonth}).`, "MONTHLY_LIMIT_REACHED");
     }
 
     if (action === "consume") {
       const processingToken = payload.processingToken;
       if (!processingToken) {
-        return new Response(JSON.stringify({ success: false, error: "Missing processing token" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return validationResponse(
+          { success: false, error: "Missing processing token" },
+          "MISSING_PROCESSING_TOKEN",
+          corsHeaders,
+        );
       }
 
       const { data: tokenRow, error: tokenError } = await supabase
@@ -197,24 +200,15 @@ serve(async (req) => {
 
       if (tokenError || !tokenRow) {
         logger.warn("Processing token not found", { userId: user.id });
-        return new Response(JSON.stringify({ success: false, error: "Invalid processing token" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return errorResponse("Invalid processing token", 403, "INVALID_PROCESSING_TOKEN", corsHeaders);
       }
 
       if (tokenRow.used_at) {
-        return new Response(JSON.stringify({ success: false, error: "Processing token already used" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return errorResponse("Processing token already used", 403, "PROCESSING_TOKEN_USED", corsHeaders);
       }
 
       if (new Date(tokenRow.expires_at).getTime() < Date.now()) {
-        return new Response(JSON.stringify({ success: false, error: "Processing token expired" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return errorResponse("Processing token expired", 403, "PROCESSING_TOKEN_EXPIRED", corsHeaders);
       }
 
       const { error: tokenUpdateError } = await supabase
@@ -224,10 +218,7 @@ serve(async (req) => {
 
       if (tokenUpdateError) {
         logger.error("Failed to mark processing token as used", { message: tokenUpdateError.message });
-        return new Response(JSON.stringify({ success: false, error: "Token update failed" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return errorResponse("Failed to update processing token", 500, "TOKEN_UPDATE_FAILED", corsHeaders);
       }
 
       const isToday = subscription.last_sheet_date === todayStr;
@@ -250,16 +241,10 @@ serve(async (req) => {
 
       if (usageError) {
         logger.error("Failed to update usage", { message: usageError.message, userId: user.id });
-        return new Response(JSON.stringify({ success: false, error: "Failed to update usage" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return errorResponse("Failed to update usage", 500, "USAGE_UPDATE_FAILED", corsHeaders);
       }
 
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ success: true }, 200, corsHeaders);
     }
 
     const processingToken = crypto.randomUUID();
@@ -275,26 +260,17 @@ serve(async (req) => {
 
     if (tokenInsertError) {
       logger.error("Failed to create processing token", { message: tokenInsertError.message, userId: user.id });
-      return new Response(JSON.stringify({ error: "Failed to create processing token" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse("Failed to create processing token", 500, "TOKEN_CREATE_FAILED", corsHeaders);
     }
 
-    return new Response(JSON.stringify({
+    return jsonResponse({
       allowed: true,
       processingToken,
       expiresAt,
       plan,
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    }, 200, corsHeaders);
   } catch (error) {
     logger.error("Unexpected error", { message: error instanceof Error ? error.message : String(error) });
-    return new Response(JSON.stringify({ error: "Internal server error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return errorResponse("Internal server error", 500, "UNEXPECTED_ERROR", corsHeaders);
   }
 });

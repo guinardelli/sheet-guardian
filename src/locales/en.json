@@ -17,6 +17,7 @@
   },
   "header": {
     "home": "Home",
+    "dashboard": "Dashboard",
     "plans": "Plans",
     "account": "Account",
     "signIn": "Sign In",
@@ -165,6 +166,7 @@
     "recommended": "Recommended",
     "free": "Free",
     "perMonth": "/month",
+    "perYear": "/year",
     "originalPrice": "From $",
     "off": "OFF",
     "limits": "Limits",
@@ -183,14 +185,14 @@
     "freeInfo": {
       "name": "Free",
       "description": "To try it out",
-      "feature1": "1 processing per month",
+      "feature1": "2 processings per month",
       "feature2": "Maximum size: 1 MB"
     },
     "professionalInfo": {
       "name": "Professional",
       "description": "For regular use",
       "feature1": "5 files per week",
-      "feature2": "Maximum size: 1 MB",
+      "feature2": "Maximum size: 3 MB",
       "extra1": "Native features"
     },
     "premiumInfo": {
@@ -200,6 +202,15 @@
       "feature2": "No size limit",
       "extra1": "VIP Support",
       "extra2": "Priority processing"
+    },
+    "anualInfo": {
+      "name": "Annual",
+      "description": "Best value",
+      "feature1": "Unlimited processings",
+      "feature2": "No size limit",
+      "extra1": "VIP Support",
+      "extra2": "Priority processing",
+      "extra3": "3 months free (pay 9, get 12)"
     },
     "messages": {
       "paymentSuccess": "Payment completed!",
@@ -312,8 +323,9 @@
     "selectFile": "Select File",
     "removeFile": "Remove file",
     "errors": {
-      "invalidType": "Invalid file type",
-      "invalidTypeDesc": "Only .xlsm files are accepted.",
+      "invalidType": "Unsupported file type",
+      "invalidTypeDesc": "Only .xlsm files are accepted. .xls files (legacy format) are not supported. Please save your file as .xlsm in Excel.",
+      "xlsNotSupported": ".xls files (Excel 97-2003) are not supported. Please open the file in Excel and save as .xlsm (Macro-Enabled Workbook).",
       "invalidMimeType": "Invalid MIME type",
       "invalidMimeTypeDesc": "The selected file does not look like an Excel .xlsm.",
       "invalidSignature": "Invalid signature",

@@ -11,6 +11,7 @@ import {
   Loader2,
   QrCode,
   Settings,
+  Trophy,
   Zap,
 } from 'lucide-react';
 
@@ -39,18 +40,24 @@ interface PlanInfo {
   extras: string[];
   currentPrice: number;
   originalPrice: number | null;
+  periodLabel?: string;
+  recommended?: boolean;
 }
 
-const PLAN_ICONS = {
+type PlanId = 'free' | 'professional' | 'premium' | 'anual';
+
+const PLAN_ICONS: Record<PlanId, typeof Crown> = {
   free: FileSpreadsheet,
   professional: Zap,
   premium: Crown,
+  anual: Trophy,
 };
 
-const AVAILABLE_PLANS: Array<'free' | 'professional' | 'premium'> = [
+const AVAILABLE_PLANS: PlanId[] = [
   'free',
   'professional',
   'premium',
+  'anual',
 ];
 
 const Plans = () => {
@@ -74,7 +81,7 @@ const Plans = () => {
   const [isAutoVerifying, setIsAutoVerifying] = useState(false);
   const autoVerifyStartedRef = useRef(false);
 
-  const PLAN_INFO: Record<'free' | 'professional' | 'premium', PlanInfo> = {
+  const PLAN_INFO: Record<PlanId, PlanInfo> = {
     free: {
       name: t('plansPage.freeInfo.name'),
       description: t('plansPage.freeInfo.description'),
@@ -90,14 +97,30 @@ const Plans = () => {
       extras: [t('plansPage.professionalInfo.extra1')],
       currentPrice: 32,
       originalPrice: 38,
+      periodLabel: t('plansPage.perMonth'),
     },
     premium: {
       name: t('plansPage.premiumInfo.name'),
       description: t('plansPage.premiumInfo.description'),
       features: [t('plansPage.premiumInfo.feature1'), t('plansPage.premiumInfo.feature2')],
       extras: [t('plansPage.premiumInfo.extra1'), t('plansPage.premiumInfo.extra2')],
-      currentPrice: 38,
+      currentPrice: 68,
       originalPrice: 76,
+      periodLabel: t('plansPage.perMonth'),
+    },
+    anual: {
+      name: t('plansPage.anualInfo.name'),
+      description: t('plansPage.anualInfo.description'),
+      features: [t('plansPage.anualInfo.feature1'), t('plansPage.anualInfo.feature2')],
+      extras: [
+        t('plansPage.anualInfo.extra1'),
+        t('plansPage.anualInfo.extra2'),
+        t('plansPage.anualInfo.extra3'),
+      ],
+      currentPrice: 612,
+      originalPrice: 816,
+      periodLabel: t('plansPage.perYear'),
+      recommended: true,
     },
   };
 
@@ -158,7 +181,7 @@ const Plans = () => {
     }
   }, [searchParams, verifySubscriptionWithRetry, toast, t]);
 
-  const handleSelectPlan = async (plan: 'free' | 'professional' | 'premium') => {
+  const handleSelectPlan = async (plan: PlanId) => {
     if (!user) {
       toast({
         title: t('plansPage.messages.createAccountPrompt'),
@@ -273,13 +296,14 @@ const Plans = () => {
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 mb-10">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 mb-10">
             {AVAILABLE_PLANS.map((plan) => {
               const info = PLAN_INFO[plan];
               const Icon = PLAN_ICONS[plan];
               const isCurrentPlan = subscription?.plan === plan;
-              const isPremium = plan === 'premium';
+              const isRecommended = Boolean(info.recommended);
               const isFree = plan === 'free';
+              const periodLabel = info.periodLabel ?? t('plansPage.perMonth');
 
               return (
                 <Card
@@ -287,10 +311,10 @@ const Plans = () => {
                   className={cn(
                     'relative border-border/50 shadow-soft transition-all duration-300',
                     'hover:scale-[1.02] hover:shadow-soft-lg hover:z-10',
-                    isPremium && 'border-primary/50 animate-pulse-glow',
+                    isRecommended && 'border-primary/50 animate-pulse-glow',
                   )}
                 >
-                  {isPremium && (
+                  {isRecommended && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                       <Badge className="bg-gradient-to-r from-primary to-accent text-white shadow-lg">
                         {t('plansPage.recommended')}
@@ -312,7 +336,7 @@ const Plans = () => {
                         <>
                           <div className="flex items-baseline justify-center gap-1">
                             <span className="text-4xl font-black text-primary">R$ {info.currentPrice}</span>
-                            <span className="text-muted-foreground">{t('plansPage.perMonth')}</span>
+                            <span className="text-muted-foreground">{periodLabel}</span>
                           </div>
                           {info.originalPrice && (
                             <div className="text-sm text-muted-foreground line-through">
@@ -363,7 +387,7 @@ const Plans = () => {
 
                   <CardFooter className="pt-4">
                     <Button
-                      className={cn('w-full h-11', isPremium && !isCurrentPlan && 'shadow-soft')}
+                      className={cn('w-full h-11', isRecommended && !isCurrentPlan && 'shadow-soft')}
                       variant={isCurrentPlan ? 'outline' : 'default'}
                       disabled={isCurrentPlan || processing}
                       onClick={() => handleSelectPlan(plan)}

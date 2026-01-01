@@ -44,15 +44,15 @@ interface ProcessingTokenResponse {
 }
 
 export const PLAN_LIMITS: Record<SubscriptionPlan, PlanLimits> = {
-  free: { sheetsPerWeek: null, sheetsPerMonth: 1, maxFileSizeMB: 1 },
-  professional: { sheetsPerWeek: 5, sheetsPerMonth: null, maxFileSizeMB: 1 },
+  free: { sheetsPerWeek: null, sheetsPerMonth: 2, maxFileSizeMB: 1 },
+  professional: { sheetsPerWeek: 5, sheetsPerMonth: null, maxFileSizeMB: 3 },
   premium: { sheetsPerWeek: null, sheetsPerMonth: null, maxFileSizeMB: null },
 };
 
 export const PLAN_PRICES: Record<SubscriptionPlan, number> = {
   free: 0,
   professional: 32,
-  premium: 38,
+  premium: 68,
 };
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? '';
@@ -90,6 +90,13 @@ const invokeFunctionWithRetry = async <T,>(
     }
 
     if (!response.ok) {
+      if (parsed && typeof parsed === 'object') {
+        const parsedRecord = parsed as Record<string, unknown>;
+        if ('allowed' in parsedRecord || 'success' in parsedRecord) {
+          return { data: parsed as T, error: null };
+        }
+      }
+
       const errorMessage = (parsed as { error?: string } | null)?.error ?? text ?? `HTTP ${response.status}`;
       return { data: null, error: new Error(errorMessage) };
     }

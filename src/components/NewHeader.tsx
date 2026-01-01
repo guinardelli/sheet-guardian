@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Menu, Shield, X } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   NavigationMenu,
@@ -13,25 +12,18 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { useAuth } from '@/hooks/useAuth';
-import { useSubscription } from '@/hooks/useSubscription';
 import { cn } from '@/lib/utils';
 
 export const NewHeader = () => {
   const { t } = useTranslation();
   const { user, signOut } = useAuth();
-  const { subscription } = useSubscription();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const PLAN_NAMES: Record<string, string> = {
-    free: t('plans.free'),
-    professional: t('plans.professional'),
-    premium: t('plans.premium'),
-  };
-
   const navItems = [
     { name: t('header.home'), path: '/' },
+    { name: t('header.dashboard'), path: '/dashboard' },
     { name: t('header.plans'), path: '/plans' },
   ];
 
@@ -93,11 +85,6 @@ export const NewHeader = () => {
               <LanguageSelector />
               {user ? (
                 <div className="flex items-center gap-2">
-                  {subscription && (
-                    <Badge variant={subscription.plan === 'premium' ? 'default' : 'secondary'}>
-                      {PLAN_NAMES[subscription.plan]}
-                    </Badge>
-                  )}
                   <Button variant="ghost" size="sm" onClick={() => navigate('/account')}>
                     {t('header.account')}
                   </Button>
@@ -158,13 +145,6 @@ export const NewHeader = () => {
                   <div className="border-t border-border pt-4">
                     {user ? (
                       <div className="space-y-3">
-                        {subscription && (
-                          <div className="rounded-lg bg-primary/5 px-4 py-2">
-                            <p className="text-sm font-medium text-primary">
-                              {t('header.plan')}: {PLAN_NAMES[subscription.plan]}
-                            </p>
-                          </div>
-                        )}
                         <Button
                           variant="outline"
                           className="w-full"

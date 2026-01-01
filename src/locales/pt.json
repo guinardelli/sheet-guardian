@@ -17,6 +17,7 @@
   },
   "header": {
     "home": "Início",
+    "dashboard": "Dashboard",
     "plans": "Planos",
     "account": "Conta",
     "signIn": "Entrar",
@@ -165,6 +166,7 @@
     "recommended": "Recomendado",
     "free": "Grátis",
     "perMonth": "/mês",
+    "perYear": "/ano",
     "originalPrice": "De R$",
     "off": "OFF",
     "limits": "Limites",
@@ -183,14 +185,14 @@
     "freeInfo": {
       "name": "Gratuito",
       "description": "Para experimentar",
-      "feature1": "1 processamento por mês",
+      "feature1": "2 processamentos por mês",
       "feature2": "Tamanho máximo: 1 MB"
     },
     "professionalInfo": {
       "name": "Profissional",
       "description": "Para uso regular",
       "feature1": "5 arquivos por semana",
-      "feature2": "Tamanho máximo: 1 MB",
+      "feature2": "Tamanho máximo: 3 MB",
       "extra1": "Funcionalidades nativas"
     },
     "premiumInfo": {
@@ -200,6 +202,15 @@
       "feature2": "Sem limite de tamanho",
       "extra1": "Suporte VIP",
       "extra2": "Processamento prioritário"
+    },
+    "anualInfo": {
+      "name": "Anual",
+      "description": "Melhor custo-benefício",
+      "feature1": "Processamentos ilimitados",
+      "feature2": "Sem limite de tamanho",
+      "extra1": "Suporte VIP",
+      "extra2": "Processamento prioritário",
+      "extra3": "3 meses grátis (pague 9, leve 12)"
     },
     "messages": {
       "paymentSuccess": "Pagamento realizado!",
@@ -312,8 +323,9 @@
     "selectFile": "Selecionar Arquivo",
     "removeFile": "Remover arquivo",
     "errors": {
-      "invalidType": "Tipo de arquivo inválido",
-      "invalidTypeDesc": "Apenas arquivos .xlsm são aceitos.",
+      "invalidType": "Tipo de arquivo não suportado",
+      "invalidTypeDesc": "Apenas arquivos .xlsm são aceitos. Arquivos .xls (formato antigo) não são suportados. Por favor, salve seu arquivo como .xlsm no Excel.",
+      "xlsNotSupported": "Arquivos .xls (Excel 97-2003) não são suportados. Por favor, abra o arquivo no Excel e salve como .xlsm (Pasta de Trabalho Habilitada para Macro).",
       "invalidMimeType": "Tipo MIME inválido",
       "invalidMimeTypeDesc": "O arquivo selecionado não parece ser um Excel .xlsm.",
       "invalidSignature": "Assinatura inválida",

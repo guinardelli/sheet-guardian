@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Upload, FileSpreadsheet, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { MAX_FILE_SIZE_BYTES, LARGE_FILE_WARNING_BYTES } from '@/lib/constants';
+import { ALLOWED_FILE_EXTENSIONS, MAX_FILE_SIZE_BYTES, LARGE_FILE_WARNING_BYTES } from '@/lib/constants';
 import { getMagicBytes, hasZipMagicBytes, isAllowedMimeType } from '@/lib/file-validation';
 import { toast } from 'sonner';
 
@@ -44,9 +44,16 @@ export function FileDropzone({
 
   const validateAndSelectFile = useCallback(async (file: File): Promise<boolean> => {
     // Validate file extension
-    if (!file.name.toLowerCase().endsWith('.xlsm')) {
+    const extension = `.${file.name.split('.').pop()?.toLowerCase()}`;
+    const isAllowedExtension = ALLOWED_FILE_EXTENSIONS.includes(
+      extension as (typeof ALLOWED_FILE_EXTENSIONS)[number],
+    );
+    if (!isAllowedExtension) {
+      const isXls = extension === '.xls';
       toast.error(t('dropzone.errors.invalidType'), {
-        description: t('dropzone.errors.invalidTypeDesc')
+        description: isXls
+          ? t('dropzone.errors.xlsNotSupported')
+          : t('dropzone.errors.invalidTypeDesc')
       });
       return false;
     }
