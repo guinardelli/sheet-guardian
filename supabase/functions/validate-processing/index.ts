@@ -2,8 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createLogger } from "../_shared/logger.ts";
 import { getServiceRoleKey, getSupabaseUrl } from "../_shared/env.ts";
-
-type SubscriptionPlan = "free" | "professional" | "premium";
+import type { ErrorResponse, SubscriptionPlan, TokenConsumeResponse, TokenResponse } from "../_shared/response-types.ts";
 
 type ValidatePayload = {
   action?: "validate" | "consume";
@@ -60,8 +59,8 @@ const getWeekNumber = (date: Date): string => {
   return `${d.getFullYear()}-W${String(weekNo).padStart(2, "0")}`;
 };
 
-const jsonResponse = (
-  body: Record<string, unknown>,
+const jsonResponse = <T,>(
+  body: T,
   status: number,
   corsHeaders: Record<string, string>,
 ) =>
@@ -75,15 +74,12 @@ const errorResponse = (
   status: number,
   errorCode: string,
   corsHeaders: Record<string, string>,
-) => jsonResponse({ error: message, errorCode }, status, corsHeaders);
+) => {
+  const body: ErrorResponse = { error: message, errorCode };
+  return jsonResponse(body, status, corsHeaders);
+};
 
-const validationResponse = (
-  body: Record<string, unknown>,
-  errorCode: string,
-  corsHeaders: Record<string, string>,
-) => jsonResponse({ ...body, errorCode }, 400, corsHeaders);
-
-serve(async (req) => {
+serve(async (req: Request): Promise<Response> => {
   const requestOrigin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(requestOrigin);
 
@@ -161,11 +157,13 @@ serve(async (req) => {
     const usedThisMonth = lastResetMonth === currentMonth ? (subscription.sheets_used_month ?? 0) : 0;
 
     const failValidation = (reason: string, errorCode: string) => {
-      const body = action === "consume"
-        ? { success: false, error: reason }
-        : { allowed: false, reason, suggestUpgrade: true };
+      if (action === "consume") {
+        const body: TokenConsumeResponse = { success: false, error: reason, errorCode };
+        return jsonResponse(body, 400, corsHeaders);
+      }
 
-      return validationResponse(body, errorCode, corsHeaders);
+      const body: TokenResponse = { allowed: false, reason, suggestUpgrade: true, errorCode };
+      return jsonResponse(body, 400, corsHeaders);
     };
 
     if (limits.maxFileSizeMB && payload.file?.sizeBytes && payload.file.sizeBytes > limits.maxFileSizeMB * 1024 * 1024) {
@@ -183,11 +181,12 @@ serve(async (req) => {
     if (action === "consume") {
       const processingToken = payload.processingToken;
       if (!processingToken) {
-        return validationResponse(
-          { success: false, error: "Missing processing token" },
-          "MISSING_PROCESSING_TOKEN",
-          corsHeaders,
-        );
+        const body: TokenConsumeResponse = {
+          success: false,
+          error: "Missing processing token",
+          errorCode: "MISSING_PROCESSING_TOKEN",
+        };
+        return jsonResponse(body, 400, corsHeaders);
       }
 
       const { data: tokenRow, error: tokenError } = await supabase
@@ -243,7 +242,8 @@ serve(async (req) => {
         return errorResponse("Failed to update usage", 500, "USAGE_UPDATE_FAILED", corsHeaders);
       }
 
-      return jsonResponse({ success: true }, 200, corsHeaders);
+      const body: TokenConsumeResponse = { success: true };
+      return jsonResponse(body, 200, corsHeaders);
     }
 
     const processingToken = crypto.randomUUID();
@@ -262,12 +262,13 @@ serve(async (req) => {
       return errorResponse("Failed to create processing token", 500, "TOKEN_CREATE_FAILED", corsHeaders);
     }
 
-    return jsonResponse({
+    const body: TokenResponse = {
       allowed: true,
       processingToken,
       expiresAt,
       plan,
-    }, 200, corsHeaders);
+    };
+    return jsonResponse(body, 200, corsHeaders);
   } catch (error) {
     logger.error("Unexpected error", { message: error instanceof Error ? error.message : String(error) });
     return errorResponse("Internal server error", 500, "UNEXPECTED_ERROR", corsHeaders);

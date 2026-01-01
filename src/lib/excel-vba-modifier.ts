@@ -26,6 +26,9 @@ export interface LogEntry {
   type: 'info' | 'success' | 'warning' | 'error';
 }
 
+export type LogHandler = (entry: LogEntry) => void;
+export type ProgressHandler = (progress: number) => void;
+
 // Binary patterns to search for (matching Python implementation)
 const BINARY_PATTERNS = [
   { prefix: [67, 77, 71, 61, 34], name: 'CMG' },  // CMG="
@@ -104,10 +107,10 @@ function modifyVbaContent(content: Uint8Array): ModifyVbaResult {
 
 export async function processExcelFile(
   file: File,
-  onLog: (entry: LogEntry) => void,
-  onProgress: (progress: number) => void
+  onLog: LogHandler,
+  onProgress: ProgressHandler
 ): Promise<ProcessingResult> {
-  const log = (message: string, type: LogEntry['type'] = 'info') => {
+  const log = (message: string, type: LogEntry['type'] = 'info'): void => {
     onLog({ timestamp: new Date(), message, type });
   };
 
@@ -145,7 +148,7 @@ export async function processExcelFile(
     let zip: JSZip;
     try {
       zip = await JSZip.loadAsync(arrayBuffer);
-    } catch (zipError) {
+    } catch (zipError: unknown) {
       throw new Error('Arquivo inválido ou corrompido. Verifique se é um arquivo Excel válido (.xlsm).');
     }
 
@@ -231,7 +234,7 @@ export async function processExcelFile(
       warnings: allWarnings.length > 0 ? allWarnings : undefined
     };
 
-  } catch (error) {
+  } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
     log(`❌ Erro: ${errorMessage}`, 'error');
     

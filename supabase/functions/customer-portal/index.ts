@@ -3,6 +3,7 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createLogger } from "../_shared/logger.ts";
 import { getServiceRoleKey, getStripeSecretKey, getSupabaseUrl } from "../_shared/env.ts";
+import type { CustomerPortalResponse } from "../_shared/response-types.ts";
 
 const allowedOrigins = new Set([
   "https://vbablocker.vercel.app",
@@ -24,7 +25,7 @@ const getCorsHeaders = (origin: string | null) => {
 
 const logger = createLogger("CUSTOMER-PORTAL");
 
-serve(async (req) => {
+serve(async (req: Request): Promise<Response> => {
   const requestOrigin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(requestOrigin);
 
@@ -74,14 +75,16 @@ serve(async (req) => {
     });
     logger.info("Portal session created", { sessionId: portalSession.id });
 
-    return new Response(JSON.stringify({ url: portalSession.url }), {
+    const body: CustomerPortalResponse = { url: portalSession.url };
+    return new Response(JSON.stringify(body), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error("Error", { message: errorMessage });
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    const body: CustomerPortalResponse = { error: errorMessage };
+    return new Response(JSON.stringify(body), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });

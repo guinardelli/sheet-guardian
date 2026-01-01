@@ -3,38 +3,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/lib/logger';
 import { trackSubscriptionIssue } from '@/lib/error-tracker';
 import { fetchWithRetry } from '@/lib/fetch-with-retry';
+import type { SubscriptionPlan, SubscriptionState } from '@/types/subscription';
+import type { SubscriptionResponse, TokenConsumeResponse, TokenResponse } from '@/types/edge-responses';
 
-export type SubscriptionPlan = 'free' | 'professional' | 'premium';
+export type { SubscriptionPlan, SubscriptionState } from '@/types/subscription';
+export type { SubscriptionResponse, TokenConsumeResponse, TokenResponse } from '@/types/edge-responses';
+export type TokenResult = TokenResponse;
 
 const VALID_PLANS: SubscriptionPlan[] = ['free', 'professional', 'premium'];
-
-export interface SubscriptionState {
-  id: string;
-  user_id?: string;
-  plan: SubscriptionPlan;
-  sheets_used_today: number;
-  sheets_used_week: number;
-  sheets_used_month: number;
-  last_sheet_date: string | null;
-  last_reset_date: string | null;
-  payment_method: string | null;
-  payment_status: string | null;
-  cancel_at_period_end?: boolean | null;
-  current_period_end?: string | null;
-  stripe_customer_id?: string | null;
-  stripe_subscription_id?: string | null;
-  stripe_product_id?: string | null;
-  updated_at?: string;
-}
-
-export interface TokenResult {
-  allowed: boolean;
-  reason?: string;
-  suggestUpgrade?: boolean;
-  processingToken?: string;
-  expiresAt?: string;
-  plan?: SubscriptionPlan;
-}
 
 export interface PlanLimits {
   sheetsPerWeek: number | null;
@@ -387,7 +363,7 @@ export const createSubscriptionService = (deps: SubscriptionServiceDeps) => {
     }
 
     try {
-      const { data, error } = await invokeFunctionWithRetry<TokenResult>(
+      const { data, error } = await invokeFunctionWithRetry<TokenResponse>(
         'validate-processing',
         session.access_token,
         {
@@ -433,7 +409,7 @@ export const createSubscriptionService = (deps: SubscriptionServiceDeps) => {
 
     deps.setIsUpdating(true);
     try {
-      const { data, error } = await invokeFunctionWithRetry<{ success?: boolean; error?: string }>(
+      const { data, error } = await invokeFunctionWithRetry<TokenConsumeResponse>(
         'validate-processing',
         session.access_token,
         {
@@ -448,7 +424,8 @@ export const createSubscriptionService = (deps: SubscriptionServiceDeps) => {
       }
 
       if (!data?.success) {
-        return { success: false, error: data?.error ?? 'Erro ao registrar uso.' };
+        const message = data && 'error' in data ? data.error : 'Erro ao registrar uso.';
+        return { success: false, error: message };
       }
 
       await fetchSubscription();
@@ -527,12 +504,12 @@ export const createSubscriptionService = (deps: SubscriptionServiceDeps) => {
 
     syncInFlight = (async () => {
       try {
-        const { data, error } = await invokeFunctionWithRetry<{ subscribed?: boolean }>(
+        const { data, error } = await invokeFunctionWithRetry<SubscriptionResponse>(
           'check-subscription',
           session.access_token,
         );
 
-        if (error) {
+        if (error || (data && 'error' in data)) {
           logger.error('Erro ao sincronizar assinatura', error);
           deps.setSyncError('Nao foi possivel sincronizar a assinatura agora.');
           return false;

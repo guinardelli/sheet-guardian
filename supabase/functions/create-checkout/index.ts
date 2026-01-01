@@ -3,6 +3,7 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createLogger } from "../_shared/logger.ts";
 import { getServiceRoleKey, getStripeSecretKey, getSupabaseAnonKey, getSupabaseUrl } from "../_shared/env.ts";
+import type { CheckoutResponse } from "../_shared/response-types.ts";
 
 const ANNUAL_PRICE_ID = (Deno.env.get("STRIPE_ANNUAL_PRICE_ID")
   ?? Deno.env.get("VITE_STRIPE_ANNUAL_PRICE_ID")
@@ -34,7 +35,22 @@ const getCorsHeaders = (origin: string | null) => {
 
 const logger = createLogger("CREATE-CHECKOUT");
 
-serve(async (req) => {
+type CreateCheckoutPayload = {
+  priceId?: string | null;
+};
+
+const parseCheckoutPayload = async (req: Request): Promise<CreateCheckoutPayload> => {
+  const raw = await req.json() as unknown;
+  if (!raw || typeof raw !== "object") {
+    return {};
+  }
+  const payload = raw as { priceId?: unknown };
+  return {
+    priceId: typeof payload.priceId === "string" ? payload.priceId : null,
+  };
+};
+
+serve(async (req: Request): Promise<Response> => {
   const requestOrigin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(requestOrigin);
 
@@ -55,8 +71,8 @@ serve(async (req) => {
       auth: { persistSession: false },
     });
     
-    const { priceId } = await req.json();
-    const normalizedPriceId = typeof priceId === "string" ? priceId.trim() : "";
+    const payload = await parseCheckoutPayload(req);
+    const normalizedPriceId = (payload.priceId ?? "").trim();
     if (!normalizedPriceId) throw new Error("Price ID is required");
     const allowedProduct = ALLOWED_PRICE_TO_PRODUCT[normalizedPriceId];
     if (!allowedProduct) {
@@ -66,7 +82,8 @@ serve(async (req) => {
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      const body: CheckoutResponse = { error: "Unauthorized" };
+      return new Response(JSON.stringify(body), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 401,
       });
@@ -75,7 +92,8 @@ serve(async (req) => {
     const { data, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError) {
       logger.warn("Auth getUser failed", { error: userError.message });
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      const body: CheckoutResponse = { error: "Unauthorized" };
+      return new Response(JSON.stringify(body), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 401,
       });
@@ -142,14 +160,16 @@ serve(async (req) => {
 
     logger.info("Checkout session created", { sessionId: session.id, url: session.url });
 
-    return new Response(JSON.stringify({ url: session.url }), {
+    const body: CheckoutResponse = { url: session.url };
+    return new Response(JSON.stringify(body), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error("Error", { message: errorMessage });
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    const body: CheckoutResponse = { error: errorMessage };
+    return new Response(JSON.stringify(body), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });

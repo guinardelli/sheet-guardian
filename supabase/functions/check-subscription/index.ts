@@ -3,6 +3,7 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createLogger } from "../_shared/logger.ts";
 import { getServiceRoleKey, getStripeSecretKey, getSupabaseUrl } from "../_shared/env.ts";
+import type { SubscriptionPlan, SubscriptionResponse } from "../_shared/response-types.ts";
 
 const allowedOrigins = new Set([
   "https://vbablocker.vercel.app",
@@ -25,12 +26,12 @@ const getCorsHeaders = (origin: string | null) => {
 const logger = createLogger("CHECK-SUBSCRIPTION");
 
 // Map Stripe product IDs to plan names
-const PRODUCT_TO_PLAN: Record<string, string> = {
+const PRODUCT_TO_PLAN: Record<string, SubscriptionPlan> = {
   "prod_TaJslOsZAWnhcN": "professional",
   "prod_TaJsysi99Q1g2J": "premium",
 };
 
-serve(async (req) => {
+serve(async (req: Request): Promise<Response> => {
   const requestOrigin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(requestOrigin);
 
@@ -79,13 +80,14 @@ serve(async (req) => {
 
     if (customers.data.length === 0) {
       logger.info("No Stripe customer found, returning free plan");
-      return new Response(JSON.stringify({ 
-        subscribed: false, 
+      const body: SubscriptionResponse = {
+        subscribed: false,
         plan: "free",
         product_id: null,
         subscription_end: null,
-        cancel_at_period_end: false 
-      }), {
+        cancel_at_period_end: false,
+      };
+      return new Response(JSON.stringify(body), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
@@ -102,9 +104,9 @@ serve(async (req) => {
     });
 
     const hasActiveSub = subscriptions.data.length > 0;
-    let plan = "free";
-    let productId = null;
-    let subscriptionEnd = null;
+    let plan: SubscriptionPlan = "free";
+    let productId: string | null = null;
+    let subscriptionEnd: string | null = null;
     let cancelAtPeriodEnd = false;
 
     if (hasActiveSub) {
@@ -121,7 +123,7 @@ serve(async (req) => {
       const { error: updateError } = await supabaseClient
         .from("subscriptions")
         .update({ 
-          plan: plan as "free" | "professional" | "premium",
+          plan,
           payment_status: "active",
           stripe_customer_id: customerId,
           stripe_subscription_id: subscription.id,
@@ -174,24 +176,26 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({
+    const body: SubscriptionResponse = {
       subscribed: hasActiveSub,
       plan,
       product_id: productId,
       subscription_end: subscriptionEnd,
       cancel_at_period_end: cancelAtPeriodEnd
-    }), {
+    };
+    return new Response(JSON.stringify(body), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error("Error", { message: errorMessage });
-    return new Response(JSON.stringify({
+    const body: SubscriptionResponse = {
       subscribed: false,
       error: errorMessage,
       details: "Erro ao verificar assinatura. Tente novamente em alguns segundos."
-    }), {
+    };
+    return new Response(JSON.stringify(body), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });

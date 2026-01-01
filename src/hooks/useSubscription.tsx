@@ -2,10 +2,15 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from './useAuth';
 import {
   createSubscriptionService,
+  type CanProcessResult,
+  type OperationResult,
   type SubscriptionPlan,
-  type SubscriptionState,
   type SubscriptionService,
+  type SubscriptionState,
+  type TokenResult,
+  type UsageStats,
 } from '@/services/subscriptionService';
+import type { AsyncState } from '@/types/async';
 
 export {
   PLAN_LIMITS,
@@ -13,9 +18,34 @@ export {
   getLocalDateString,
   getWeekNumber,
 } from '@/services/subscriptionService';
-export type { SubscriptionPlan, SubscriptionState, TokenResult } from '@/services/subscriptionService';
+export type {
+  SubscriptionPlan,
+  SubscriptionResponse,
+  SubscriptionState,
+  TokenConsumeResponse,
+  TokenResponse,
+  TokenResult,
+} from '@/services/subscriptionService';
 
-export const useSubscription = () => {
+type SubscriptionAsyncState = AsyncState<SubscriptionState | null>;
+
+export interface SubscriptionHook {
+  subscription: SubscriptionState | null;
+  loading: boolean;
+  isUpdating: boolean;
+  isSyncing: boolean;
+  syncError: string | null;
+  subscriptionState: SubscriptionAsyncState;
+  canProcessSheet: (fileSizeKB: number) => CanProcessResult;
+  requestProcessingToken: (file: File) => Promise<TokenResult>;
+  incrementUsage: (processingToken?: string) => Promise<OperationResult>;
+  updatePlan: (newPlan: SubscriptionPlan) => Promise<OperationResult>;
+  getUsageStats: () => UsageStats | null;
+  syncSubscription: (force?: boolean) => Promise<boolean>;
+  refetch: () => Promise<SubscriptionState | null>;
+}
+
+export const useSubscription = (): SubscriptionHook => {
   const { user, session } = useAuth();
   const [subscription, setSubscription] = useState<SubscriptionState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -112,12 +142,19 @@ export const useSubscription = () => {
     [subscriptionService],
   );
 
+  const subscriptionState: SubscriptionAsyncState = loading
+    ? { status: 'loading' }
+    : syncError
+    ? { status: 'error', error: syncError }
+    : { status: 'success', data: subscription };
+
   return {
     subscription,
     loading,
     isUpdating,
     isSyncing,
     syncError,
+    subscriptionState,
     canProcessSheet,
     requestProcessingToken,
     incrementUsage,

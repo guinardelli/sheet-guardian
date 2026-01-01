@@ -3,22 +3,18 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createLogger } from "../_shared/logger.ts";
 import { getServiceRoleKey, getStripeSecretKey, getStripeWebhookSecret, getSupabaseUrl } from "../_shared/env.ts";
+import type { EnvGetter } from "../_shared/env.ts";
+import type { SubscriptionPlan } from "../_shared/response-types.ts";
 
-type PlanName = "free" | "professional" | "premium";
-
-const PRODUCT_TO_PLAN: Record<string, PlanName> = {
+const PRODUCT_TO_PLAN: Record<string, SubscriptionPlan> = {
   "prod_TaJslOsZAWnhcN": "professional",
   "prod_TaJsysi99Q1g2J": "premium",
 };
 
 const baseLogger = createLogger("STRIPE-WEBHOOK");
 
-const getPlanForProduct = (productId: string | null | undefined): PlanName =>
+const getPlanForProduct = (productId: string | null | undefined): SubscriptionPlan =>
   productId && PRODUCT_TO_PLAN[productId] ? PRODUCT_TO_PLAN[productId] : "free";
-
-type EnvGetter = {
-  get: (key: string) => string | undefined;
-};
 
 type LoggerLike = {
   info: (message: string, meta?: Record<string, unknown>) => void;
@@ -71,7 +67,7 @@ export type WebhookDependencies = {
 
 export const createWebhookHandler = (
   overrides: Partial<WebhookDependencies> = {},
-) => async (req: Request) => {
+) => async (req: Request): Promise<Response> => {
   const env = overrides.env ?? Deno.env;
   const logger = overrides.logger ?? baseLogger;
   const now = overrides.now ?? (() => new Date());
@@ -282,7 +278,7 @@ export const createWebhookHandler = (
     logger.warn("No user/customer mapping found", { eventType: event.type });
   };
 
-  const sendUpgradeEmail = async (userId: string | null, plan: PlanName) => {
+  const sendUpgradeEmail = async (userId: string | null, plan: SubscriptionPlan) => {
     if (!userId || plan === "free") {
       return;
     }
