@@ -14,8 +14,9 @@ import { MFASetup } from '@/components/MFASetup';
 import { NewHeader } from '@/components/NewHeader';
 
 import { useAuth } from '@/hooks/useAuth';
-import { PLAN_LIMITS, SubscriptionPlan, useSubscription } from '@/hooks/useSubscription';
+import { useSubscription } from '@/hooks/useSubscription';
 import { useSubscriptionManagement } from '@/hooks/useSubscriptionManagement';
+import { PLAN_LIMITS, PLANS_CONFIG, type SubscriptionPlan } from '@/config/plans';
 
 import { supabase } from '@/services/supabase/client';
 import { toast } from 'sonner';
@@ -25,6 +26,7 @@ const PLAN_BADGE_STYLES: Record<SubscriptionPlan, string> = {
   free: 'bg-muted text-muted-foreground',
   professional: 'bg-primary/10 text-primary',
   premium: 'bg-gradient-to-r from-primary to-accent text-white',
+  anual: 'bg-gradient-to-r from-primary to-accent text-white',
 };
 
 const Account = () => {
@@ -34,11 +36,9 @@ const Account = () => {
   const navigate = useNavigate();
   const { openCustomerPortal, loading: portalLoading } = useSubscriptionManagement();
 
-  const PLAN_NAMES: Record<SubscriptionPlan, string> = {
-    free: t('plans.free'),
-    professional: t('plans.professional'),
-    premium: t('plans.premium'),
-  };
+  const PLAN_NAMES = Object.fromEntries(
+    Object.entries(PLANS_CONFIG).map(([id, cfg]) => [id, t(cfg.i18n.nameKey)]),
+  ) as Record<SubscriptionPlan, string>;
 
   const [profileLoading, setProfileLoading] = useState(true);
   const [newEmail, setNewEmail] = useState('');
@@ -181,7 +181,7 @@ const Account = () => {
   const getUsageDisplay = () => {
     if (!subscription || !planLimits) return null;
 
-    if (subscription.plan === 'premium') {
+    if (subscription.plan === 'premium' || subscription.plan === 'anual') {
       return (
         <div className="text-center p-4 bg-primary/10 rounded-lg">
           <p className="text-primary font-medium">{t('dashboard.unlimitedUsage')}</p>
@@ -371,7 +371,7 @@ const Account = () => {
                       <Badge className={PLAN_BADGE_STYLES[subscription.plan]}>
                         {PLAN_NAMES[subscription.plan]}
                       </Badge>
-                      {subscription.plan === 'premium' && (
+                      {(subscription.plan === 'premium' || subscription.plan === 'anual') && (
                         <span className="text-sm text-muted-foreground">
                           {t('account.allFeaturesUnlocked')}
                         </span>
@@ -413,7 +413,7 @@ const Account = () => {
                             <span>{planLimits.maxFileSizeMB} MB</span>
                           </li>
                         )}
-                        {subscription.plan === 'premium' && (
+                        {(subscription.plan === 'premium' || subscription.plan === 'anual') && (
                           <>
                             <li className="flex justify-between">
                               <span className="text-muted-foreground">{t('account.processings')}:</span>
@@ -512,7 +512,7 @@ const Account = () => {
           </div>
         </div>
 
-        {subscription && subscription.plan !== 'premium' && (
+        {subscription && subscription.plan !== 'premium' && subscription.plan !== 'anual' && (
           <Card className="border-primary/30 shadow-soft mt-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

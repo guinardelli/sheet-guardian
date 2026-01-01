@@ -5,18 +5,13 @@ import { trackSubscriptionIssue } from '@/lib/error-tracker';
 import { fetchWithRetry } from '@/lib/fetch-with-retry';
 import type { SubscriptionPlan, SubscriptionState } from '@/lib/types/subscription';
 import type { SubscriptionResponse, TokenConsumeResponse, TokenResponse } from '@/lib/types/edge-responses';
+import { PLAN_LIMITS, PLAN_PRICES, VALID_PLANS, type PlanLimits } from '@/config/plans';
 
 export type { SubscriptionPlan, SubscriptionState } from '@/lib/types/subscription';
 export type { SubscriptionResponse, TokenConsumeResponse, TokenResponse } from '@/lib/types/edge-responses';
+export type { PlanLimits } from '@/config/plans';
+export { PLAN_LIMITS, PLAN_PRICES } from '@/config/plans';
 export type TokenResult = TokenResponse;
-
-const VALID_PLANS: SubscriptionPlan[] = ['free', 'professional', 'premium'];
-
-export interface PlanLimits {
-  sheetsPerWeek: number | null;
-  sheetsPerMonth: number | null;
-  maxFileSizeMB: number | null;
-}
 
 export interface UsageStats {
   used: number;
@@ -34,18 +29,6 @@ export interface OperationResult {
   success: boolean;
   error?: string;
 }
-
-export const PLAN_LIMITS: Record<SubscriptionPlan, PlanLimits> = {
-  free: { sheetsPerWeek: null, sheetsPerMonth: 2, maxFileSizeMB: 1 },
-  professional: { sheetsPerWeek: 5, sheetsPerMonth: null, maxFileSizeMB: 3 },
-  premium: { sheetsPerWeek: null, sheetsPerMonth: null, maxFileSizeMB: null },
-};
-
-export const PLAN_PRICES: Record<SubscriptionPlan, number> = {
-  free: 0,
-  professional: 32,
-  premium: 68,
-};
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? '';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '';

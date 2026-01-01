@@ -30,7 +30,7 @@ import { useToast } from '@/hooks/use-toast';
 
 import { supabase } from '@/services/supabase/client';
 import { logger } from '@/lib/logger';
-import { STRIPE_PLANS } from '@/lib/stripe';
+import { PLANS_CONFIG, AVAILABLE_PLANS, STRIPE_PLANS } from '@/config/plans';
 import { cn } from '@/lib/utils';
 
 interface PlanInfo {
@@ -53,12 +53,23 @@ const PLAN_ICONS: Record<PlanId, typeof Crown> = {
   anual: Trophy,
 };
 
-const AVAILABLE_PLANS: PlanId[] = [
-  'free',
-  'professional',
-  'premium',
-  'anual',
-];
+const buildPlanInfo = (t: (key: string) => string): Record<PlanId, PlanInfo> => {
+  return Object.fromEntries(
+    Object.entries(PLANS_CONFIG).map(([id, config]) => [
+      id,
+      {
+        name: t(config.i18n.nameKey),
+        description: t(config.i18n.descriptionKey),
+        features: config.i18n.featureKeys.map((k) => t(k)),
+        extras: config.i18n.extraKeys.map((k) => t(k)),
+        currentPrice: config.pricing.current,
+        originalPrice: config.pricing.original,
+        periodLabel: config.pricing.period === 'year' ? t('plansPage.perYear') : t('plansPage.perMonth'),
+        recommended: config.recommended,
+      },
+    ]),
+  ) as Record<PlanId, PlanInfo>;
+};
 
 const Plans = () => {
   const { t } = useTranslation();
@@ -81,48 +92,7 @@ const Plans = () => {
   const [isAutoVerifying, setIsAutoVerifying] = useState(false);
   const autoVerifyStartedRef = useRef(false);
 
-  const PLAN_INFO: Record<PlanId, PlanInfo> = {
-    free: {
-      name: t('plansPage.freeInfo.name'),
-      description: t('plansPage.freeInfo.description'),
-      features: [t('plansPage.freeInfo.feature1'), t('plansPage.freeInfo.feature2')],
-      extras: [],
-      currentPrice: 0,
-      originalPrice: null,
-    },
-    professional: {
-      name: t('plansPage.professionalInfo.name'),
-      description: t('plansPage.professionalInfo.description'),
-      features: [t('plansPage.professionalInfo.feature1'), t('plansPage.professionalInfo.feature2')],
-      extras: [t('plansPage.professionalInfo.extra1')],
-      currentPrice: 32,
-      originalPrice: 38,
-      periodLabel: t('plansPage.perMonth'),
-    },
-    premium: {
-      name: t('plansPage.premiumInfo.name'),
-      description: t('plansPage.premiumInfo.description'),
-      features: [t('plansPage.premiumInfo.feature1'), t('plansPage.premiumInfo.feature2')],
-      extras: [t('plansPage.premiumInfo.extra1'), t('plansPage.premiumInfo.extra2')],
-      currentPrice: 68,
-      originalPrice: 76,
-      periodLabel: t('plansPage.perMonth'),
-    },
-    anual: {
-      name: t('plansPage.anualInfo.name'),
-      description: t('plansPage.anualInfo.description'),
-      features: [t('plansPage.anualInfo.feature1'), t('plansPage.anualInfo.feature2')],
-      extras: [
-        t('plansPage.anualInfo.extra1'),
-        t('plansPage.anualInfo.extra2'),
-        t('plansPage.anualInfo.extra3'),
-      ],
-      currentPrice: 612,
-      originalPrice: 816,
-      periodLabel: t('plansPage.perYear'),
-      recommended: true,
-    },
-  };
+  const PLAN_INFO = buildPlanInfo(t);
 
   const verifySubscriptionWithRetry = useCallback(async (): Promise<boolean> => {
     setAutoVerifyError(null);

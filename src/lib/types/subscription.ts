@@ -1,4 +1,4 @@
-export type SubscriptionPlan = 'free' | 'professional' | 'premium';
+export type SubscriptionPlan = 'free' | 'professional' | 'premium' | 'anual';
 
 export interface SubscriptionState {
   id: string;

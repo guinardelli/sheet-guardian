@@ -12,12 +12,8 @@ import {
 } from '@/services/subscriptionService';
 import type { AsyncState } from '@/lib/types/async';
 
-export {
-  PLAN_LIMITS,
-  PLAN_PRICES,
-  getLocalDateString,
-  getWeekNumber,
-} from '@/services/subscriptionService';
+export { PLAN_LIMITS, PLAN_PRICES } from '@/config/plans';
+export { getLocalDateString, getWeekNumber } from '@/services/subscriptionService';
 export type {
   SubscriptionPlan,
   SubscriptionResponse,
