@@ -3,6 +3,7 @@ import { supabase } from '@/services/supabase/client';
 import { logger } from '@/lib/logger';
 import { trackSubscriptionIssue } from '@/lib/error-tracker';
 import { fetchWithRetry } from '@/lib/fetch-with-retry';
+import { createRequestId } from '@/lib/request-id';
 import type { SubscriptionPlan, SubscriptionState } from '@/lib/types/subscription';
 import type { SubscriptionResponse, TokenConsumeResponse, TokenResponse } from '@/lib/types/edge-responses';
 import { PLAN_LIMITS, PLAN_PRICES, VALID_PLANS, type PlanLimits } from '@/config/plans';
@@ -34,13 +35,20 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? '';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '';
 const FUNCTIONS_BASE_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1` : '';
 
+const readRequestId = (value: unknown): string | undefined => {
+  if (!value || typeof value !== 'object') return undefined;
+  const requestId = (value as { requestId?: unknown }).requestId;
+  return typeof requestId === 'string' ? requestId : undefined;
+};
+
 const invokeFunctionWithRetry = async <T,>(
   functionName: string,
   accessToken: string,
   body?: unknown,
-): Promise<{ data: T | null; error: Error | null }> => {
+): Promise<{ data: T | null; error: Error | null; requestId?: string }> => {
+  const fallbackRequestId = createRequestId();
   if (!FUNCTIONS_BASE_URL || !SUPABASE_ANON_KEY) {
-    return { data: null, error: new Error('Supabase env not configured') };
+    return { data: null, error: new Error('Supabase env not configured'), requestId: fallbackRequestId };
   }
 
   try {
@@ -64,21 +72,27 @@ const invokeFunctionWithRetry = async <T,>(
       }
     }
 
+    const requestId = readRequestId(parsed) ?? fallbackRequestId;
+
     if (!response.ok) {
       if (parsed && typeof parsed === 'object') {
         const parsedRecord = parsed as Record<string, unknown>;
         if ('allowed' in parsedRecord || 'success' in parsedRecord) {
-          return { data: parsed as T, error: null };
+          return { data: parsed as T, error: null, requestId };
         }
       }
 
       const errorMessage = (parsed as { error?: string } | null)?.error ?? text ?? `HTTP ${response.status}`;
-      return { data: null, error: new Error(errorMessage) };
+      return { data: null, error: new Error(errorMessage), requestId };
     }
 
-    return { data: parsed, error: null };
+    return { data: parsed, error: null, requestId };
   } catch (err) {
-    return { data: null, error: err instanceof Error ? err : new Error('Unknown error') };
+    return {
+      data: null,
+      error: err instanceof Error ? err : new Error('Unknown error'),
+      requestId: fallbackRequestId,
+    };
   }
 };
 
@@ -342,11 +356,15 @@ export const createSubscriptionService = (deps: SubscriptionServiceDeps) => {
   const getToken = async (file: File): Promise<TokenResult> => {
     const session = deps.getSession();
     if (!session?.access_token) {
-      return { allowed: false, reason: 'Sessao expirada. Faca login novamente.' };
+      return {
+        allowed: false,
+        reason: 'Sessao expirada. Faca login novamente.',
+        requestId: createRequestId(),
+      };
     }
 
     try {
-      const { data, error } = await invokeFunctionWithRetry<TokenResponse>(
+      const { data, error, requestId } = await invokeFunctionWithRetry<TokenResponse>(
         'validate-processing',
         session.access_token,
         {
@@ -360,18 +378,30 @@ export const createSubscriptionService = (deps: SubscriptionServiceDeps) => {
       );
 
       if (error) {
-        logger.error('Erro ao validar processamento', error);
-        return { allowed: false, reason: 'Nao foi possivel validar o processamento agora.' };
+        logger.error('Erro ao validar processamento', error, { requestId });
+        return {
+          allowed: false,
+          reason: 'Nao foi possivel validar o processamento agora.',
+          requestId: requestId ?? createRequestId(),
+        };
       }
 
       if (!data) {
-        return { allowed: false, reason: 'Nao foi possivel validar o processamento agora.' };
+        return {
+          allowed: false,
+          reason: 'Nao foi possivel validar o processamento agora.',
+          requestId: requestId ?? createRequestId(),
+        };
       }
 
       return data as TokenResult;
     } catch (err) {
       logger.error('Erro inesperado ao validar processamento', err);
-      return { allowed: false, reason: 'Nao foi possivel validar o processamento agora.' };
+      return {
+        allowed: false,
+        reason: 'Nao foi possivel validar o processamento agora.',
+        requestId: createRequestId(),
+      };
     }
   };
 
@@ -392,7 +422,7 @@ export const createSubscriptionService = (deps: SubscriptionServiceDeps) => {
 
     deps.setIsUpdating(true);
     try {
-      const { data, error } = await invokeFunctionWithRetry<TokenConsumeResponse>(
+      const { data, error, requestId } = await invokeFunctionWithRetry<TokenConsumeResponse>(
         'validate-processing',
         session.access_token,
         {
@@ -402,7 +432,7 @@ export const createSubscriptionService = (deps: SubscriptionServiceDeps) => {
       );
 
       if (error) {
-        logger.error('Erro ao registrar uso', error);
+        logger.error('Erro ao registrar uso', error, { requestId, userId: user.id });
         return { success: false, error: 'Erro ao registrar uso. Tente novamente.' };
       }
 
@@ -487,13 +517,13 @@ export const createSubscriptionService = (deps: SubscriptionServiceDeps) => {
 
     syncInFlight = (async () => {
       try {
-        const { data, error } = await invokeFunctionWithRetry<SubscriptionResponse>(
+        const { data, error, requestId } = await invokeFunctionWithRetry<SubscriptionResponse>(
           'check-subscription',
           session.access_token,
         );
 
         if (error || (data && 'error' in data)) {
-          logger.error('Erro ao sincronizar assinatura', error);
+          logger.error('Erro ao sincronizar assinatura', error, { requestId });
           deps.setSyncError('Nao foi possivel sincronizar a assinatura agora.');
           return false;
         }
@@ -529,5 +559,4 @@ export const createSubscriptionService = (deps: SubscriptionServiceDeps) => {
 };
 
 export type SubscriptionService = ReturnType<typeof createSubscriptionService>;
-
 

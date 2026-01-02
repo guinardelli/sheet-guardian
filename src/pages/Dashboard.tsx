@@ -20,6 +20,7 @@ import { PLAN_LIMITS, useSubscription } from '@/hooks/useSubscription';
 
 import { downloadFile, LogEntry, ProcessingResult } from '@/lib/excel-vba-modifier';
 import { logger } from '@/lib/logger';
+import { createRequestId } from '@/lib/request-id';
 import type { ProcessFileResponse } from '@/lib/types/edge-responses';
 
 const MAX_LOG_ENTRIES = 100;
@@ -79,8 +80,9 @@ const fetchProcessFile = async (
 };
 
 const invokeProcessFile = async (file: File, accessToken: string): Promise<ProcessFileResponse> => {
+  const fallbackRequestId = createRequestId();
   if (!FUNCTIONS_BASE_URL || !SUPABASE_ANON_KEY) {
-    return { success: false, error: 'Supabase env not configured' };
+    return { success: false, error: 'Supabase env not configured', requestId: fallbackRequestId };
   }
 
   const formData = new FormData();
@@ -97,23 +99,24 @@ const invokeProcessFile = async (file: File, accessToken: string): Promise<Proce
       body: formData,
     });
   } catch (error) {
-    logger.error('Falha ao chamar process-file', error);
-    return { success: false, error: 'Falha ao comunicar com o servidor.' };
+    logger.error('Falha ao chamar process-file', error, { requestId: fallbackRequestId });
+    return { success: false, error: 'Falha ao comunicar com o servidor.', requestId: fallbackRequestId };
   }
 
   const { data, rawText } = await parseProcessFileResponse(response);
+  const responseRequestId = data?.requestId ?? fallbackRequestId;
 
   if (!response.ok) {
     if (data) {
       return data;
     }
-    return { success: false, error: rawText || `HTTP ${response.status}` };
+    return { success: false, error: rawText || `HTTP ${response.status}`, requestId: responseRequestId };
   }
 
   if (data) {
     return data;
   }
-  return { success: false, error: 'Resposta invalida do servidor.' };
+  return { success: false, error: 'Resposta invalida do servidor.', requestId: responseRequestId };
 };
 
 const Dashboard = () => {
