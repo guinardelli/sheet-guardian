@@ -399,6 +399,10 @@ const Dashboard = () => {
         });
       }
 
+      if (response.watermarkId) {
+        log(`Watermark ID: ${response.watermarkId}`, 'info');
+      }
+
       if (!response.vbaExists) {
         log('AVISO: Nenhum arquivo VBA encontrado no Excel!', 'warning');
       } else if (response.patternsModified > 0) {

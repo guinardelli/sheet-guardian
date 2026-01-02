@@ -33,6 +33,7 @@ O Sheet Guardian e uma SPA React que processa arquivos .xlsm via Edge Functions 
 - profiles: informacoes do usuario.
 - processing_tokens: tokens de uso temporarios.
 - error_logs: erros client-side (quando habilitado).
+- watermark_deliveries: rastreio de watermark embutido nos arquivos.
 
 ## Integracoes externas
 - Stripe: planos, checkout e webhooks.

@@ -35,9 +35,11 @@ const allowedOrigins = new Set([
 
 const MIME_XLSM = "application/vnd.ms-excel.sheet.macroEnabled.12";
 const VBA_FILENAME = "xl/vbaProject.bin";
+const CORE_PROPS_FILE = "docProps/core.xml";
 const MIN_VBA_SIZE = 100;
 const ZIP_MAGIC_BYTES = [0x50, 0x4b, 0x03, 0x04];
 const PROCESSING_TOKEN_HEADER = "x-processing-token";
+const WATERMARK_PREFIX = "SG:";
 
 const BINARY_PATTERNS = [
   { prefix: [67, 77, 71, 61, 34], name: "CMG" },
@@ -298,6 +300,83 @@ const buildFileName = (originalName: string) => {
   return `${baseName}_${timestamp}.xlsm`;
 };
 
+const appendWatermarkToken = (current: string, token: string): string => {
+  if (!current || !current.trim()) {
+    return token;
+  }
+  const trimmed = current.trim();
+  const separator = trimmed.endsWith(";") || trimmed.endsWith(",") ? " " : "; ";
+  return `${current}${separator}${token}`;
+};
+
+const upsertWatermarkInCoreXml = (
+  xml: string,
+  token: string,
+): { xml: string; updated: boolean } => {
+  const keywordsRegex = /<cp:keywords([^>]*)>([\s\S]*?)<\/cp:keywords>/i;
+  const selfClosingRegex = /<cp:keywords([^>]*)\/>/i;
+
+  if (keywordsRegex.test(xml)) {
+    let updated = false;
+    const nextXml = xml.replace(keywordsRegex, (full, attrs, value) => {
+      if (typeof value === "string" && value.includes(token)) {
+        return full;
+      }
+      updated = true;
+      const nextValue = appendWatermarkToken(String(value ?? ""), token);
+      return `<cp:keywords${attrs}>${nextValue}</cp:keywords>`;
+    });
+    return { xml: nextXml, updated };
+  }
+
+  if (selfClosingRegex.test(xml)) {
+    const nextXml = xml.replace(selfClosingRegex, (_full, attrs) => {
+      return `<cp:keywords${attrs}>${token}</cp:keywords>`;
+    });
+    return { xml: nextXml, updated: true };
+  }
+
+  const coreCloseRegex = /<\/cp:coreProperties>/i;
+  if (coreCloseRegex.test(xml)) {
+    const nextXml = xml.replace(coreCloseRegex, `<cp:keywords>${token}</cp:keywords>\n$&`);
+    return { xml: nextXml, updated: true };
+  }
+
+  return { xml, updated: false };
+};
+
+const applyWatermarkToZip = async (
+  zip: JSZip,
+  watermarkId: string,
+): Promise<{ applied: boolean; warnings: string[] }> => {
+  // Embed watermark in core metadata only to avoid touching worksheet data.
+  const warnings: string[] = [];
+  const coreFile = zip.file(CORE_PROPS_FILE);
+  if (!coreFile) {
+    warnings.push("Watermark ignorado: core.xml nao encontrado.");
+    return { applied: false, warnings };
+  }
+
+  let coreXml: string;
+  try {
+    coreXml = await coreFile.async("string");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    warnings.push(`Watermark ignorado: falha ao ler core.xml (${message}).`);
+    return { applied: false, warnings };
+  }
+
+  const token = `${WATERMARK_PREFIX}${watermarkId}`;
+  const { xml: updatedXml, updated } = upsertWatermarkInCoreXml(coreXml, token);
+  if (!updated) {
+    warnings.push("Watermark ignorado: falha ao atualizar core.xml.");
+    return { applied: false, warnings };
+  }
+
+  zip.file(CORE_PROPS_FILE, updatedXml);
+  return { applied: true, warnings };
+};
+
 const modifyVbaContent = (content: Uint8Array): ModifyVbaResult => {
   const result = new Uint8Array(content);
   let patternsFound = 0;
@@ -432,6 +511,7 @@ serve(async (req: Request): Promise<Response> => {
     }
     const fileName = upload.fileName;
     const originalSize = upload.fileBytes.length;
+    const newFileName = buildFileName(fileName);
 
     if (originalSize === 0) {
       return errorResponse("Arquivo vazio.", 400, "EMPTY_FILE", corsHeaders, requestId);
@@ -502,11 +582,63 @@ serve(async (req: Request): Promise<Response> => {
     const vbaFile = zip.file(VBA_FILENAME);
     const vbaExists = vbaFile !== null;
     const warnings: string[] = [];
+    const watermarkId = crypto.randomUUID();
+    const watermarkResult = await applyWatermarkToZip(zip, watermarkId);
+    if (watermarkResult.warnings.length > 0) {
+      warnings.push(...watermarkResult.warnings);
+    }
+
+    const recordWatermark = async (): Promise<{ ok: boolean; watermarkId?: string; error?: string }> => {
+      if (!watermarkResult.applied) {
+        return { ok: true };
+      }
+
+      const { error } = await supabase
+        .from("watermark_deliveries")
+        .insert({
+          user_id: user.id,
+          watermark_id: watermarkId,
+          original_file_name: fileName,
+          new_file_name: newFileName,
+        });
+
+      if (error) {
+        logger.error("Failed to record watermark delivery", { message: error.message, userId: user.id });
+        return { ok: false, error: error.message };
+      }
+
+      return { ok: true, watermarkId };
+    };
+
+    const rollbackWatermark = async (id: string) => {
+      const { error } = await supabase
+        .from("watermark_deliveries")
+        .delete()
+        .eq("watermark_id", id)
+        .eq("user_id", user.id);
+
+      if (error) {
+        logger.warn("Failed to rollback watermark delivery", { message: error.message, userId: user.id });
+      }
+    };
 
     if (!vbaExists) {
       const output = await zip.generateAsync({ type: "uint8array" });
+      const watermarkRecord = await recordWatermark();
+      if (!watermarkRecord.ok) {
+        return errorResponse(
+          "Falha ao registrar watermark.",
+          500,
+          "WATERMARK_RECORD_FAILED",
+          corsHeaders,
+          requestId,
+        );
+      }
       const consumeUsage = await consumeProcessingToken(processingToken, false, authHeader);
       if (!consumeUsage.success) {
+        if (watermarkRecord.watermarkId) {
+          await rollbackWatermark(watermarkRecord.watermarkId);
+        }
         logger.error("Failed to consume processing token", {
           userId: user.id,
           message: consumeUsage.error,
@@ -525,7 +657,7 @@ serve(async (req: Request): Promise<Response> => {
         success: true,
         fileBase64: encodeBase64(toArrayBuffer(output)),
         originalFileName: fileName,
-        newFileName: buildFileName(fileName),
+        newFileName,
         vbaExists: false,
         patternsModified: 0,
         shouldCountUsage: false,
@@ -533,6 +665,7 @@ serve(async (req: Request): Promise<Response> => {
         modifiedSize: output.length,
         warnings: warnings.length > 0 ? warnings : undefined,
         mimeType: MIME_XLSM,
+        watermarkId: watermarkRecord.watermarkId,
       };
       return jsonResponse(response, 200, corsHeaders);
     }
@@ -558,8 +691,21 @@ serve(async (req: Request): Promise<Response> => {
       "ZIP generate",
     );
 
+    const watermarkRecord = await recordWatermark();
+    if (!watermarkRecord.ok) {
+      return errorResponse(
+        "Falha ao registrar watermark.",
+        500,
+        "WATERMARK_RECORD_FAILED",
+        corsHeaders,
+        requestId,
+      );
+    }
     const consumeUsage = await consumeProcessingToken(processingToken, patternsFound > 0, authHeader);
     if (!consumeUsage.success) {
+      if (watermarkRecord.watermarkId) {
+        await rollbackWatermark(watermarkRecord.watermarkId);
+      }
       logger.error("Failed to consume processing token", {
         userId: user.id,
         message: consumeUsage.error,
@@ -579,7 +725,7 @@ serve(async (req: Request): Promise<Response> => {
       success: true,
       fileBase64: encodeBase64(toArrayBuffer(output)),
       originalFileName: fileName,
-      newFileName: buildFileName(fileName),
+      newFileName,
       vbaExists: true,
       patternsModified: patternsFound,
       shouldCountUsage: patternsFound > 0,
@@ -587,6 +733,7 @@ serve(async (req: Request): Promise<Response> => {
       modifiedSize: output.length,
       warnings: warnings.length > 0 ? warnings : undefined,
       mimeType: MIME_XLSM,
+      watermarkId: watermarkRecord.watermarkId,
     };
 
     return jsonResponse(response, 200, corsHeaders);

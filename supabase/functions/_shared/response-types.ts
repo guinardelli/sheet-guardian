@@ -67,6 +67,7 @@ export type ProcessFileResponse = ResponseWithRequestId<
       modifiedSize: number;
       warnings?: string[];
       mimeType: string;
+      watermarkId?: string;
     }
   | {
       success: false;
