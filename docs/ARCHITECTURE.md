@@ -27,6 +27,7 @@ O Sheet Guardian e uma SPA React que processa arquivos .xlsm via Edge Functions 
   - stripe-webhook: atualiza assinatura via eventos.
   - health-check: monitoramento (protegido por ADMIN_SECRET).
   - cleanup-tokens: remove tokens expirados (protegido por ADMIN_SECRET).
+  - verify-watermark: verifica watermark embutido no core.xml.
 
 ## Dados
 - subscriptions: plano, contadores e referencias Stripe.

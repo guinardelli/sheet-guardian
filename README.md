@@ -159,7 +159,7 @@ Edge Functions (Supabase Secrets)
 
 ## Supabase (setup)
 - Aplique as migrations em `supabase/migrations/`.
-- Tabelas principais: `profiles`, `subscriptions`, `processing_tokens`, `error_logs`, `auth_attempts`, `stripe_webhook_events`.
+- Tabelas principais: `profiles`, `subscriptions`, `processing_tokens`, `watermark_deliveries`, `error_logs`, `auth_attempts`, `stripe_webhook_events`.
 - Edge Functions usadas pelo app:
   - `validate-processing` (emite/consome token e valida limites)
   - `process-file` (processa .xlsm)
@@ -168,6 +168,7 @@ Edge Functions (Supabase Secrets)
   - `customer-portal` (portal de cobrança)
   - `stripe-webhook` (eventos Stripe)
   - `cleanup-tokens` e `health-check` (manutenção)
+  - `verify-watermark` (verifica watermark embutido em `docProps/core.xml`)
 - Configure secrets no Supabase para as funções (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SERVICE_ROLE_KEY`, `STRIPE_*`, `ADMIN_SECRET`).
 - Agende a função `cleanup-tokens` conforme `docs/SUPABASE_SCHEDULES.md`.
 - Para 2FA, habilite MFA no Supabase e defina `VITE_FEATURE_2FA=true`.
