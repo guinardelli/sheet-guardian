@@ -3,6 +3,7 @@ import { encode as encodeBase64, decode as decodeBase64 } from "https://deno.lan
 import JSZip from "https://esm.sh/jszip@3.10.1?target=deno";
 import { createLogger } from "../_shared/logger.ts";
 import { authenticateUser } from "../_shared/auth.ts";
+import { getSupabaseAnonKey, getSupabaseUrl } from "../_shared/env.ts";
 import type { ProcessFileResponse, SubscriptionPlan } from "../_shared/response-types.ts";
 
 // ===== SECURITY LIMITS =====
@@ -36,6 +37,7 @@ const MIME_XLSM = "application/vnd.ms-excel.sheet.macroEnabled.12";
 const VBA_FILENAME = "xl/vbaProject.bin";
 const MIN_VBA_SIZE = 100;
 const ZIP_MAGIC_BYTES = [0x50, 0x4b, 0x03, 0x04];
+const PROCESSING_TOKEN_HEADER = "x-processing-token";
 
 const BINARY_PATTERNS = [
   { prefix: [67, 77, 71, 61, 34], name: "CMG" },
@@ -69,7 +71,7 @@ type ModifyVbaResult = {
 
 const getCorsHeaders = (origin: string | null) => {
   const headers: Record<string, string> = {
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-processing-token",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
   };
 
@@ -100,6 +102,65 @@ const errorResponse = (
 ) => {
   const body: ProcessFileResponse = { requestId, success: false, error: message, errorCode };
   return jsonResponse(body, status, corsHeaders);
+};
+
+type ConsumeResult =
+  | { success: true }
+  | { success: false; error: string; status: number; errorCode?: string };
+
+const consumeProcessingToken = async (
+  processingToken: string,
+  shouldCountUsage: boolean,
+  authHeader: string,
+): Promise<ConsumeResult> => {
+  let supabaseUrl: string;
+  let anonKey: string;
+
+  try {
+    supabaseUrl = getSupabaseUrl();
+    anonKey = getSupabaseAnonKey();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { success: false, error: message, status: 500 };
+  }
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/validate-processing`, {
+    method: "POST",
+    headers: {
+      Authorization: authHeader,
+      apikey: anonKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      action: "consume",
+      processingToken,
+      shouldCountUsage,
+    }),
+  });
+
+  const text = await response.text();
+  let payload: Record<string, unknown> | null = null;
+  if (text) {
+    try {
+      payload = JSON.parse(text) as Record<string, unknown>;
+    } catch {
+      payload = null;
+    }
+  }
+
+  if (!response.ok) {
+    const error = (payload?.error as string | undefined) ?? text ?? `HTTP ${response.status}`;
+    const errorCode = payload?.errorCode as string | undefined;
+    return { success: false, error, status: response.status, errorCode };
+  }
+
+  if (payload && payload.success === false) {
+    const error = (payload.error as string | undefined) ?? "Failed to consume token";
+    const errorCode = payload.errorCode as string | undefined;
+    return { success: false, error, status: 400, errorCode };
+  }
+
+  return { success: true };
 };
 
 const withTimeout = async <T>(
@@ -306,10 +367,20 @@ serve(async (req: Request): Promise<Response> => {
     const { user, supabase } = authResult;
     logger.info("User authenticated", { userId: user.id });
 
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return errorResponse("Missing Authorization header.", 401, "UNAUTHORIZED", corsHeaders, requestId);
+    }
+
+    const processingToken = req.headers.get(PROCESSING_TOKEN_HEADER)?.trim();
+    if (!processingToken) {
+      return errorResponse("Missing processing token.", 400, "MISSING_PROCESSING_TOKEN", corsHeaders, requestId);
+    }
+
     // SECURITY: Consultar plano do usuario para aplicar limites corretos
     const { data: subscription, error: subscriptionError } = await supabase
       .from("subscriptions")
-      .select("plan")
+      .select("plan, payment_status")
       .eq("user_id", user.id)
       .maybeSingle();
 
@@ -319,8 +390,37 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     const plan: SubscriptionPlan = (subscription?.plan as SubscriptionPlan) ?? "free";
+    const paymentStatus = subscription?.payment_status ?? "pending";
+    if (plan !== "free" && paymentStatus !== "active") {
+      return errorResponse(
+        "Pagamento pendente. Atualize sua assinatura para continuar.",
+        403,
+        "PAYMENT_INACTIVE",
+        corsHeaders,
+        requestId,
+      );
+    }
     const maxFileSize = getMaxFileSizeForPlan(plan);
     logger.info("User plan limits", { userId: user.id, plan, maxFileSizeMB: maxFileSize / 1024 / 1024 });
+
+    const { data: tokenRow, error: tokenError } = await supabase
+      .from("processing_tokens")
+      .select("id, expires_at, used_at")
+      .eq("token", processingToken)
+      .maybeSingle();
+
+    if (tokenError || !tokenRow) {
+      logger.warn("Processing token not found", { userId: user.id });
+      return errorResponse("Invalid processing token", 403, "INVALID_PROCESSING_TOKEN", corsHeaders, requestId);
+    }
+
+    if (tokenRow.used_at) {
+      return errorResponse("Processing token already used", 403, "PROCESSING_TOKEN_USED", corsHeaders, requestId);
+    }
+
+    if (new Date(tokenRow.expires_at).getTime() < Date.now()) {
+      return errorResponse("Processing token expired", 403, "PROCESSING_TOKEN_EXPIRED", corsHeaders, requestId);
+    }
 
     let upload: UploadedFile;
     try {
@@ -405,6 +505,21 @@ serve(async (req: Request): Promise<Response> => {
 
     if (!vbaExists) {
       const output = await zip.generateAsync({ type: "uint8array" });
+      const consumeUsage = await consumeProcessingToken(processingToken, false, authHeader);
+      if (!consumeUsage.success) {
+        logger.error("Failed to consume processing token", {
+          userId: user.id,
+          message: consumeUsage.error,
+          errorCode: consumeUsage.errorCode,
+        });
+        return errorResponse(
+          consumeUsage.error,
+          consumeUsage.status,
+          consumeUsage.errorCode ?? "USAGE_UPDATE_FAILED",
+          corsHeaders,
+          requestId,
+        );
+      }
       const response: ProcessFileResponse = {
         requestId,
         success: true,
@@ -442,6 +557,22 @@ serve(async (req: Request): Promise<Response> => {
       PROCESSING_TIMEOUT_MS,
       "ZIP generate",
     );
+
+    const consumeUsage = await consumeProcessingToken(processingToken, patternsFound > 0, authHeader);
+    if (!consumeUsage.success) {
+      logger.error("Failed to consume processing token", {
+        userId: user.id,
+        message: consumeUsage.error,
+        errorCode: consumeUsage.errorCode,
+      });
+      return errorResponse(
+        consumeUsage.error,
+        consumeUsage.status,
+        consumeUsage.errorCode ?? "USAGE_UPDATE_FAILED",
+        corsHeaders,
+        requestId,
+      );
+    }
 
     const response: ProcessFileResponse = {
       requestId,

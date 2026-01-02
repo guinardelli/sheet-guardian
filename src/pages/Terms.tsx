@@ -22,8 +22,9 @@ const Terms = () => {
           <section className="space-y-3">
             <h2 className="text-xl font-semibold text-foreground">Descricao do servico</h2>
             <p className="text-muted-foreground">
-              O Sheet Guardian oferece processamento de arquivos .xlsm no navegador para modificar padroes VBA,
-              com limites de uso definidos pelo plano contratado.
+              O Sheet Guardian oferece processamento de arquivos .xlsm via Edge Function para modificar padroes
+              VBA, com limites de uso definidos pelo plano contratado. O arquivo e processado em memoria e
+              devolvido ao usuario, sem armazenamento permanente.
             </p>
           </section>
 
@@ -56,7 +57,7 @@ const Terms = () => {
             <h2 className="text-xl font-semibold text-foreground">Politica de reembolso</h2>
             <p className="text-muted-foreground">
               Reembolsos seguem as politicas do provedor de pagamento e a legislacao aplicavel. Solicite suporte em
-              ate 7 dias corridos quando aplicavel.
+              ate 7 dias corridos quando aplicavel, pelo e-mail suporte@sheetguardian.com.
             </p>
           </section>
 
@@ -65,9 +66,6 @@ const Terms = () => {
             <p className="text-muted-foreground">
               Estes termos sao regidos pelas leis brasileiras. Eventuais controversias serao resolvidas no foro
               competente do Brasil.
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Este texto e um rascunho e deve ser revisado por assessoria juridica antes do lancamento.
             </p>
           </section>
         </div>

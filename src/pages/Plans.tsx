@@ -76,7 +76,6 @@ const Plans = () => {
   const { user, session } = useAuth();
   const {
     subscription,
-    updatePlan,
     loading: subLoading,
     refetch,
     syncSubscription,
@@ -165,6 +164,15 @@ const Plans = () => {
 
     if (plan === 'free') {
       try {
+        if (subscription && subscription.plan !== 'free') {
+          toast({
+            title: t('common.error'),
+            description: t('plansPage.messages.manageSubscriptionRequired'),
+            variant: 'destructive',
+          });
+          return;
+        }
+
         if (!subscription) {
           toast({
             title: t('plansPage.messages.creatingSubscription'),
@@ -181,10 +189,6 @@ const Plans = () => {
           }
         }
 
-        const result = await updatePlan('free');
-        if (!result.success) {
-          throw new Error(result.error || t('plansPage.messages.errorSwitchingPlan'));
-        }
         toast({
           title: t('plansPage.messages.planUpdated'),
           description: t('plansPage.messages.planUpdatedDesc'),
@@ -452,4 +456,3 @@ const Plans = () => {
 };
 
 export default Plans;
-

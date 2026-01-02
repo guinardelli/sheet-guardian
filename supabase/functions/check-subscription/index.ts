@@ -3,7 +3,13 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createLogger } from "../_shared/logger.ts";
 import { authenticateUser } from "../_shared/auth.ts";
-import { getServiceRoleKey, getStripeSecretKey, getSupabaseUrl } from "../_shared/env.ts";
+import {
+  getServiceRoleKey,
+  getStripePremiumProductId,
+  getStripeProfessionalProductId,
+  getStripeSecretKey,
+  getSupabaseUrl,
+} from "../_shared/env.ts";
 import type { SubscriptionPlan, SubscriptionResponse } from "../_shared/response-types.ts";
 
 const allowedOrigins = new Set([
@@ -26,9 +32,14 @@ const getCorsHeaders = (origin: string | null) => {
 
 const baseLogger = createLogger("CHECK-SUBSCRIPTION");
 
-const PRODUCT_TO_PLAN: Record<string, SubscriptionPlan> = {
-  "prod_TaJslOsZAWnhcN": "professional",
-  "prod_TaJsysi99Q1g2J": "premium",
+const getProductToPlan = (): Record<string, SubscriptionPlan> => {
+  const professionalProductId = getStripeProfessionalProductId();
+  const premiumProductId = getStripePremiumProductId();
+
+  return {
+    [professionalProductId]: "professional",
+    [premiumProductId]: "premium",
+  };
 };
 
 serve(async (req: Request): Promise<Response> => {
@@ -72,6 +83,7 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     const stripeKey = getStripeSecretKey();
+    const productToPlan = getProductToPlan();
     const stripe = new Stripe(stripeKey, { apiVersion: "2024-12-18.acacia" });
 
     logger.info("Looking up Stripe customer", { email: user.email });
@@ -121,7 +133,7 @@ serve(async (req: Request): Promise<Response> => {
       subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
       cancelAtPeriodEnd = subscription.cancel_at_period_end ?? false;
       productId = subscription.items.data[0].price.product as string;
-      plan = PRODUCT_TO_PLAN[productId] || "free";
+      plan = productToPlan[productId] || "free";
       logger.info("Active subscription found", { subscriptionId: subscription.id, plan, productId });
 
       const shouldResetUsage = existingSubscription?.plan === "free" && plan !== "free";

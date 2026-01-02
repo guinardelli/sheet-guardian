@@ -228,6 +228,7 @@
       "creatingSubscriptionDesc": "Aguarde enquanto criamos sua assinatura gratuita.",
       "planUpdated": "Plano atualizado!",
       "planUpdatedDesc": "Você está no plano Gratuito.",
+      "manageSubscriptionRequired": "Para cancelar, use o portal de assinatura.",
       "errorSwitchingPlan": "Erro ao mudar para plano gratuito",
       "checkoutError": "Erro ao processar pagamento",
       "autoVerifyError": "Não foi possível confirmar sua assinatura automaticamente. Se o plano não atualizar em alguns minutos, saia e entre novamente."

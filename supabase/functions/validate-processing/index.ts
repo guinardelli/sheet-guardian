@@ -11,6 +11,7 @@ type ValidatePayload = {
     mimeType?: string | null;
   };
   processingToken?: string | null;
+  shouldCountUsage?: boolean | null;
 };
 
 const allowedOrigins = new Set([
@@ -121,7 +122,7 @@ serve(async (req: Request): Promise<Response> => {
 
     const { data: subscription, error: subscriptionError } = await supabase
       .from("subscriptions")
-      .select("plan, sheets_used_today, sheets_used_week, sheets_used_month, last_sheet_date, last_reset_date")
+      .select("plan, payment_status, sheets_used_today, sheets_used_week, sheets_used_month, last_sheet_date, last_reset_date")
       .eq("user_id", user.id)
       .maybeSingle();
 
@@ -131,6 +132,7 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     const plan = (subscription.plan as SubscriptionPlan) ?? "free";
+    const paymentStatus = subscription.payment_status ?? "pending";
     const limits = PLAN_LIMITS[plan] ?? PLAN_LIMITS.free;
 
     const today = new Date();
@@ -159,6 +161,16 @@ serve(async (req: Request): Promise<Response> => {
       return jsonResponse(body, 400, corsHeaders);
     };
 
+    if (plan !== "free" && paymentStatus !== "active") {
+      return errorResponse(
+        "Pagamento pendente. Atualize sua assinatura para continuar.",
+        403,
+        "PAYMENT_INACTIVE",
+        corsHeaders,
+        requestId,
+      );
+    }
+
     if (limits.maxFileSizeMB && payload.file?.sizeBytes && payload.file.sizeBytes > limits.maxFileSizeMB * 1024 * 1024) {
       return failValidation(`Arquivo muito grande. Limite do plano: ${limits.maxFileSizeMB} MB.`, "FILE_TOO_LARGE");
     }
@@ -173,6 +185,7 @@ serve(async (req: Request): Promise<Response> => {
 
     if (action === "consume") {
       const processingToken = payload.processingToken;
+      const shouldCountUsage = payload.shouldCountUsage !== false;
       if (!processingToken) {
         const body: TokenConsumeResponse = withRequestId({
           success: false,
@@ -211,23 +224,12 @@ serve(async (req: Request): Promise<Response> => {
         return errorResponse("Failed to update processing token", 500, "TOKEN_UPDATE_FAILED", corsHeaders, requestId);
       }
 
-      const isToday = subscription.last_sheet_date === todayStr;
-      const newSheetsToday = isToday ? subscription.sheets_used_today + 1 : 1;
-      const newSheetsWeek = lastWeek === currentWeek ? (subscription.sheets_used_week ?? 0) + 1 : 1;
-      const newSheetsMonth = lastResetMonth === currentMonth
-        ? subscription.sheets_used_month + 1
-        : 1;
+      if (!shouldCountUsage) {
+        const body: TokenConsumeResponse = withRequestId({ success: true });
+        return jsonResponse(body, 200, corsHeaders);
+      }
 
-      const { error: usageError } = await supabase
-        .from("subscriptions")
-        .update({
-          sheets_used_today: newSheetsToday,
-          sheets_used_week: newSheetsWeek,
-          sheets_used_month: newSheetsMonth,
-          last_sheet_date: todayStr,
-          last_reset_date: lastResetMonth === currentMonth ? subscription.last_reset_date : todayStr,
-        })
-        .eq("user_id", user.id);
+      const { error: usageError } = await supabase.rpc("increment_subscription_usage");
 
       if (usageError) {
         logger.error("Failed to update usage", { message: usageError.message, userId: user.id });

@@ -40,6 +40,21 @@ export const getStripeSecretKey = (env: EnvGetter = defaultEnv) =>
 export const getStripeWebhookSecret = (env: EnvGetter = defaultEnv) =>
   getRequiredEnv("STRIPE_WEBHOOK_SECRET", env);
 
+export const getStripeProfessionalProductId = (env: EnvGetter = defaultEnv) =>
+  getRequiredEnv("STRIPE_PROFESSIONAL_PRODUCT_ID", env);
+
+export const getStripeProfessionalPriceId = (env: EnvGetter = defaultEnv) =>
+  getRequiredEnv("STRIPE_PROFESSIONAL_PRICE_ID", env);
+
+export const getStripePremiumProductId = (env: EnvGetter = defaultEnv) =>
+  getRequiredEnv("STRIPE_PREMIUM_PRODUCT_ID", env);
+
+export const getStripePremiumPriceId = (env: EnvGetter = defaultEnv) =>
+  getRequiredEnv("STRIPE_PREMIUM_PRICE_ID", env);
+
+export const getStripeAnnualPriceId = (env: EnvGetter = defaultEnv) =>
+  getRequiredEnv("STRIPE_ANNUAL_PRICE_ID", env);
+
 export const getAdminSecret = (env: EnvGetter = defaultEnv) =>
   getRequiredEnv("ADMIN_SECRET", env, ["CRON_SECRET"]);
 

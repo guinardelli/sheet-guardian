@@ -228,6 +228,7 @@
       "creatingSubscriptionDesc": "Please wait while we create your free subscription.",
       "planUpdated": "Plan updated!",
       "planUpdatedDesc": "You are on the Free plan.",
+      "manageSubscriptionRequired": "To downgrade, use the subscription portal.",
       "errorSwitchingPlan": "Error switching to free plan",
       "checkoutError": "Error processing payment",
       "autoVerifyError": "Could not automatically confirm your subscription. If the plan doesn't update in a few minutes, sign out and sign in again."

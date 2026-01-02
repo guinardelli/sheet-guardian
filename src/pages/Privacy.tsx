@@ -29,8 +29,9 @@ const Privacy = () => {
           <section className="space-y-3">
             <h2 className="text-xl font-semibold text-foreground">Processamento de arquivos</h2>
             <p className="text-muted-foreground">
-              O processamento de arquivos .xlsm ocorre localmente no navegador. Nao fazemos upload do arquivo
-              para nossos servidores, exceto quando voce optar por enviar logs de erro ou diagnosticos.
+              O processamento de arquivos .xlsm ocorre via Edge Function. O arquivo e enviado para processamento
+              em memoria e nao e armazenado em banco ou storage. Metadados de uso e logs de erro podem ser
+              registrados para operacao e suporte.
             </p>
           </section>
 
@@ -54,18 +55,15 @@ const Privacy = () => {
             <h2 className="text-xl font-semibold text-foreground">Direitos do usuario (LGPD)</h2>
             <p className="text-muted-foreground">
               Voce pode solicitar acesso, correcao, exclusao ou portabilidade dos seus dados. Para isso, entre em
-              contato com nosso DPO pelo e-mail informado abaixo.
+              contato com nosso canal de privacidade pelo e-mail informado abaixo.
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-xl font-semibold text-foreground">Contato do DPO</h2>
+            <h2 className="text-xl font-semibold text-foreground">Contato de privacidade</h2>
             <p className="text-muted-foreground">
-              DPO: <span className="font-medium text-foreground">[NOME]</span> &middot;{" "}
-              <span className="font-medium text-foreground">[EMAIL]</span>
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Este texto e um rascunho e deve ser revisado por assessoria juridica antes do lancamento.
+              Controlador: <span className="font-medium text-foreground">Sheet Guardian</span> &middot;{" "}
+              <span className="font-medium text-foreground">suporte@sheetguardian.com</span>
             </p>
           </section>
         </div>

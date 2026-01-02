@@ -1,20 +1,20 @@
 # Arquitetura do Sheet Guardian
 
 ## Visao geral
-O Sheet Guardian e uma SPA React que processa arquivos .xlsm localmente no navegador para modificar padroes VBA. A autenticacao, persistencia e cobranca sao integradas com Supabase e Stripe. O deploy do frontend e feito em hosting estatico (Vercel).
+O Sheet Guardian e uma SPA React que processa arquivos .xlsm via Edge Functions para modificar padroes VBA. A autenticacao, persistencia e cobranca sao integradas com Supabase e Stripe. O deploy do frontend e feito em hosting estatico (Vercel).
 
 ## Fluxo principal
 1. Usuario autentica via Supabase Auth.
 2. Usuario faz upload de um arquivo .xlsm.
 3. O frontend valida o arquivo (extensao, MIME e magic bytes).
 4. O frontend solicita um processing token via Edge Function.
-5. O processamento local altera o vbaProject.bin e gera o arquivo final.
-6. O frontend consome o token e atualiza os contadores de uso.
+5. O frontend envia o arquivo e o token para a Edge Function `process-file`.
+6. A Edge Function altera o vbaProject.bin, consome o token e atualiza os contadores.
 
 ## Frontend
 - React 18 + Vite + TypeScript.
 - Rotas protegidas para Dashboard e Account.
-- Processamento do arquivo ocorre localmente (JSZip + manipulacao binaria).
+- Processamento do arquivo ocorre na Edge Function `process-file` (JSZip + manipulacao binaria).
 - Estado de assinatura via hooks (useSubscription).
 
 ## Backend (Supabase)

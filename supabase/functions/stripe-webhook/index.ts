@@ -2,19 +2,24 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createLogger } from "../_shared/logger.ts";
-import { getServiceRoleKey, getStripeSecretKey, getStripeWebhookSecret, getSupabaseUrl } from "../_shared/env.ts";
+import {
+  getServiceRoleKey,
+  getStripePremiumProductId,
+  getStripeProfessionalProductId,
+  getStripeSecretKey,
+  getStripeWebhookSecret,
+  getSupabaseUrl,
+} from "../_shared/env.ts";
 import type { EnvGetter } from "../_shared/env.ts";
 import type { SubscriptionPlan } from "../_shared/response-types.ts";
 
-const PRODUCT_TO_PLAN: Record<string, SubscriptionPlan> = {
-  "prod_TaJslOsZAWnhcN": "professional",
-  "prod_TaJsysi99Q1g2J": "premium",
-};
-
 const baseLogger = createLogger("STRIPE-WEBHOOK");
 
-const getPlanForProduct = (productId: string | null | undefined): SubscriptionPlan =>
-  productId && PRODUCT_TO_PLAN[productId] ? PRODUCT_TO_PLAN[productId] : "free";
+const getPlanForProduct = (
+  productId: string | null | undefined,
+  productMap: Record<string, SubscriptionPlan>,
+): SubscriptionPlan =>
+  productId && productMap[productId] ? productMap[productId] : "free";
 
 type LoggerLike = {
   info: (message: string, meta?: Record<string, unknown>) => void;
@@ -89,6 +94,20 @@ export const createWebhookHandler = (
       headers: { "Content-Type": "application/json" },
       status,
     });
+
+  let productToPlan: Record<string, SubscriptionPlan>;
+  try {
+    const professionalProductId = getStripeProfessionalProductId(env);
+    const premiumProductId = getStripePremiumProductId(env);
+    productToPlan = {
+      [professionalProductId]: "professional",
+      [premiumProductId]: "premium",
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error("Missing Stripe product env vars", { message });
+    return jsonResponse({ error: "Server misconfigured" }, 500);
+  }
 
   if (req.method !== "POST") {
     return jsonResponse({ error: "Method not allowed" }, 405);
@@ -373,7 +392,7 @@ export const createWebhookHandler = (
 
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
         const productId = subscription.items.data[0]?.price?.product as string | undefined;
-        const plan = getPlanForProduct(productId);
+        const plan = getPlanForProduct(productId, productToPlan);
         const currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
         const cancelAtPeriodEnd = subscription.cancel_at_period_end ?? false;
 
@@ -409,7 +428,7 @@ export const createWebhookHandler = (
         const subscription = event.data.object as Stripe.Subscription;
         const customerId = subscription.customer as string;
         const productId = subscription.items.data[0]?.price?.product as string | undefined;
-        const plan = getPlanForProduct(productId);
+        const plan = getPlanForProduct(productId, productToPlan);
         const status = subscription.status;
         const currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
         const cancelAtPeriodEnd = subscription.cancel_at_period_end ?? false;

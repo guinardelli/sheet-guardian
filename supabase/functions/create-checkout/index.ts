@@ -3,17 +3,30 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createLogger } from "../_shared/logger.ts";
 import { authenticateUser } from "../_shared/auth.ts";
-import { getServiceRoleKey, getStripeSecretKey, getSupabaseUrl } from "../_shared/env.ts";
+import {
+  getServiceRoleKey,
+  getStripeAnnualPriceId,
+  getStripePremiumPriceId,
+  getStripePremiumProductId,
+  getStripeProfessionalPriceId,
+  getStripeProfessionalProductId,
+  getStripeSecretKey,
+  getSupabaseUrl,
+} from "../_shared/env.ts";
 import type { CheckoutResponse } from "../_shared/response-types.ts";
 
-const ANNUAL_PRICE_ID = (Deno.env.get("STRIPE_ANNUAL_PRICE_ID")
-  ?? Deno.env.get("VITE_STRIPE_ANNUAL_PRICE_ID")
-  ?? "").trim();
+const buildAllowedPriceMap = () => {
+  const professionalPriceId = getStripeProfessionalPriceId();
+  const premiumPriceId = getStripePremiumPriceId();
+  const annualPriceId = getStripeAnnualPriceId();
+  const professionalProductId = getStripeProfessionalProductId();
+  const premiumProductId = getStripePremiumProductId();
 
-const ALLOWED_PRICE_TO_PRODUCT: Record<string, string> = {
-  "price_1Sd9EhJkxX3Me4wlrU22rZwM": "prod_TaJslOsZAWnhcN", // professional
-  "price_1Sd9F5JkxX3Me4wl1xNRb5Kh": "prod_TaJsysi99Q1g2J", // premium
-  ...(ANNUAL_PRICE_ID ? { [ANNUAL_PRICE_ID]: "prod_TaJsysi99Q1g2J" } : {}),
+  return {
+    [professionalPriceId]: professionalProductId,
+    [premiumPriceId]: premiumProductId,
+    [annualPriceId]: premiumProductId,
+  };
 };
 
 const allowedOrigins = new Set([
@@ -65,11 +78,12 @@ serve(async (req: Request): Promise<Response> => {
     logger.info("Function started");
 
     const stripeSecretKey = getStripeSecretKey();
+    const allowedPriceToProduct = buildAllowedPriceMap();
     
     const payload = await parseCheckoutPayload(req);
     const normalizedPriceId = (payload.priceId ?? "").trim();
     if (!normalizedPriceId) throw new Error("Price ID is required");
-    const allowedProduct = ALLOWED_PRICE_TO_PRODUCT[normalizedPriceId];
+    const allowedProduct = allowedPriceToProduct[normalizedPriceId];
     if (!allowedProduct) {
       throw new Error("Invalid priceId");
     }

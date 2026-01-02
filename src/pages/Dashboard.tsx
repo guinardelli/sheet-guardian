@@ -79,7 +79,11 @@ const fetchProcessFile = async (
   throw lastError instanceof Error ? lastError : new Error('Process-file request failed');
 };
 
-const invokeProcessFile = async (file: File, accessToken: string): Promise<ProcessFileResponse> => {
+const invokeProcessFile = async (
+  file: File,
+  accessToken: string,
+  processingToken: string,
+): Promise<ProcessFileResponse> => {
   const fallbackRequestId = createRequestId();
   if (!FUNCTIONS_BASE_URL || !SUPABASE_ANON_KEY) {
     return { success: false, error: 'Supabase env not configured', requestId: fallbackRequestId };
@@ -95,6 +99,7 @@ const invokeProcessFile = async (file: File, accessToken: string): Promise<Proce
       headers: {
         Authorization: `Bearer ${accessToken}`,
         apikey: SUPABASE_ANON_KEY,
+        'x-processing-token': processingToken,
       },
       body: formData,
     });
@@ -135,7 +140,7 @@ const Dashboard = () => {
   const processingLockRef = useRef(false);
 
   const { user, session, loading: authLoading, authError, clearAuthError } = useAuth();
-  const { subscription, canProcessSheet, requestProcessingToken, incrementUsage, getUsageStats, isUpdating } = useSubscription();
+  const { subscription, canProcessSheet, requestProcessingToken, getUsageStats, isUpdating } = useSubscription();
   const navigate = useNavigate();
 
   const processingMessages = useMemo(
@@ -348,7 +353,7 @@ const Dashboard = () => {
       log('Iniciando processo de modificacao no servidor...', 'info');
       setProgress(10);
 
-      const response = await invokeProcessFile(selectedFile, session.access_token);
+      const response = await invokeProcessFile(selectedFile, session.access_token, validation.processingToken);
       setProgress(70);
 
       if (!response.success) {
@@ -409,28 +414,6 @@ const Dashboard = () => {
       setProcessingComplete(true);
 
       if (processingResult.success && processingResult.modifiedFile) {
-        if (processingResult.shouldCountUsage) {
-          try {
-            const usageResult = await incrementUsage(validation.processingToken);
-            if (!usageResult.success) {
-              logger.error('Failed to increment usage', undefined, {
-                userId: user.id,
-                error: usageResult.error,
-              });
-              toast.error(t('toasts.criticalError'), {
-                description: t('toasts.usageRegisterError'),
-              });
-              return;
-            }
-          } catch (usageError) {
-            logger.error('Unexpected error incrementing usage', usageError, { userId: user.id });
-            toast.error(t('toasts.criticalError'), {
-              description: t('toasts.usageRegisterError'),
-            });
-            return;
-          }
-        }
-
         setDownloadAllowed(true);
 
         if (processingResult.patternsModified === 0) {
@@ -474,7 +457,6 @@ const Dashboard = () => {
     canProcessSheet,
     requestProcessingToken,
     handleLog,
-    incrementUsage,
     navigate,
     t,
   ]);
