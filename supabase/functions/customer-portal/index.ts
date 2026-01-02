@@ -1,8 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createLogger } from "../_shared/logger.ts";
-import { getServiceRoleKey, getStripeSecretKey, getSupabaseUrl } from "../_shared/env.ts";
+import { authenticateUser } from "../_shared/auth.ts";
+import { getStripeSecretKey } from "../_shared/env.ts";
 import type { CustomerPortalResponse } from "../_shared/response-types.ts";
 
 const allowedOrigins = new Set([
@@ -39,25 +39,22 @@ serve(async (req: Request): Promise<Response> => {
     logger.info("Function started");
 
     const stripeKey = getStripeSecretKey();
-    const supabaseUrl = getSupabaseUrl();
-    const serviceRoleKey = getServiceRoleKey();
 
-    const supabaseClient = createClient(
-      supabaseUrl,
-      serviceRoleKey,
-      { auth: { persistSession: false } }
-    );
+    // AUTENTICACAO COM RLS
+    const authResult = await authenticateUser(req.headers.get("Authorization"));
+    if (!authResult.success) {
+      const body: CustomerPortalResponse = { error: authResult.error, requestId };
+      return new Response(JSON.stringify(body), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: authResult.status,
+      });
+    }
 
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header provided");
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
-    const user = userData.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
+    const { user } = authResult;
+    if (!user.email) throw new Error("User email not available");
     logger.info("User authenticated", { userId: user.id, email: user.email });
 
+    // Esta funcao NAO precisa de service role - apenas le do Stripe
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     

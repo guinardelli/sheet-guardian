@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createLogger } from "../_shared/logger.ts";
-import { getServiceRoleKey, getSupabaseUrl } from "../_shared/env.ts";
+import { validateAdminToken } from "../_shared/auth.ts";
+import { getAdminSecret, getServiceRoleKey, getSupabaseUrl } from "../_shared/env.ts";
 import type { HealthCheckResponse, HealthCheckUser } from "../_shared/response-types.ts";
 
 const allowedOrigins = new Set([
@@ -34,6 +35,38 @@ serve(async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // AUTENTICACAO VIA ADMIN SECRET
+  let adminSecret: string;
+  try {
+    adminSecret = getAdminSecret();
+  } catch {
+    const body: HealthCheckResponse = {
+      requestId,
+      status: "error",
+      error: "Admin secret not configured",
+      timestamp: new Date().toISOString(),
+    };
+    return new Response(JSON.stringify(body), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+    });
+  }
+
+  const isAuthorized = validateAdminToken(req.headers.get("Authorization"), adminSecret);
+  if (!isAuthorized) {
+    logger.warn("Unauthorized health check attempt");
+    const body: HealthCheckResponse = {
+      requestId,
+      status: "error",
+      error: "Unauthorized",
+      timestamp: new Date().toISOString(),
+    };
+    return new Response(JSON.stringify(body), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 401,
+    });
+  }
+
   let supabaseUrl: string;
   let serviceRoleKey: string;
   try {
@@ -58,13 +91,24 @@ serve(async (req: Request): Promise<Response> => {
   });
 
   try {
-    const { data: users, error: usersError } = await supabaseAdmin
-      .schema("auth")
-      .from("users")
-      .select("id, email");
+    const allUsers: HealthCheckUser[] = [];
+    const perPage = 1000;
+    let page = 1;
 
-    if (usersError) {
-      throw new Error(`Auth users query failed: ${usersError.message}`);
+    while (true) {
+      const { data, error: usersError } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+      if (usersError) {
+        throw new Error(`Auth users query failed: ${usersError.message}`);
+      }
+
+      const usersPage = data?.users ?? [];
+      allUsers.push(...usersPage.map((user) => ({ id: user.id, email: user.email })));
+
+      if (!data?.nextPage || usersPage.length === 0) {
+        break;
+      }
+
+      page = data.nextPage;
     }
 
     const { data: subscriptions, error: subscriptionsError } = await supabaseAdmin
@@ -75,9 +119,8 @@ serve(async (req: Request): Promise<Response> => {
       throw new Error(`Subscriptions query failed: ${subscriptionsError.message}`);
     }
 
-    const typedUsers = (users ?? []) as HealthCheckUser[];
     const subscriptionIds = new Set((subscriptions ?? []).map((row) => row.user_id));
-    const usersWithoutSubscription = typedUsers.filter((user) => !subscriptionIds.has(user.id));
+    const usersWithoutSubscription = allUsers.filter((user) => !subscriptionIds.has(user.id));
 
     const response: HealthCheckResponse = {
       requestId,

@@ -5,7 +5,7 @@ Monitorar endpoints criticos e avisar em caso de indisponibilidade.
 
 ## Endpoints sugeridos
 - https://vbablocker.vercel.app/
-- https://[PROJECT].supabase.co/functions/v1/health-check
+- https://[PROJECT].supabase.co/functions/v1/health-check (header: `Authorization: Bearer $ADMIN_SECRET`)
 - https://[PROJECT].supabase.co/auth/v1/health
 
 ## Configuracao recomendada

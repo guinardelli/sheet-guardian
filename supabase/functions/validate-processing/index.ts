@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createLogger } from "../_shared/logger.ts";
-import { getServiceRoleKey, getSupabaseUrl } from "../_shared/env.ts";
+import { authenticateUser } from "../_shared/auth.ts";
 import type { ErrorResponse, SubscriptionPlan, TokenConsumeResponse, TokenResponse } from "../_shared/response-types.ts";
 
 type ValidatePayload = {
@@ -112,26 +111,13 @@ serve(async (req: Request): Promise<Response> => {
       return errorResponse("Invalid action", 400, "INVALID_ACTION", corsHeaders, requestId);
     }
 
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return errorResponse("Unauthorized", 401, "UNAUTHORIZED", corsHeaders, requestId);
+    // AUTENTICACAO COM RLS
+    const authResult = await authenticateUser(req.headers.get("Authorization"));
+    if (!authResult.success) {
+      return errorResponse(authResult.error, authResult.status, "UNAUTHORIZED", corsHeaders, requestId);
     }
 
-    const supabaseUrl = getSupabaseUrl();
-    const serviceRoleKey = getServiceRoleKey();
-
-    const supabase = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false },
-    });
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !userData.user) {
-      logger.warn("Auth failure", { message: userError?.message });
-      return errorResponse("Unauthorized", 401, "UNAUTHORIZED", corsHeaders, requestId);
-    }
-
-    const user = userData.user;
+    const { user, supabase } = authResult;
 
     const { data: subscription, error: subscriptionError } = await supabase
       .from("subscriptions")
@@ -200,7 +186,6 @@ serve(async (req: Request): Promise<Response> => {
         .from("processing_tokens")
         .select("id, expires_at, used_at")
         .eq("token", processingToken)
-        .eq("user_id", user.id)
         .maybeSingle();
 
       if (tokenError || !tokenRow) {

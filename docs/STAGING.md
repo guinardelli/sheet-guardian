@@ -16,13 +16,14 @@ Padronizar a criacao do ambiente de staging para validar releases antes de produ
 - VITE_SUPABASE_PROJECT_ID
 - STRIPE_SECRET_KEY (test)
 - STRIPE_WEBHOOK_SECRET (test)
+- ADMIN_SECRET
 - VITE_SENTRY_DSN (staging)
 
 ## Validacoes
 - Login e signup funcionam.
 - Upload e processamento de arquivo funcionam.
 - Checkout abre no Stripe em modo test.
-- `health-check` retorna status 200.
+- `health-check` retorna 200 com `Authorization: Bearer $ADMIN_SECRET`.
 
 ## E2E
 Para rodar E2E contra staging:

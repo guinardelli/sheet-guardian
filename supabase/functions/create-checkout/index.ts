@@ -2,7 +2,8 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createLogger } from "../_shared/logger.ts";
-import { getServiceRoleKey, getStripeSecretKey, getSupabaseAnonKey, getSupabaseUrl } from "../_shared/env.ts";
+import { authenticateUser } from "../_shared/auth.ts";
+import { getServiceRoleKey, getStripeSecretKey, getSupabaseUrl } from "../_shared/env.ts";
 import type { CheckoutResponse } from "../_shared/response-types.ts";
 
 const ANNUAL_PRICE_ID = (Deno.env.get("STRIPE_ANNUAL_PRICE_ID")
@@ -63,15 +64,7 @@ serve(async (req: Request): Promise<Response> => {
   try {
     logger.info("Function started");
 
-    const supabaseUrl = getSupabaseUrl();
-    const supabaseAnonKey = getSupabaseAnonKey();
-    const supabaseServiceRoleKey = getServiceRoleKey();
     const stripeSecretKey = getStripeSecretKey();
-
-    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
-      auth: { persistSession: false },
-    });
     
     const payload = await parseCheckoutPayload(req);
     const normalizedPriceId = (payload.priceId ?? "").trim();
@@ -82,27 +75,26 @@ serve(async (req: Request): Promise<Response> => {
     }
     logger.info("Price ID received", { priceId: normalizedPriceId });
 
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      const body: CheckoutResponse = { error: "Unauthorized", requestId };
+    // AUTENTICACAO COM RLS
+    const authResult = await authenticateUser(req.headers.get("Authorization"));
+    if (!authResult.success) {
+      const body: CheckoutResponse = { error: authResult.error, requestId };
       return new Response(JSON.stringify(body), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 401,
+        status: authResult.status,
       });
     }
-    const token = authHeader.replace("Bearer ", "");
-    const { data, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) {
-      logger.warn("Auth getUser failed", { error: userError.message });
-      const body: CheckoutResponse = { error: "Unauthorized", requestId };
-      return new Response(JSON.stringify(body), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 401,
-      });
-    }
-    const user = data.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
+
+    const { user } = authResult;
+    if (!user.email) throw new Error("User email not available");
     logger.info("User authenticated", { userId: user.id, email: user.email });
+
+    // Service role para UPDATE - usuario ja autenticado via JWT
+    const supabaseUrl = getSupabaseUrl();
+    const serviceRoleKey = getServiceRoleKey();
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false },
+    });
 
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2024-12-18.acacia",

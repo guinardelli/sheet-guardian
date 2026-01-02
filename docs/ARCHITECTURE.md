@@ -25,8 +25,8 @@ O Sheet Guardian e uma SPA React que processa arquivos .xlsm localmente no naveg
   - check-subscription: sincroniza status com Stripe.
   - create-checkout / customer-portal: fluxo de pagamento.
   - stripe-webhook: atualiza assinatura via eventos.
-  - health-check: monitoramento.
-  - cleanup-tokens: remove tokens expirados.
+  - health-check: monitoramento (protegido por ADMIN_SECRET).
+  - cleanup-tokens: remove tokens expirados (protegido por ADMIN_SECRET).
 
 ## Dados
 - subscriptions: plano, contadores e referencias Stripe.
@@ -37,7 +37,7 @@ O Sheet Guardian e uma SPA React que processa arquivos .xlsm localmente no naveg
 ## Integracoes externas
 - Stripe: planos, checkout e webhooks.
 - Sentry: captura de erros e traces (quando DSN configurado).
-- Uptime monitoring: endpoints de health-check.
+- Uptime monitoring: endpoints de health-check com header Authorization.
 
 ## Seguranca
 - RLS no Supabase para isolar dados por usuario.

@@ -24,5 +24,5 @@
 ```bash
 # Smoke tests
 curl https://vbablocker.vercel.app/ # Expect: HTML
-curl https://[PROJECT].supabase.co/functions/v1/health-check # Expect: {"status":"ok"}
+curl -H "Authorization: Bearer $ADMIN_SECRET" https://[PROJECT].supabase.co/functions/v1/health-check # Expect: {"status":"healthy",...}
 ```

@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createLogger } from "../_shared/logger.ts";
-import { getServiceRoleKey, getSupabaseUrl } from "../_shared/env.ts";
+import { validateAdminToken } from "../_shared/auth.ts";
+import { getAdminSecret, getServiceRoleKey, getSupabaseUrl } from "../_shared/env.ts";
 import type { CleanupTokensResponse } from "../_shared/response-types.ts";
 
 const baseLogger = createLogger("CLEANUP-TOKENS");
@@ -10,9 +11,38 @@ const TTL_MS = 24 * 60 * 60 * 1000;
 serve(async (req: Request): Promise<Response> => {
   const requestId = crypto.randomUUID();
   const logger = baseLogger.withContext({ requestId });
+
   if (req.method !== "GET" && req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed", requestId }), {
       status: 405,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  // AUTENTICACAO VIA ADMIN SECRET
+  let adminSecret: string;
+  try {
+    adminSecret = getAdminSecret();
+  } catch {
+    const body: CleanupTokensResponse = {
+      error: "Admin secret not configured",
+      requestId
+    };
+    return new Response(JSON.stringify(body), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const isAuthorized = validateAdminToken(req.headers.get("Authorization"), adminSecret);
+  if (!isAuthorized) {
+    logger.warn("Unauthorized cleanup attempt");
+    const body: CleanupTokensResponse = {
+      error: "Unauthorized",
+      requestId
+    };
+    return new Response(JSON.stringify(body), {
+      status: 401,
       headers: { "Content-Type": "application/json" },
     });
   }
@@ -52,6 +82,7 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
+    logger.info("Cleanup completed", { deleted: count ?? 0, cutoff });
     const body: CleanupTokensResponse = { deleted: count ?? 0, cutoff, requestId };
     return new Response(JSON.stringify(body), {
       status: 200,

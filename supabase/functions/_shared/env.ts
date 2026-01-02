@@ -40,4 +40,7 @@ export const getStripeSecretKey = (env: EnvGetter = defaultEnv) =>
 export const getStripeWebhookSecret = (env: EnvGetter = defaultEnv) =>
   getRequiredEnv("STRIPE_WEBHOOK_SECRET", env);
 
+export const getAdminSecret = (env: EnvGetter = defaultEnv) =>
+  getRequiredEnv("ADMIN_SECRET", env, ["CRON_SECRET"]);
+
 export type { EnvGetter };

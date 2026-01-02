@@ -1,9 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { encode as encodeBase64, decode as decodeBase64 } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 import JSZip from "https://esm.sh/jszip@3.10.1?target=deno";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createLogger } from "../_shared/logger.ts";
-import { getServiceRoleKey, getSupabaseUrl } from "../_shared/env.ts";
+import { authenticateUser } from "../_shared/auth.ts";
 import type { ProcessFileResponse } from "../_shared/response-types.ts";
 
 const baseLogger = createLogger("PROCESS-FILE");
@@ -220,22 +219,14 @@ serve(async (req: Request): Promise<Response> => {
       return errorResponse("Method not allowed", 405, "METHOD_NOT_ALLOWED", corsHeaders, requestId);
     }
 
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return errorResponse("Unauthorized", 401, "UNAUTHORIZED", corsHeaders, requestId);
+    // AUTENTICACAO COM RLS
+    const authResult = await authenticateUser(req.headers.get("Authorization"));
+    if (!authResult.success) {
+      return errorResponse(authResult.error, authResult.status, "UNAUTHORIZED", corsHeaders, requestId);
     }
 
-    const supabaseUrl = getSupabaseUrl();
-    const serviceRoleKey = getServiceRoleKey();
-    const supabase = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false },
-    });
-
-    const accessToken = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
-    if (userError || !userData.user) {
-      return errorResponse("Unauthorized", 401, "UNAUTHORIZED", corsHeaders, requestId);
-    }
+    const { user } = authResult;
+    logger.info("User authenticated", { userId: user.id });
 
     let upload: UploadedFile;
     try {

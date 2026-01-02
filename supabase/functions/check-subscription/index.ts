@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createLogger } from "../_shared/logger.ts";
+import { authenticateUser } from "../_shared/auth.ts";
 import { getServiceRoleKey, getStripeSecretKey, getSupabaseUrl } from "../_shared/env.ts";
 import type { SubscriptionPlan, SubscriptionResponse } from "../_shared/response-types.ts";
 
@@ -25,7 +26,6 @@ const getCorsHeaders = (origin: string | null) => {
 
 const baseLogger = createLogger("CHECK-SUBSCRIPTION");
 
-// Map Stripe product IDs to plan names
 const PRODUCT_TO_PLAN: Record<string, SubscriptionPlan> = {
   "prod_TaJslOsZAWnhcN": "professional",
   "prod_TaJsysi99Q1g2J": "premium",
@@ -44,29 +44,16 @@ serve(async (req: Request): Promise<Response> => {
   try {
     logger.info("Function started");
 
-    const supabaseUrl = getSupabaseUrl();
-    const serviceRoleKey = getServiceRoleKey();
-    const stripeKey = getStripeSecretKey();
-    logger.info("Stripe key verified");
+    // AUTENTICACAO COM RLS
+    const authResult = await authenticateUser(req.headers.get("Authorization"));
+    if (!authResult.success) {
+      throw new Error(authResult.error);
+    }
 
-    const supabaseClient = createClient(
-      supabaseUrl,
-      serviceRoleKey,
-      { auth: { persistSession: false } }
-    );
-
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header provided");
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
-    const user = userData.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
+    const { user, supabase: supabaseUser } = authResult;
     logger.info("User authenticated", { userId: user.id, email: user.email });
-    logger.info("Starting subscription check", { userId: user.id });
 
-    const { data: existingSubscription, error: existingError } = await supabaseClient
+    const { data: existingSubscription, error: existingError } = await supabaseUser
       .from("subscriptions")
       .select("plan")
       .eq("user_id", user.id)
@@ -76,9 +63,11 @@ serve(async (req: Request): Promise<Response> => {
       logger.warn("Failed to load existing subscription", { error: existingError.message, userId: user.id });
     }
 
+    const stripeKey = getStripeSecretKey();
     const stripe = new Stripe(stripeKey, { apiVersion: "2024-12-18.acacia" });
+
     logger.info("Looking up Stripe customer", { email: user.email });
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+    const customers = await stripe.customers.list({ email: user.email!, limit: 1 });
 
     if (customers.data.length === 0) {
       logger.info("No Stripe customer found, returning free plan");
@@ -99,7 +88,6 @@ serve(async (req: Request): Promise<Response> => {
     const customerId = customers.data[0].id;
     logger.info("Found Stripe customer", { customerId });
 
-    logger.info("Checking active subscriptions", { customerId });
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
       status: "active",
@@ -112,6 +100,14 @@ serve(async (req: Request): Promise<Response> => {
     let subscriptionEnd: string | null = null;
     let cancelAtPeriodEnd = false;
 
+    // Service role para UPDATE - usuario ja autenticado via JWT
+    // JUSTIFICATIVA: Sincronizacao com Stripe requer acesso privilegiado
+    const supabaseUrl = getSupabaseUrl();
+    const serviceRoleKey = getServiceRoleKey();
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false },
+    });
+
     if (hasActiveSub) {
       const subscription = subscriptions.data[0];
       subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
@@ -122,10 +118,9 @@ serve(async (req: Request): Promise<Response> => {
 
       const shouldResetUsage = existingSubscription?.plan === "free" && plan !== "free";
 
-      // Update local subscription record
-      const { error: updateError } = await supabaseClient
+      const { error: updateError } = await supabaseAdmin
         .from("subscriptions")
-        .update({ 
+        .update({
           plan,
           payment_status: "active",
           stripe_customer_id: customerId,
@@ -157,10 +152,9 @@ serve(async (req: Request): Promise<Response> => {
     } else {
       logger.info("No active subscription found");
 
-      // Reset to free plan if no active subscription
-      const { error: resetError } = await supabaseClient
+      const { error: resetError } = await supabaseAdmin
         .from("subscriptions")
-        .update({ 
+        .update({
           plan: "free",
           payment_status: "pending",
           stripe_customer_id: customerId,
