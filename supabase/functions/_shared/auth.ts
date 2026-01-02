@@ -52,6 +52,7 @@ export const authenticateUser = async (
 /**
  * Verifica se o request possui um token de administrador valido.
  * Usado para endpoints de manutencao (cron jobs, health checks).
+ * Usa comparacao constant-time para evitar timing attacks.
  */
 export const validateAdminToken = (
   authHeader: string | null,
@@ -61,5 +62,24 @@ export const validateAdminToken = (
     return false;
   }
   const token = authHeader.replace("Bearer ", "");
-  return token === expectedSecret && token.length > 0;
+
+  if (token.length === 0 || expectedSecret.length === 0) {
+    return false;
+  }
+
+  // Constant-time comparison para evitar timing attacks
+  const encoder = new TextEncoder();
+  const tokenBytes = encoder.encode(token);
+  const secretBytes = encoder.encode(expectedSecret);
+
+  if (tokenBytes.length !== secretBytes.length) {
+    return false;
+  }
+
+  // Comparacao byte-a-byte em tempo constante
+  let result = 0;
+  for (let i = 0; i < tokenBytes.length; i++) {
+    result |= tokenBytes[i] ^ secretBytes[i];
+  }
+  return result === 0;
 };

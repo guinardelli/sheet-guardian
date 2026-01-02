@@ -47,7 +47,15 @@ serve(async (req: Request): Promise<Response> => {
     // AUTENTICACAO COM RLS
     const authResult = await authenticateUser(req.headers.get("Authorization"));
     if (!authResult.success) {
-      throw new Error(authResult.error);
+      const body: SubscriptionResponse = {
+        requestId,
+        subscribed: false,
+        error: authResult.error,
+      };
+      return new Response(JSON.stringify(body), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: authResult.status,
+      });
     }
 
     const { user, supabase: supabaseUser } = authResult;
