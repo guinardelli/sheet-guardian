@@ -88,6 +88,9 @@ export const NewHeader = () => {
                   <Button variant="ghost" size="sm" onClick={() => navigate('/account')}>
                     {t('header.account')}
                   </Button>
+                  <Button variant="ghost" size="sm" onClick={() => navigate('/faq')}>
+                    {t('header.faq')}
+                  </Button>
                   <Button variant="ghost" size="sm" onClick={handleSignOut}>
                     {t('header.signOut')}
                   </Button>
@@ -154,6 +157,16 @@ export const NewHeader = () => {
                           }}
                         >
                           {t('header.myAccount')}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => {
+                            setIsMobileMenuOpen(false);
+                            navigate('/faq');
+                          }}
+                        >
+                          {t('header.faq')}
                         </Button>
                         <Button
                           variant="ghost"

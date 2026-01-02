@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { NewHeader } from "@/components/NewHeader";
 
 const Privacy = () => {
@@ -72,7 +73,13 @@ const Privacy = () => {
 
       <footer className="border-t border-border/50 py-6 px-4">
         <div className="mx-auto max-w-6xl text-center text-sm text-muted-foreground">
-          © {new Date().getFullYear()} Excel VBA Blocker. Todos os direitos reservados.
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
+            <Link to="/faq" className="text-primary hover:underline underline-offset-4">
+              FAQ
+            </Link>
+            <span className="hidden sm:inline text-muted-foreground/60">•</span>
+            <span>© {new Date().getFullYear()} Excel VBA Blocker. Todos os direitos reservados.</span>
+          </div>
         </div>
       </footer>
     </div>

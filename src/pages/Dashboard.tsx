@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Download, Info, Play, RotateCcw } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
@@ -654,9 +654,15 @@ const Dashboard = () => {
         <ProcessingLog logs={logs} />
 
         <footer className="text-center py-8 border-t border-border/50 mt-6">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} {t('dashboard.title')}. {t('common.allRightsReserved')}.
-          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-sm text-muted-foreground">
+            <Link to="/faq" className="text-primary hover:underline underline-offset-4">
+              FAQ
+            </Link>
+            <span className="hidden sm:inline text-muted-foreground/60">•</span>
+            <span>
+              © {new Date().getFullYear()} {t('dashboard.title')}. {t('common.allRightsReserved')}.
+            </span>
+          </div>
         </footer>
       </main>
     </div>

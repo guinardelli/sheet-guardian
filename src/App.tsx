@@ -17,6 +17,7 @@ const Plans = lazy(() => import("./pages/Plans"));
 const Account = lazy(() => import("./pages/Account"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Terms = lazy(() => import("./pages/Terms"));
+const Faq = lazy(() => import("./pages/Faq"));
 
 const queryClient = new QueryClient();
 
@@ -65,6 +66,7 @@ const App = () => (
                 />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/plans" element={<Plans />} />
+                <Route path="/faq" element={<Faq />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route

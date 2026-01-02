@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -133,10 +133,16 @@ const Index = () => {
       </main>
 
       <footer className="border-t border-border/50 py-5 sm:py-8 md:py-10 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto text-center">
-          <p className="text-sm text-foreground/70">
-            © {new Date().getFullYear()} Excel VBA Blocker. {t('common.allRightsReserved')}.
-          </p>
+        <div className="max-w-6xl mx-auto text-center text-sm text-foreground/70">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
+            <Link to="/faq" className="text-primary hover:underline underline-offset-4">
+              FAQ
+            </Link>
+            <span className="hidden sm:inline text-foreground/50">•</span>
+            <span>
+              © {new Date().getFullYear()} Excel VBA Blocker. {t('common.allRightsReserved')}.
+            </span>
+          </div>
         </div>
       </footer>
     </div>
