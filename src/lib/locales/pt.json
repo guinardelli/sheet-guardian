@@ -125,7 +125,8 @@
       "account": "Criar conta",
       "process": "Primeiro processamento",
       "download": "Baixar arquivo protegido"
-    }
+    },
+    "recentHistory": "Histórico Recente"
   },
   "auth": {
     "title": "Excel VBA Blocker",

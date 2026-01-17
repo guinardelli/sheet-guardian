@@ -13,6 +13,7 @@ import { FileDropzone } from '@/components/FileDropzone';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { NewHeader } from '@/components/NewHeader';
 import { ProcessingLog } from '@/components/ProcessingLog';
+import { RecentFiles } from '@/components/RecentFiles';
 import { StatisticsCard } from '@/components/StatisticsCard';
 import { SuccessChecklist } from '@/components/SuccessChecklist';
 
@@ -620,6 +621,8 @@ const Dashboard = () => {
                 { id: 'download', label: 'Baixar arquivo protegido', completed: hasDownloaded },
               ]}
             />
+
+            <RecentFiles key={processingComplete ? 're-fetch' : 'idle'} />
           </div>
         )}
 

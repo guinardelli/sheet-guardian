@@ -681,7 +681,7 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     // SECURITY: Timeout para evitar travamento na compressao
-    const output = await withTimeout(
+    const output = (await withTimeout(
       zip.generateAsync({
         type: "uint8array",
         compression: "DEFLATE",
@@ -689,7 +689,21 @@ serve(async (req: Request): Promise<Response> => {
       }),
       PROCESSING_TIMEOUT_MS,
       "ZIP generate",
-    );
+    )) as Uint8Array;
+
+    // INTEGRITY CHECK: Verify generated file is still a valid ZIP
+    try {
+      await JSZip.loadAsync(output);
+    } catch (e: any) {
+      logger.error("Final integrity check failed", { error: e.message });
+      return errorResponse(
+        "Erro de integridade ao gerar o arquivo. Por favor, tente novamente.",
+        500,
+        "INTEGRITY_CHECK_FAILED",
+        corsHeaders,
+        requestId,
+      );
+    }
 
     const watermarkRecord = await recordWatermark();
     if (!watermarkRecord.ok) {
