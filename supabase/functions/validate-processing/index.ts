@@ -214,14 +214,20 @@ serve(async (req: Request): Promise<Response> => {
         return errorResponse("Processing token expired", 403, "PROCESSING_TOKEN_EXPIRED", corsHeaders, requestId);
       }
 
-      const { error: tokenUpdateError } = await supabase
+      const { error: tokenUpdateError, count } = await supabase
         .from("processing_tokens")
-        .update({ used_at: new Date().toISOString() })
-        .eq("id", tokenRow.id);
+        .update({ used_at: new Date().toISOString() }, { count: "exact" })
+        .eq("id", tokenRow.id)
+        .is("used_at", null);
 
       if (tokenUpdateError) {
         logger.error("Failed to mark processing token as used", { message: tokenUpdateError.message });
         return errorResponse("Failed to update processing token", 500, "TOKEN_UPDATE_FAILED", corsHeaders, requestId);
+      }
+
+      if (count === 0) {
+        logger.warn("Token already used (race condition prevented)", { tokenId: tokenRow.id, userId: user.id });
+        return errorResponse("Processing token already used", 403, "PROCESSING_TOKEN_USED", corsHeaders, requestId);
       }
 
       if (!shouldCountUsage) {

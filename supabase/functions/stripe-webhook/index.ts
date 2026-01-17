@@ -80,13 +80,13 @@ export const createWebhookHandler = (
   const logger = loggerBase.withContext
     ? loggerBase.withContext({ requestId })
     : {
-        info: (message: string, meta?: Record<string, unknown>) =>
-          loggerBase.info(message, { ...(meta ?? {}), requestId }),
-        warn: (message: string, meta?: Record<string, unknown>) =>
-          loggerBase.warn(message, { ...(meta ?? {}), requestId }),
-        error: (message: string, meta?: Record<string, unknown>) =>
-          loggerBase.error(message, { ...(meta ?? {}), requestId }),
-      };
+      info: (message: string, meta?: Record<string, unknown>) =>
+        loggerBase.info(message, { ...(meta ?? {}), requestId }),
+      warn: (message: string, meta?: Record<string, unknown>) =>
+        loggerBase.warn(message, { ...(meta ?? {}), requestId }),
+      error: (message: string, meta?: Record<string, unknown>) =>
+        loggerBase.error(message, { ...(meta ?? {}), requestId }),
+    };
   const now = overrides.now ?? (() => new Date());
 
   const jsonResponse = (body: Record<string, unknown>, status: number) =>
@@ -395,6 +395,7 @@ export const createWebhookHandler = (
         const plan = getPlanForProduct(productId, productToPlan);
         const currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
         const cancelAtPeriodEnd = subscription.cancel_at_period_end ?? false;
+        const billingPeriod = subscription.items.data[0]?.price?.recurring?.interval === "year" ? "year" : "month";
 
         const resolvedUserId = await resolveUserId(customerId, userId ?? undefined);
         const existingSubscription = await fetchExistingSubscription(resolvedUserId, customerId);
@@ -402,6 +403,7 @@ export const createWebhookHandler = (
 
         await updateSubscription(resolvedUserId, customerId, {
           plan,
+          billing_period: billingPeriod,
           payment_status: "active",
           stripe_customer_id: customerId,
           stripe_subscription_id: subscriptionId,
@@ -410,10 +412,10 @@ export const createWebhookHandler = (
           current_period_end: currentPeriodEnd,
           ...(shouldResetUsage
             ? {
-                sheets_used_today: 0,
-                sheets_used_week: 0,
-                last_sheet_date: null,
-              }
+              sheets_used_today: 0,
+              sheets_used_week: 0,
+              last_sheet_date: null,
+            }
             : {}),
           updated_at: now().toISOString(),
         });
@@ -432,11 +434,12 @@ export const createWebhookHandler = (
         const status = subscription.status;
         const currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
         const cancelAtPeriodEnd = subscription.cancel_at_period_end ?? false;
+        const billingPeriod = subscription.items.data[0]?.price?.recurring?.interval === "year" ? "year" : "month";
         const paymentStatus = status === "active" || status === "trialing"
           ? "active"
           : status === "past_due" || status === "unpaid"
-          ? "payment_failed"
-          : "pending";
+            ? "payment_failed"
+            : "pending";
 
         const userId = await resolveUserId(customerId);
         const existingSubscription = await fetchExistingSubscription(userId, customerId);
@@ -444,6 +447,7 @@ export const createWebhookHandler = (
 
         await updateSubscription(userId, customerId, {
           plan,
+          billing_period: billingPeriod,
           payment_status: paymentStatus,
           stripe_customer_id: customerId,
           stripe_subscription_id: subscription.id,
@@ -452,10 +456,10 @@ export const createWebhookHandler = (
           current_period_end: currentPeriodEnd,
           ...(shouldResetUsage
             ? {
-                sheets_used_today: 0,
-                sheets_used_week: 0,
-                last_sheet_date: null,
-              }
+              sheets_used_today: 0,
+              sheets_used_week: 0,
+              last_sheet_date: null,
+            }
             : {}),
           updated_at: now().toISOString(),
         });

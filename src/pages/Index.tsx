@@ -139,6 +139,14 @@ const Index = () => {
               FAQ
             </Link>
             <span className="hidden sm:inline text-foreground/50">•</span>
+            <Link to="/terms" className="text-primary hover:underline underline-offset-4">
+              Termos de Uso
+            </Link>
+            <span className="hidden sm:inline text-foreground/50">•</span>
+            <Link to="/privacy" className="text-primary hover:underline underline-offset-4">
+              Privacidade
+            </Link>
+            <span className="hidden sm:inline text-foreground/50">•</span>
             <span>
               © {new Date().getFullYear()} Excel VBA Blocker. {t('common.allRightsReserved')}.
             </span>
