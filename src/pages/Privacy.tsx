@@ -63,7 +63,7 @@ const Privacy = () => {
             <h2 className="text-xl font-semibold text-foreground">Contato de privacidade</h2>
             <p className="text-muted-foreground">
               Controlador: <span className="font-medium text-foreground">Sheet Guardian</span> &middot;{" "}
-              <span className="font-medium text-foreground">suporte@sheetguardian.com</span>
+              <span className="font-medium text-foreground">privacidade@sheetguardian.com</span>
             </p>
           </section>
         </div>

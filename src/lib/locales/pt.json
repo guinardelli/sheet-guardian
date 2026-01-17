@@ -98,7 +98,9 @@
       "finalizing": "Finalizando...",
       "completed": "Concluído!"
     },
-    "processingFile": "Processando seu arquivo..."
+    "processingFile": "Processando seu arquivo...",
+    "welcomeTitle": "Bem-vindo ao Sheet Guardian! 🛡️",
+    "welcomeDesc": "Selecione um arquivo .xlsm acima para começar a proteger suas macros. Se precisar de ajuda, clique em FAQ."
   },
   "auth": {
     "title": "Excel VBA Blocker",
@@ -407,9 +409,11 @@
     "noPatternModified": "Nenhum padrão de proteção VBA foi encontrado ou modificado no arquivo.",
     "fileProcessed": "Arquivo processado com sucesso!",
     "patternsModified": "padrão(ões) modificado(s)",
-    "processingError": "Erro ao processar arquivo",
+    "processingError": "Erro no Processamento",
+    "processingErrorDesc": "Ocorreu um erro ao processar seu arquivo no servidor.",
+    "supportContact": "Se o erro persistir, contate suporte@sheetguardian.com com o ID: {{requestId}}",
     "unexpectedError": "Erro inesperado",
-    "unexpectedErrorDesc": "Ocorreu um erro durante o processamento. Tente novamente.",
+    "unexpectedErrorDesc": "Ocorreu um erro inesperado. Tente novamente ou contate o suporte.",
     "downloadStarted": "Download iniciado!",
     "originalDownloaded": "Arquivo original baixado",
     "criticalError": "Erro crítico",

@@ -176,6 +176,19 @@ const Dashboard = () => {
   }, [user, authLoading, navigate]);
 
   useEffect(() => {
+    if (user && subscription && subscription.sheets_used_month === 0 && !isProcessing && !processingComplete) {
+      const hasSeenWelcome = localStorage.getItem(`welcome_seen_${user.id}`);
+      if (!hasSeenWelcome) {
+        toast.info(t('dashboard.welcomeTitle', { defaultValue: 'Bem-vindo ao Sheet Guardian!' }), {
+          description: t('dashboard.welcomeDesc', { defaultValue: 'Selecione um arquivo .xlsm acima para começar a proteger suas macros.' }),
+          duration: 6000,
+        });
+        localStorage.setItem(`welcome_seen_${user.id}`, 'true');
+      }
+    }
+  }, [user, subscription, isProcessing, processingComplete, t]);
+
+  useEffect(() => {
     if (!isProcessing || processingComplete) return;
 
     const duration = 4000;
@@ -374,7 +387,14 @@ const Dashboard = () => {
         setProcessingComplete(true);
 
         toast.error(t('toasts.processingError'), {
-          description: response.error,
+          description: (
+            <div className="flex flex-col gap-1">
+              <p>{response.error}</p>
+              <p className="text-xs opacity-80">
+                {t('toasts.supportContact', { requestId: response.requestId })}
+              </p>
+            </div>
+          ),
         });
         return;
       }

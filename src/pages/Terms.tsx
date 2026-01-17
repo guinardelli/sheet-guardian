@@ -57,7 +57,7 @@ const Terms = () => {
             <h2 className="text-xl font-semibold text-foreground">Politica de reembolso</h2>
             <p className="text-muted-foreground">
               Reembolsos seguem as politicas do provedor de pagamento e a legislacao aplicavel. Solicite suporte em
-              ate 7 dias corridos quando aplicavel, pelo e-mail suporte@sheetguardian.com.
+              ate 7 dias corridos quando aplicavel, pelo e-mail suporte@sheetguardian.com. Para questoes de dados, contate privacidade@sheetguardian.com.
             </p>
           </section>
 

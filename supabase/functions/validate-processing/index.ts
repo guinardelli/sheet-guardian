@@ -122,7 +122,7 @@ serve(async (req: Request): Promise<Response> => {
 
     const { data: subscription, error: subscriptionError } = await supabase
       .from("subscriptions")
-      .select("plan, payment_status, sheets_used_today, sheets_used_week, sheets_used_month, last_sheet_date, last_reset_date")
+      .select("plan, payment_status, sheets_used_today, sheets_used_week, sheets_used_month, last_sheet_date, last_reset_date, updated_at")
       .eq("user_id", user.id)
       .maybeSingle();
 
@@ -133,6 +133,7 @@ serve(async (req: Request): Promise<Response> => {
 
     const plan = (subscription.plan as SubscriptionPlan) ?? "free";
     const paymentStatus = subscription.payment_status ?? "pending";
+    const updatedAt = subscription.updated_at ? new Date(subscription.updated_at) : new Date();
     const limits = PLAN_LIMITS[plan] ?? PLAN_LIMITS.free;
 
     const today = new Date();
@@ -161,9 +162,14 @@ serve(async (req: Request): Promise<Response> => {
       return jsonResponse(body, 400, corsHeaders);
     };
 
-    if (plan !== "free" && paymentStatus !== "active") {
+    // LOGICA DE PAGAMENTO (COBERTURA P0)
+    // Se não for FREE, bloqueia se não estiver ACTIVE.
+    // Exceção: PAST_DUE com menos de 3 dias de atraso (grace period).
+    const isPastDueGrace = paymentStatus === "past_due" && (Date.now() - updatedAt.getTime()) < (3 * 24 * 60 * 60 * 1000);
+
+    if (plan !== "free" && paymentStatus !== "active" && !isPastDueGrace) {
       return errorResponse(
-        "Pagamento pendente. Atualize sua assinatura para continuar.",
+        "Sua assinatura está com pagamento pendente. Atualize no portal para continuar.",
         403,
         "PAYMENT_INACTIVE",
         corsHeaders,

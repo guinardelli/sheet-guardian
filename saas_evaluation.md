@@ -1,75 +1,56 @@
 # Sheet Guardian — SaaS Product Evaluation & Execution Roadmap
 
 > **Evaluation Date**: January 16, 2026  
-> **Status**: Execution Phase  
+> **Status**: Phase 2 (Operational Readiness)  
 > **Source of Truth**: `saas_evaluation.md`
 
 ---
 
-## 🚀 Execution Overview
+## 🚀 Execution Roadmap
 
 | Phase | Focus | Status |
 |-------|-------|--------|
-| **Phase 1** | P0 Security & Billing Blockers | **In Progress** |
-| **Phase 2** | P1 Operations & Observability | Pending |
-| **Phase 3** | P1/P2 Growth & Experience | Pending |
+| **Phase 1** | P0 Security & Billing Blockers | **100% DONE** |
+| **Phase 2** | P1 Operations & Observability | **IN PROGRESS** |
+| **Phase 3** | P1/P2 Growth & UI/UX Polish | Pending |
 
 ---
 
-## 🛠️ Implementation Track (P0 - Critical)
+## 🛠️ Implementation Track
 
+### P0 - Critical Blockers
 | ID | Task | Status | Notes / Decisions |
 |----|------|--------|-------------------|
-| SG-001 | Token mandatory in `process-file` | **Done** | Token implementado e verificação endurecida (atômica). |
-| SG-002 | RLS lock on `subscriptions` | **Done** | Migrations 20260125/26 confirmadas. Update via client bloqueado. |
+| SG-001 | Token mandatory & Atomic | **Done** | Token implementado e verificação endurecida (atômica). |
+| SG-002 | RLS lock on `subscriptions` | **Done** | Update via client bloqueado. Segurança garantida. |
 | SG-003 | Block usage on `payment_failed` | **Done** | Validado no validate-processing e process-file. |
-| SG-004 | Remove hard-coded Stripe IDs | **Done** | Centralizado via ENV no backend e frontend. |
-| SG-005 | Privacy/Terms LGPD compliance | **Done** | Textos corrigidos para refletir Edge Functions e links adicionados. |
-| SG-007 | Observabilidade: Sentry + Uptime | **Done** | Sentry integrado e configurado no logger global. |
-| SG-008 | Plano anual persistido no backend | **Done** | Coluna `billing_period` adicionada e webhook atualizado. |
-| SG-011 | Footer com links institucionais | **Done** | Links de FAQ, Privacidade e Termos adicionados ao Index. |
+| SG-004 | Remove hard-coded Stripe IDs | **Done** | Centralizado via ENV em todas as camadas. |
+| SG-005 | LGPD Privacy/Terms | **Done** | Alinhado com Edge Functions e coleta de IP. |
+
+### P1 - Operations & Experience
+| ID | Task | Status | Notes / Decisions |
+|----|------|--------|-------------------|
+| SG-007 | Observabilidade: Sentry | **Done** | Sentry configurado para erros e logs globais. |
+| SG-008 | Plano Anual no Backend | **Done** | Persistindo `billing_period` via Webhook. |
+| SG-009 | Suporte & Feedback Detalhado | **Done** | RequestID e Support Email adicionados aos erros. |
+| SG-010 | Stripe Customer Portal | **Done** | Integração completa no Account. |
+| SG-011 | Footer Institucional | **Done** | FAQ, Termos e Privacidade no rodapé. |
+| SG-012 | Onboarding (Toast) | **In Progress** | Guia para o primeiro processamento. |
+| SG-013 | Automação: Token Cleanup | **Pending** | Agendar Cron para limpeza de tokens expirados. |
 
 ---
 
-## 📊 Detailed Task Breakdown
+## 📝 Decisions & Technical Policy
 
-### SG-001: Token mandatory in `process-file`
-- [ ] Exigir `processingToken` no request (body ou header) de `process-file`
-- [ ] Validar token em `processing_tokens` (existe, não expirado, não usado)
-- [ ] Marcar `used_at` de forma atômica
-- [ ] Retornar 401/403 se o token for inválido
-
-### SG-002: RLS lock on `subscriptions`
-- [ ] Remover Update Policy pública da tabela `subscriptions`
-- [ ] Criar RPC (Security Definer) para incremento de uso
-- [ ] Criar RPC para reset de plano (upgrade/downgrade) via service role logic
-
-### SG-003: Block usage on `payment_failed`
-- [ ] Alterar `validate-processing` para ler `payment_status`
-- [ ] Bloquear se `payment_status` for `payment_failed`, `past_due` ou `unpaid`
-- [ ] Garantir que webhook do Stripe atualize esse status
-
-### SG-004: Remove hard-coded Stripe IDs
-- [ ] Mapear IDs no `supabase/functions/create-checkout/index.ts` via env
-- [ ] Remover IDs residuais no `src/config/plans.ts` (já parcialmente feito, mas validar)
-
-### SG-005: Privacy/Terms LGPD compliance
-- [ ] Atualizar `src/pages/Privacy.tsx`
-- [ ] Atualizar `src/pages/Terms.tsx`
-- [ ] Remover referências a "processamento local" se o padrão for Edge
+- **Support Email**: `suporte@sheetguardian.com`
+- **DPO Contact**: `privacidade@sheetguardian.com`
+- **Dunning Policy**: 3 dias de "grace period" (pendente integração no código de verificação).
+- **Grace Period Logic**: Se `payment_status` for `past_due`, permitimos processamento se `updated_at` for < 3 dias.
 
 ---
 
-## 📝 Recent Decisions & Blockers
+## 📈 Success Metrics
 
-- **Decision (2026-01-16)**: Prioritizing technical security (SG-001/SG-002) to prevent unauthorized API usage before opening sales.
-- **Blocker**: Waiting for confirmation on final production domain for Stripe redirect URLs.
-- **Blocker**: Need to confirm if `VITE_STRIPE_*` env vars are already set in the target environment.
-
----
-
-## 📈 Success Metrics (Real-time)
-
-- **P0 Completion**: 0%
-- **Security Audit**: Pending
-- **E2E Success Rate**: [Check CI status]
+- **P0 Completion**: 100%
+- **Security Audit**: Preliminary OK (RLS + Atomic Tokens)
+- **Production Readiness**: 85%
