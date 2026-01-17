@@ -15,6 +15,7 @@ import { NewHeader } from '@/components/NewHeader';
 import { ProcessingLog } from '@/components/ProcessingLog';
 import { RecentFiles } from '@/components/RecentFiles';
 import { StatisticsCard } from '@/components/StatisticsCard';
+import { UsageStats } from '@/components/UsageStats';
 import { SuccessChecklist } from '@/components/SuccessChecklist';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -614,15 +615,18 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <SuccessChecklist
-              steps={[
-                { id: 'account', label: 'Criar conta', completed: true },
-                { id: 'process', label: 'Proteger macro VBA', completed: subscription.sheets_used_month > 0 },
-                { id: 'download', label: 'Baixar arquivo protegido', completed: hasDownloaded },
-              ]}
-            />
+            <div className="space-y-6">
+              <SuccessChecklist
+                steps={[
+                  { id: 'account', label: 'Criar conta', completed: true },
+                  { id: 'process', label: 'Proteger macro VBA', completed: subscription.sheets_used_month > 0 },
+                  { id: 'download', label: 'Baixar arquivo protegido', completed: hasDownloaded },
+                ]}
+              />
 
-            <RecentFiles key={processingComplete ? 're-fetch' : 'idle'} />
+              <RecentFiles key={processingComplete ? 're-fetch' : 'idle'} />
+              <UsageStats key={processingComplete ? 're-calc' : 'idle-stats'} />
+            </div>
           </div>
         )}
 

@@ -1,6 +1,6 @@
 import { useCallback, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Upload, FileSpreadsheet, X } from 'lucide-react';
+import { Upload, FileSpreadsheet, X, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ALLOWED_FILE_EXTENSIONS, MAX_FILE_SIZE_BYTES, LARGE_FILE_WARNING_BYTES } from '@/lib/constants';
@@ -204,6 +204,13 @@ export function FileDropzone({
             </Button>
           </label>
         </>
+      )}
+
+      {!selectedFile && (
+        <div className="mt-8 flex items-center gap-2 text-[10px] sm:text-xs font-medium text-muted-foreground/60 border-t border-border/10 pt-6 w-full justify-center">
+          <ShieldCheck className="h-3.5 w-3.5 text-green-500/50" />
+          <span>100% Protegido: Processamento em nuvem efêmera. Não armazenamos seus arquivos.</span>
+        </div>
       )}
     </div>
   );

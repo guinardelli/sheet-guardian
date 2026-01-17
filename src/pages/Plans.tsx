@@ -222,7 +222,7 @@ const Plans = () => {
       if (error) throw error;
 
       if (data?.url) {
-        window.open(data.url, '_blank');
+        window.location.href = data.url;
       } else {
         throw new Error('URL de checkout não recebida');
       }

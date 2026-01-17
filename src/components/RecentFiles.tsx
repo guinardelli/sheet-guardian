@@ -101,7 +101,7 @@ export function RecentFiles() {
                                     variant="ghost"
                                     size="icon"
                                     className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                    title={t('dashboard.downloadFile')}
+                                    title={t('dashboard.downloadExpired')}
                                     disabled
                                 >
                                     <Download className="h-3.5 w-3.5" />

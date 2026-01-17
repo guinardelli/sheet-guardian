@@ -15,9 +15,9 @@ export const PlanComparison = () => {
     const features: FeatureRow[] = [
         {
             name: t('plans.comparison.sheets'),
-            free: "3 / semana",
-            pro: "20 / mês",
-            premium: "Ilimitado",
+            free: `3 / ${t('dashboard.days') === 'dias' ? 'semana' : 'week'}`, // Simple logic or better keys
+            pro: `20 / ${t('plansPage.perMonth').replace('/', '')}`,
+            premium: t('common.unlimited') || "Ilimitado",
         },
         {
             name: t('plans.comparison.fileSize'),
@@ -39,15 +39,15 @@ export const PlanComparison = () => {
         },
         {
             name: t('plans.comparison.support'),
-            free: "Fórum",
-            pro: "E-mail",
-            premium: "Prioritário",
+            free: t('plans.comparison.supportForum') || "Fórum",
+            pro: t('plans.comparison.supportEmail') || "E-mail",
+            premium: t('plans.comparison.supportVip') || "Prioritário",
         },
         {
             name: t('plans.comparison.api'),
             free: false,
             pro: false,
-            premium: "Em breve",
+            premium: t('common.soon') || "Em breve",
         },
     ];
 

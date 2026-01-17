@@ -26,6 +26,7 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [magicLinkLoading, setMagicLinkLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
@@ -232,6 +233,39 @@ const Auth = () => {
     });
   };
 
+  const handleMagicLink = async () => {
+    if (!email.trim()) {
+      toast({
+        title: t('auth.errors.emailRequired'),
+        description: t('auth.errors.emailRequiredDesc'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setMagicLinkLoading(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/dashboard`,
+      },
+    });
+    setMagicLinkLoading(false);
+
+    if (error) {
+      toast({
+        title: t('auth.errors.signInError'),
+        description: error.message,
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: t('auth.magicLinkSent'),
+        description: t('auth.magicLinkSentDesc'),
+      });
+    }
+  };
+
   if (isRecoveryMode) {
     return (
       <div className="min-h-screen bg-background pt-20">
@@ -361,6 +395,27 @@ const Auth = () => {
                   </div>
                   <Button type="submit" className="w-full h-11 shadow-soft" disabled={loading}>
                     {loading ? t('auth.signingIn') : t('auth.signIn')}
+                  </Button>
+
+                  <div className="relative my-6">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-border/10" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">
+                        {t('common.or') ?? 'ou'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-11 border-primary/20 hover:bg-primary/5 transition-all text-sm font-medium"
+                    onClick={handleMagicLink}
+                    disabled={magicLinkLoading || loading}
+                  >
+                    {magicLinkLoading ? t('auth.sendingMagicLink') : t('auth.magicLink')}
                   </Button>
                 </form>
               </TabsContent>

@@ -28,7 +28,9 @@
     "openMenu": "Abrir menu",
     "closeMenu": "Fechar menu",
     "selectLanguage": "Selecionar idioma",
-    "plan": "Plano"
+    "plan": "Plano",
+    "soon": "Em breve",
+    "unlimited": "Ilimitado"
   },
   "plans": {
     "free": "Gratuito",
@@ -43,6 +45,9 @@
       "vbaProtection": "Proteção VBA (CMG/DPB/GC)",
       "watermark": "Watermark (Marca d'água)",
       "support": "Suporte",
+      "supportForum": "Fórum",
+      "supportEmail": "E-mail",
+      "supportVip": "Suporte Prioritário",
       "api": "Acesso via API"
     }
   },
@@ -126,7 +131,12 @@
       "process": "Primeiro processamento",
       "download": "Baixar arquivo protegido"
     },
-    "recentHistory": "Histórico Recente"
+    "recentHistory": "Histórico Recente",
+    "downloadExpired": "Download indisponível (arquivos não são armazenados por privacidade)",
+    "usageStats": "Estatísticas de Uso",
+    "sheetsProtected": "Planilhas Protegidas",
+    "currentStreak": "Sequência Atual",
+    "days": "dias"
   },
   "auth": {
     "title": "Excel VBA Blocker",
@@ -143,6 +153,10 @@
     "signingIn": "Entrando...",
     "createAccount": "Criar Conta",
     "creatingAccount": "Cadastrando...",
+    "magicLink": "Entrar via Link Mágico (Sem senha)",
+    "sendingMagicLink": "Enviando link...",
+    "magicLinkSent": "Link Mágico Enviado!",
+    "magicLinkSentDesc": "Verifique seu email para o link de acesso.",
     "resetPassword": "Redefinir Senha",
     "resetPasswordSubtitle": "Digite sua nova senha abaixo",
     "newPassword": "Nova Senha",
@@ -419,6 +433,11 @@
     "description": "Ocorreu um erro inesperado ao renderizar a página. Recarregue para continuar.",
     "reload": "Recarregar página"
   },
+  "theme": {
+    "light": "Claro",
+    "dark": "Escuro",
+    "system": "Sistema"
+  },
   "notFound": {
     "title": "404",
     "message": "Oops! Página não encontrada",
@@ -445,5 +464,29 @@
     "criticalError": "Erro crítico",
     "usageRegisterError": "Não foi possível registrar o uso. Entre em contato.",
     "download": "Baixar"
+  },
+  "faq": {
+    "title": "Perguntas Frequentes",
+    "subtitle": "Respostas rápidas sobre processamento, planos e segurança.",
+    "contact": "Suporte e Contato",
+    "contactDesc": "Canais oficiais para tirar dúvidas ou reportar problemas.",
+    "questions": {
+      "noProcess": "Meu arquivo não processa, e agora?",
+      "noProcessAns": "Verifique se é .xlsm, se não está corrompido e se está dentro do limite do seu plano. Tente fazer logout/login ou usar um arquivo menor para descartar problemas de tamanho.",
+      "fileChanges": "O que muda no meu arquivo?",
+      "fileChangesAns": "Apenas padrões de proteção no projeto VBA. Fórmulas, dados e layout não são alterados.",
+      "excelPassword": "Isso remove senha do Excel?",
+      "excelPasswordAns": "Não. O foco é no projeto VBA (macros), não em senhas de abertura de arquivo ou proteção de planilhas.",
+      "macSupport": "Funciona no Mac?",
+      "macSupportAns": "Sim, o app é web. Para abrir o arquivo resultante, você precisa do Excel para Mac ou compatível.",
+      "antivirus": "Meu antivírus acusou macro.",
+      "antivirusAns": "O arquivo continua contendo macros. Abra apenas se você confiar na origem do arquivo.",
+      "sync": "Meu plano não atualizou após o pagamento.",
+      "syncAns": "Aguarde alguns minutos e recarregue a página. O sistema sincroniza automaticamente com o Stripe.",
+      "cancel": "Como cancelar ou gerenciar minha assinatura?",
+      "cancelAns": "Use o botão de 'Gerenciar Assinatura' na página de Conta (isso abrirá o Portal do Cliente do Stripe).",
+      "local": "O processamento é local?",
+      "localAns": "O arquivo é processado em uma nuvem efêmera segura. Não armazenamos seus arquivos em nossos servidores após o download."
+    }
   }
 }

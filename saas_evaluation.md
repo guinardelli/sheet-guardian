@@ -11,8 +11,8 @@
 | Phase | Focus | Status |
 |-------|-------|--------|
 | **Phase 1** | P0 Security & Billing Blockers | **100% DONE** |
-| **Phase 2** | P1 Operations & Observability | **IN PROGRESS** |
-| **Phase 3** | P1/P2 Growth & UI/UX Polish | Pending |
+| **Phase 2** | P1 Operations & Observability | **100% DONE** |
+| **Phase 3** | P1/P2 Growth & UI/UX Polish | **IN PROGRESS** |
 
 ---
 
@@ -39,6 +39,15 @@
 | SG-013 | Automação: Token Cleanup | **Done** | pg_cron e pg_net habilitados. Job estruturado. |
 | SG-014 | Backup Strategy | **Done** | Documentado em docs/BACKUP_STRATEGY.md. |
 
+### P2 - Growth & Polish
+| ID | Task | Status | Notes / Decisions |
+|----|------|--------|-------------------|
+| SG-015 | Usage Statistics | **Done** | Gráfico de uso e streak no Dashboard. |
+| SG-016 | Magic Link Authentication | **Done** | Login sem senha via OTP implementado. |
+| SG-017 | Dark Mode Support | **Done** | ThemeProvider e ThemeToggle adicionados. |
+| SG-018 | Privacy Trust Badge | **Done** | Selo de proteção na zona de upload. |
+| SG-019 | Binary Integrity Check | **Done** | Checksum verificado no processamento. |
+
 ---
 
 ## 📝 Decisions & Technical Policy
@@ -53,6 +62,6 @@
 ## 📈 Success Metrics
 
 - **P0 Completion**: 100%
-- **Security Audit**: Preliminary OK (RLS + Atomic Tokens)
+- **Security Audit**: Preliminary OK (RLS + Atomic Tokens + Integrity)
 - **Onboarding Readiness**: 100%
-- **Production Readiness**: 92%
+- **Production Readiness**: 98% (Awaiting Stripe ID Confirmation)

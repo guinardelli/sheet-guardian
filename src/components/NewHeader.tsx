@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/navigation-menu';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { LanguageSelector } from '@/components/LanguageSelector';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
@@ -82,6 +83,7 @@ export const NewHeader = () => {
 
           <div className="flex items-center justify-end gap-2">
             <div className="hidden md:flex items-center gap-2">
+              <ThemeToggle />
               <LanguageSelector />
               {user ? (
                 <div className="flex items-center gap-2">
@@ -127,7 +129,10 @@ export const NewHeader = () => {
                     </Button>
                   </div>
 
-                  <LanguageSelector />
+                  <div className="flex items-center gap-4 px-4">
+                    <ThemeToggle />
+                    <LanguageSelector />
+                  </div>
 
                   <nav className="flex-1 space-y-2">
                     {navItems.map((item) => (

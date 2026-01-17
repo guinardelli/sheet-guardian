@@ -1,76 +1,42 @@
 import { Link } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
+import { useTranslation } from 'react-i18next';
 import { NewHeader } from "@/components/NewHeader";
 
 const Faq = () => {
+  const { t } = useTranslation();
   const faqItems = [
     {
-      question: "Meu arquivo nao processa, e agora?",
-      answer: (
-        <ul className="list-disc pl-5 space-y-2">
-          <li>Verifique se e .xlsm, se nao esta corrompido e se esta dentro do limite do seu plano.</li>
-          <li>Faca logout/login e tente novamente.</li>
-          <li>Tente um arquivo menor para descartar problemas de tamanho.</li>
-        </ul>
-      ),
+      question: t('faq.questions.noProcess'),
+      answer: <p>{t('faq.questions.noProcessAns')}</p>,
     },
     {
-      question: "O que muda no meu arquivo?",
-      answer: (
-        <p>
-          Apenas padroes de protecao no projeto VBA. Formulas, dados e layout nao sao alterados.
-        </p>
-      ),
+      question: t('faq.questions.fileChanges'),
+      answer: <p>{t('faq.questions.fileChangesAns')}</p>,
     },
     {
-      question: "Isso remove senha do Excel?",
-      answer: <p>Nao. O foco e no projeto VBA, nao em senhas de arquivo/planilha.</p>,
+      question: t('faq.questions.excelPassword'),
+      answer: <p>{t('faq.questions.excelPasswordAns')}</p>,
     },
     {
-      question: "Funciona no Mac?",
-      answer: (
-        <p>
-          Sim, o app e web. Para abrir o resultado, voce precisa do Excel para Mac (ou compativel).
-        </p>
-      ),
+      question: t('faq.questions.macSupport'),
+      answer: <p>{t('faq.questions.macSupportAns')}</p>,
     },
     {
-      question: "Meu antivirus/Excel acusou macro.",
-      answer: (
-        <p>O arquivo continua com macros. Abra apenas se voce confiar no arquivo e no remetente.</p>
-      ),
+      question: t('faq.questions.antivirus'),
+      answer: <p>{t('faq.questions.antivirusAns')}</p>,
     },
     {
-      question: "Meu plano nao atualizou apos o pagamento.",
-      answer: (
-        <p>
-          Aguarde alguns minutos, faca logout/login e verifique novamente. O app sincroniza com o Stripe.
-        </p>
-      ),
+      question: t('faq.questions.sync'),
+      answer: <p>{t('faq.questions.syncAns')}</p>,
     },
     {
-      question: "Como cancelar/gerenciar minha assinatura?",
-      answer: (
-        <p>
-          Use o botao de &quot;Gerenciar Assinatura&quot; na pagina de{" "}
-          <Link to="/plans" className="text-primary hover:underline underline-offset-4">
-            Planos
-          </Link>{" "}
-          ou{" "}
-          <Link to="/account" className="text-primary hover:underline underline-offset-4">
-            Conta
-          </Link>{" "}
-          (abre o portal do Stripe).
-        </p>
-      ),
+      question: t('faq.questions.cancel'),
+      answer: <p>{t('faq.questions.cancelAns')}</p>,
     },
     {
-      question: "O processamento e local?",
-      answer: (
-        <p>
-          No fluxo atual, o arquivo e enviado para a Edge Function. Nao ha armazenamento do arquivo no codigo.
-        </p>
-      ),
+      question: t('faq.questions.local'),
+      answer: <p>{t('faq.questions.localAns')}</p>,
     },
   ];
 
@@ -83,10 +49,10 @@ const Faq = () => {
           <header className="space-y-3">
             <p className="text-sm font-semibold text-primary uppercase tracking-wider">FAQ</p>
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
-              Perguntas frequentes
+              {t('faq.title')}
             </h1>
             <p className="text-muted-foreground">
-              Respostas rapidas sobre processamento de planilhas, planos e seguranca.
+              {t('faq.subtitle')}
             </p>
           </header>
 
@@ -112,34 +78,29 @@ const Faq = () => {
             className="rounded-2xl border border-border/60 bg-muted/30 p-6 shadow-soft space-y-4"
           >
             <div className="space-y-2">
-              <h2 className="text-xl font-semibold text-foreground">Suporte e contato</h2>
+              <h2 className="text-xl font-semibold text-foreground">{t('faq.contact')}</h2>
               <p className="text-sm text-muted-foreground">
-                Canais oficiais para tirar duvidas ou reportar problemas.
+                {t('faq.contactDesc')}
               </p>
             </div>
             <ul className="space-y-3 text-sm text-muted-foreground">
               <li>
-                <span className="font-medium text-foreground">GitHub Issues:</span> Use para bugs e sugestoes em{" "}
+                <span className="font-medium text-foreground">Email:</span>{" "}
                 <a
-                  href="https://github.com/guinardelli/sheet-guardian/issues"
+                  href="mailto:suporte@sheetguardian.com"
                   className="text-primary hover:underline underline-offset-4"
-                  target="_blank"
-                  rel="noreferrer"
                 >
-                  github.com/guinardelli/sheet-guardian/issues
+                  suporte@sheetguardian.com
                 </a>
-                .
               </li>
               <li>
-                <span className="font-medium text-foreground">Seguranca:</span> Para relatar vulnerabilidades,
-                envie email para{" "}
+                <span className="font-medium text-foreground">{t('common.privacy') ?? 'Privacidade'}:</span>{" "}
                 <a
-                  href="mailto:security@sheetguardian.com"
+                  href="mailto:privacidade@sheetguardian.com"
                   className="text-primary hover:underline underline-offset-4"
                 >
-                  security@sheetguardian.com
+                  privacidade@sheetguardian.com
                 </a>
-                .
               </li>
             </ul>
           </section>
@@ -153,7 +114,7 @@ const Faq = () => {
               FAQ
             </Link>
             <span className="hidden sm:inline text-muted-foreground/60">•</span>
-            <span>© {new Date().getFullYear()} Excel VBA Blocker. Todos os direitos reservados.</span>
+            <span>© {new Date().getFullYear()} Excel VBA Blocker.</span>
           </div>
         </div>
       </footer>
