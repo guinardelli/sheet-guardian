@@ -14,6 +14,7 @@ import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { NewHeader } from '@/components/NewHeader';
 import { ProcessingLog } from '@/components/ProcessingLog';
 import { StatisticsCard } from '@/components/StatisticsCard';
+import { SuccessChecklist } from '@/components/SuccessChecklist';
 
 import { useAuth } from '@/hooks/useAuth';
 import { PLAN_LIMITS, useSubscription } from '@/hooks/useSubscription';
@@ -22,6 +23,7 @@ import { downloadFile, LogEntry, ProcessingResult } from '@/lib/excel-vba-modifi
 import { logger } from '@/lib/logger';
 import { createRequestId } from '@/lib/request-id';
 import type { ProcessFileResponse } from '@/lib/types/edge-responses';
+import { cn } from '@/lib/utils';
 
 const MAX_LOG_ENTRIES = 100;
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? '';
@@ -136,6 +138,10 @@ const Dashboard = () => {
   const [result, setResult] = useState<ProcessingResult | null>(null);
   const [processingComplete, setProcessingComplete] = useState(false);
   const [downloadAllowed, setDownloadAllowed] = useState(false);
+  const [currentStep, setCurrentStep] = useState<number>(-1);
+  const [hasDownloaded, setHasDownloaded] = useState(() => {
+    return localStorage.getItem('onboarding_downloaded') === 'true';
+  });
 
   const processingLockRef = useRef(false);
 
@@ -363,11 +369,26 @@ const Dashboard = () => {
         handleLog({ timestamp: new Date(), message, type });
       };
 
-      log('Iniciando processo de modificacao no servidor...', 'info');
+      log(t('dashboard.processingSteps.starting'), 'info');
+      setCurrentStep(0);
       setProgress(10);
+      await new Promise(r => setTimeout(r, 800));
+
+      setCurrentStep(1);
+      log(t('dashboard.processingSteps.uploading'), 'info');
+      setProgress(25);
 
       const response = await invokeProcessFile(selectedFile, session.access_token, validation.processingToken);
-      setProgress(70);
+
+      setCurrentStep(2);
+      log(t('dashboard.processingSteps.validating'), 'info');
+      setProgress(50);
+      await new Promise(r => setTimeout(r, 1000));
+
+      setCurrentStep(3);
+      log(t('dashboard.processingSteps.protecting'), 'info');
+      setProgress(75);
+      await new Promise(r => setTimeout(r, 1200));
 
       if (!response.success) {
         const failedResult: ProcessingResult = {
@@ -385,6 +406,7 @@ const Dashboard = () => {
 
         setResult(failedResult);
         setProcessingComplete(true);
+        setCurrentStep(-1);
 
         toast.error(t('toasts.processingError'), {
           description: (
@@ -414,7 +436,7 @@ const Dashboard = () => {
       };
 
       if (response.warnings?.length) {
-        response.warnings.forEach((warning) => {
+        response.warnings.forEach((warning: string) => {
           log(`AVISO: ${warning}`, 'warning');
         });
       }
@@ -431,11 +453,18 @@ const Dashboard = () => {
         log('VBA encontrado, mas nenhum padrao de protecao foi modificado', 'warning');
       }
 
-      setProgress(90);
-      await new Promise((resolve) => setTimeout(resolve, 4500));
+      setCurrentStep(4);
+      log(t('dashboard.processingSteps.finalizing'), 'info');
+      setProgress(95);
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      setCurrentStep(5);
+      log(t('dashboard.processingSteps.completing'), 'success');
+      setProgress(100);
 
       setResult(processingResult);
       setProcessingComplete(true);
+      setCurrentStep(-1);
 
       if (processingResult.success && processingResult.modifiedFile) {
         setDownloadAllowed(true);
@@ -459,16 +488,13 @@ const Dashboard = () => {
             },
           });
         }
-      } else if (processingResult.error) {
-        toast.error(t('toasts.processingError'), {
-          description: processingResult.error,
-        });
       }
     } catch (error) {
       logger.error('Erro inesperado durante processamento', error);
       toast.error(t('toasts.unexpectedError'), {
         description: t('toasts.unexpectedErrorDesc'),
       });
+      setCurrentStep(-1);
     } finally {
       setIsProcessing(false);
       processingLockRef.current = false;
@@ -488,6 +514,8 @@ const Dashboard = () => {
   const handleDownload = useCallback(() => {
     if (result?.modifiedFile && downloadAllowed) {
       downloadFile(result.modifiedFile, result.newFileName);
+      setHasDownloaded(true);
+      localStorage.setItem('onboarding_downloaded', 'true');
       toast.success(t('toasts.downloadStarted'));
     }
   }, [result, downloadAllowed, t]);
@@ -535,54 +563,64 @@ const Dashboard = () => {
         </div>
 
         {user && subscription && (
-          <Card className="border-border/50 shadow-soft bg-gradient-to-br from-background to-muted/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Info className="h-5 w-5 text-primary" />
-                {t('dashboard.usageInfo')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {usageStats && usageStats.limit !== null && (
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{t('dashboard.usage')} {usageStats.period}</span>
-                    <span className="font-medium">
-                      {usageStats.used} / {usageStats.limit}
-                    </span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className="md:col-span-2 border-border/50 shadow-soft bg-gradient-to-br from-background to-muted/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Info className="h-5 w-5 text-primary" />
+                  {t('dashboard.usageInfo')}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {usageStats && usageStats.limit !== null && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{t('dashboard.usage')} {usageStats.period}</span>
+                      <span className="font-medium">
+                        {usageStats.used} / {usageStats.limit}
+                      </span>
+                    </div>
+                    <div className="relative h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-accent transition-all duration-500"
+                        style={{ width: `${usagePercentage}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="relative h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-accent transition-all duration-500"
-                      style={{ width: `${usagePercentage}%` }}
-                    />
-                  </div>
-                </div>
-              )}
+                )}
 
-              <div className="flex flex-wrap items-center gap-4 text-sm">
-                {planLimits && planLimits.maxFileSizeMB !== null && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">{t('dashboard.maxSize')}:</span>
-                    <span className="font-semibold text-foreground">{planLimits.maxFileSizeMB} MB</span>
-                  </div>
-                )}
-                {subscription.plan === 'premium' && (
-                  <span className="text-primary font-semibold">{t('dashboard.unlimitedUsage')}</span>
-                )}
-                {subscription.plan !== 'premium' && (
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="h-auto p-0 text-primary hover:text-primary/80 font-medium"
-                    onClick={() => navigate('/plans')}
-                  >
-                    {t('dashboard.upgrade')}
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                <div className="flex flex-wrap items-center gap-4 text-sm">
+                  {planLimits && planLimits.maxFileSizeMB !== null && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">{t('dashboard.maxSize')}:</span>
+                      <span className="font-semibold text-foreground">{planLimits.maxFileSizeMB} MB</span>
+                    </div>
+                  )}
+                  {subscription.plan === 'premium' && (
+                    <span className="text-primary font-semibold">{t('dashboard.unlimitedUsage')}</span>
+                  )}
+                  {subscription.plan !== 'premium' && (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="h-auto p-0 text-primary hover:text-primary/80 font-medium"
+                      onClick={() => navigate('/plans')}
+                    >
+                      {t('dashboard.upgrade')}
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <SuccessChecklist
+              steps={[
+                { id: 'account', label: 'Criar conta', completed: true },
+                { id: 'process', label: 'Proteger macro VBA', completed: subscription.sheets_used_month > 0 },
+                { id: 'download', label: 'Baixar arquivo protegido', completed: hasDownloaded },
+              ]}
+            />
+          </div>
         )}
 
         <FileDropzone
@@ -595,17 +633,49 @@ const Dashboard = () => {
         {isProcessing && (
           <Card className="overflow-hidden border-border/50 shadow-soft animate-fade-in">
             <CardContent className="p-6">
-              <div className="flex flex-col gap-5">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-foreground">{processingMessage}</span>
-                  <span className="text-sm font-bold text-primary tabular-nums">{displayProgress}%</span>
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-semibold text-primary animate-pulse tracking-wide uppercase">
+                      {currentStep >= 0
+                        ? t(`dashboard.processingSteps.${['starting', 'uploading', 'validating', 'protecting', 'finalizing', 'completing'][currentStep]}`)
+                        : processingMessage}
+                    </span>
+                    <span className="text-sm font-bold text-primary tabular-nums bg-primary/5 px-2 py-1 rounded border border-primary/10">
+                      {displayProgress}%
+                    </span>
+                  </div>
+                  <Progress value={displayProgress} className="h-3 shadow-inner" />
                 </div>
-                <Progress value={displayProgress} className="h-2.5" />
-                <div className="flex justify-center">
-                  <div className="flex items-center gap-2.5 text-muted-foreground text-sm">
-                    <span className="relative flex h-2.5 w-2.5">
+
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {['starting', 'uploading', 'validating', 'protecting', 'finalizing', 'completing'].map((stepKey, idx) => (
+                    <div
+                      key={stepKey}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all duration-500",
+                        currentStep === idx ? "bg-primary/10 border-primary/30 text-primary scale-105 shadow-md ring-1 ring-primary/20" :
+                          currentStep > idx ? "bg-green-500/5 border-green-500/20 text-green-600/80" :
+                            "bg-muted/30 border-transparent text-muted-foreground/30 opacity-40"
+                      )}
+                    >
+                      <div className={cn(
+                        "w-2.5 h-2.5 rounded-full shadow-sm",
+                        currentStep === idx ? "bg-primary animate-pulse" :
+                          currentStep > idx ? "bg-green-500" : "bg-muted-foreground/30"
+                      )} />
+                      <span className="text-[10px] font-bold uppercase tracking-widest truncate">
+                        {t(`dashboard.processingSteps.${stepKey}`)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-center border-t border-border/50 pt-4">
+                  <div className="flex items-center gap-2.5 text-muted-foreground text-[11px] font-medium uppercase tracking-widest">
+                    <span className="relative flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                     </span>
                     {t('dashboard.processingFile')}
                   </div>

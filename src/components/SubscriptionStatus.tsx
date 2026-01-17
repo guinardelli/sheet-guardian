@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { CheckCircle, Clock, XCircle } from 'lucide-react';
 
-type PlanName = 'free' | 'professional' | 'premium';
+type PlanName = 'free' | 'professional' | 'premium' | 'anual';
 
 interface SubscriptionStatusProps {
   plan: PlanName;
@@ -30,6 +30,7 @@ export function SubscriptionStatus({
     free: t('plans.free'),
     professional: t('plans.professional'),
     premium: t('plans.premium'),
+    anual: t('plans.anual'),
   };
 
   const isActive = paymentStatus === 'active' && Boolean(stripeSubscriptionId);

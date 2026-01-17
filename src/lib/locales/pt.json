@@ -33,7 +33,18 @@
   "plans": {
     "free": "Gratuito",
     "professional": "Profissional",
-    "premium": "Premium"
+    "premium": "Premium",
+    "anual": "Anual",
+    "comparison": {
+      "title": "Comparativo Detalhado",
+      "subtitle": "Veja qual plano melhor se adapta às suas necessidades de proteção VBA.",
+      "sheets": "Planilhas inclusas",
+      "fileSize": "Tamanho máximo de arquivo",
+      "vbaProtection": "Proteção VBA (CMG/DPB/GC)",
+      "watermark": "Watermark (Marca d'água)",
+      "support": "Suporte",
+      "api": "Acesso via API"
+    }
   },
   "landing": {
     "badge": "Excel VBA Blocker",
@@ -99,8 +110,22 @@
       "completed": "Concluído!"
     },
     "processingFile": "Processando seu arquivo...",
+    "processingSteps": {
+      "starting": "Iniciando processo no servidor...",
+      "uploading": "Enviando arquivo para processamento...",
+      "validating": "Validando estrutura do Excel...",
+      "protecting": "Aplicando proteção binária no VBA...",
+      "finalizing": "Finalizando e gerando arquivo...",
+      "completing": "Concluído!"
+    },
     "welcomeTitle": "Bem-vindo ao Sheet Guardian! 🛡️",
-    "welcomeDesc": "Selecione um arquivo .xlsm acima para começar a proteger suas macros. Se precisar de ajuda, clique em FAQ."
+    "welcomeDesc": "Selecione um arquivo .xlsm acima para começar a proteger suas macros. Se precisar de ajuda, clique em FAQ.",
+    "checklist": {
+      "title": "Seu Progresso",
+      "account": "Criar conta",
+      "process": "Primeiro processamento",
+      "download": "Baixar arquivo protegido"
+    }
   },
   "auth": {
     "title": "Excel VBA Blocker",

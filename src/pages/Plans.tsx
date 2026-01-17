@@ -22,6 +22,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 
 import { NewHeader } from '@/components/NewHeader';
 import { SubscriptionStatus } from '@/components/SubscriptionStatus';
+import { PlanComparison } from '@/components/PlanComparison';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -390,6 +391,8 @@ const Plans = () => {
               );
             })}
           </div>
+
+          <PlanComparison />
 
           {subscription && (
             <div className="mb-10 space-y-4">

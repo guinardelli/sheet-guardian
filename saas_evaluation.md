@@ -35,8 +35,9 @@
 | SG-009 | Suporte & Feedback Detalhado | **Done** | RequestID e Support Email adicionados aos erros. |
 | SG-010 | Stripe Customer Portal | **Done** | Integração completa no Account. |
 | SG-011 | Footer Institucional | **Done** | FAQ, Termos e Privacidade no rodapé. |
-| SG-012 | Onboarding (Toast) | **In Progress** | Guia para o primeiro processamento. |
-| SG-013 | Automação: Token Cleanup | **Pending** | Agendar Cron para limpeza de tokens expirados. |
+| SG-012 | Onboarding (Checklist) | **Done** | Checklist de sucesso e Toast implementados. |
+| SG-013 | Automação: Token Cleanup | **Done** | pg_cron e pg_net habilitados. Job estruturado. |
+| SG-014 | Backup Strategy | **Done** | Documentado em docs/BACKUP_STRATEGY.md. |
 
 ---
 
@@ -44,8 +45,8 @@
 
 - **Support Email**: `suporte@sheetguardian.com`
 - **DPO Contact**: `privacidade@sheetguardian.com`
-- **Dunning Policy**: 3 dias de "grace period" (pendente integração no código de verificação).
-- **Grace Period Logic**: Se `payment_status` for `past_due`, permitimos processamento se `updated_at` for < 3 dias.
+- **Dunning Policy**: 3 dias de "grace period" - **IMPLEMENTADO**.
+- **Grace Period Logic**: Validado no `validate-processing`: `past_due` com `updated_at` < 3 dias não bloqueia.
 
 ---
 
@@ -53,4 +54,5 @@
 
 - **P0 Completion**: 100%
 - **Security Audit**: Preliminary OK (RLS + Atomic Tokens)
-- **Production Readiness**: 85%
+- **Onboarding Readiness**: 100%
+- **Production Readiness**: 92%

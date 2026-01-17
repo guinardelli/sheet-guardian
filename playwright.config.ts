@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:8080';
+const baseURL = process.env.PLAYWRIGHT_TEST_BASE_URL ?? process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:8080';
 
 export default defineConfig({
   testDir: './e2e',
@@ -18,10 +18,10 @@ export default defineConfig({
   webServer: process.env.PLAYWRIGHT_BASE_URL
     ? undefined
     : {
-        command: 'npm run dev -- --host',
-        url: baseURL,
-        reuseExistingServer: !process.env.CI,
-      },
+      command: 'npm run dev -- --host',
+      url: baseURL,
+      reuseExistingServer: !process.env.CI,
+    },
   projects: [
     {
       name: 'chromium',
