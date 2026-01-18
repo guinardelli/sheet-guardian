@@ -113,6 +113,7 @@
       opacity: 0;
       transform: translateY(4px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);
@@ -129,6 +130,7 @@
       opacity: 0;
       transform: scale(0.95);
     }
+
     to {
       opacity: 1;
       transform: scale(1);
@@ -149,9 +151,12 @@
   }
 
   @keyframes pulse-glow {
-    0%, 100% {
+
+    0%,
+    100% {
       box-shadow: 0 0 20px rgba(61, 125, 93, 0.3);
     }
+
     50% {
       box-shadow: 0 0 30px rgba(61, 125, 93, 0.5);
     }
@@ -165,6 +170,7 @@
     0% {
       background-position: -1000px 0;
     }
+
     100% {
       background-position: 1000px 0;
     }
@@ -172,13 +178,11 @@
 
   .animate-shimmer {
     animation: shimmer 2s infinite linear;
-    background: linear-gradient(
-      to right,
-      hsl(var(--muted)) 0%,
-      hsl(var(--muted-foreground) / 0.1) 20%,
-      hsl(var(--muted)) 40%,
-      hsl(var(--muted)) 100%
-    );
+    background: linear-gradient(to right,
+        hsl(var(--muted)) 0%,
+        hsl(var(--muted-foreground) / 0.1) 20%,
+        hsl(var(--muted)) 40%,
+        hsl(var(--muted)) 100%);
     background-size: 1000px 100%;
   }
 
@@ -192,9 +196,9 @@
     transform: scale(0.95);
   }
 
-  /* Gradient text utility */
+  /* Gradient text utility - Refined to solid for premium look */
   .text-gradient-primary {
-    @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
+    @apply text-primary;
   }
 
   /* Enhanced shadow utilities */
