@@ -153,15 +153,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setAuthError(null);
     const userIp = await getUserIP();
 
-    if (userIp !== 'unknown') {
-      const rateLimit = await checkRateLimit(userIp, 'login');
-      if (!rateLimit.allowed) {
-        setAuthError(rateLimit.message);
-        await logAuthAttempt(userIp, email, 'login', false);
-        return { error: new Error(rateLimit.message) };
-      }
-    } else {
-      logger.warn('User IP unavailable; skipping rate limit check');
+    const rateLimitKey = userIp !== 'unknown' ? userIp : `email:${email}`;
+    const rateLimit = await checkRateLimit(rateLimitKey, 'login');
+    if (!rateLimit.allowed) {
+      setAuthError(rateLimit.message);
+      await logAuthAttempt(userIp, email, 'login', false);
+      return { error: new Error(rateLimit.message) };
     }
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -177,15 +174,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const redirectUrl = `${window.location.origin}/`;
     const userIp = await getUserIP();
 
-    if (userIp !== 'unknown') {
-      const rateLimit = await checkRateLimit(userIp, 'signup');
-      if (!rateLimit.allowed) {
-        setAuthError(rateLimit.message);
-        await logAuthAttempt(userIp, email, 'signup', false);
-        return { error: new Error(rateLimit.message) };
-      }
-    } else {
-      logger.warn('User IP unavailable; skipping rate limit check');
+    const rateLimitKey = userIp !== 'unknown' ? userIp : `email:${email}`;
+    const rateLimit = await checkRateLimit(rateLimitKey, 'signup');
+    if (!rateLimit.allowed) {
+      setAuthError(rateLimit.message);
+      await logAuthAttempt(userIp, email, 'signup', false);
+      return { error: new Error(rateLimit.message) };
     }
 
     const { error } = await supabase.auth.signUp({
@@ -204,9 +198,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = async (): Promise<void> => {
     setAuthError(null);
-    setSession(null);
-    setUser(null);
-    await supabase.auth.signOut();
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        logger.warn('signOut encountered an error', error);
+      }
+    } catch (err) {
+      logger.error('Unexpected error during signOut', err);
+    } finally {
+      setSession(null);
+      setUser(null);
+    }
   };
 
   const clearAuthError = useCallback(() => {
@@ -216,8 +218,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const authState: AuthState = loading
     ? { status: 'loading' }
     : authError
-    ? { status: 'error', error: authError }
-    : { status: 'success', data: { user, session } };
+      ? { status: 'error', error: authError }
+      : { status: 'success', data: { user, session } };
 
   return (
     <AuthContext.Provider value={{

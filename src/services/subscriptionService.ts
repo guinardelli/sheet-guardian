@@ -153,104 +153,117 @@ export const createSubscriptionService = (deps: SubscriptionServiceDeps) => {
       return null;
     }
 
-    try {
-      const { data, error } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
+    const MAX_RETRIES = 2;
+    const RETRY_DELAY_MS = 1000;
 
-      if (error) {
-        logger.error('Erro ao buscar assinatura', error);
-        toast.error('Erro ao carregar assinatura', {
-          description: 'Tente recarregar a pagina.',
-        });
-        return null;
-      }
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const { data, error } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
-      if (!data) {
-        logger.warn('Subscription not found, attempting to create', undefined, { userId: user.id });
-        trackSubscriptionIssue(user.id, 'subscription_not_found');
+        if (error) {
+          if (attempt < MAX_RETRIES) {
+            await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * (attempt + 1)));
+            continue;
+          }
+          logger.error('Erro ao buscar assinatura após retries', error);
+          toast.error('Erro ao carregar assinatura', {
+            description: 'Tente recarregar a pagina.',
+          });
+          return null;
+        }
 
-        let createdSubscription = false;
-        let resolvedSubscription: SubscriptionState | null = null;
-        const { error: rpcError } = await supabase.rpc('create_missing_subscription', {
-          p_user_id: user.id,
-        });
+        if (!data) {
+          logger.warn('Subscription not found, attempting to create', undefined, { userId: user.id });
+          trackSubscriptionIssue(user.id, 'subscription_not_found');
 
-        if (rpcError) {
-          logger.error('Erro ao criar assinatura via RPC', rpcError, { userId: user.id });
-          trackSubscriptionIssue(user.id, 'rpc_create_subscription_failed', {
-            message: rpcError.message,
+          let createdSubscription = false;
+          let resolvedSubscription: SubscriptionState | null = null;
+          const { error: rpcError } = await supabase.rpc('create_missing_subscription', {
+            p_user_id: user.id,
           });
 
-          const { data: insertData, error: insertError } = await supabase
-            .from('subscriptions')
-            .insert({
-              user_id: user.id,
-              plan: 'free',
-              payment_status: 'active',
-              sheets_used_today: 0,
-              sheets_used_week: 0,
-              sheets_used_month: 0,
-            })
-            .select()
-            .single();
-
-          if (insertError) {
-            logger.error('Erro ao criar assinatura via INSERT', insertError, { userId: user.id });
-            trackSubscriptionIssue(user.id, 'insert_subscription_failed', {
-              message: insertError.message,
+          if (rpcError) {
+            logger.error('Erro ao criar assinatura via RPC', rpcError, { userId: user.id });
+            trackSubscriptionIssue(user.id, 'rpc_create_subscription_failed', {
+              message: rpcError.message,
             });
-            toast.error('Erro ao criar assinatura', {
-              description: 'Nao foi possivel criar sua assinatura. Entre em contato com o suporte.',
-            });
-            return null;
-          }
 
-          if (insertData) {
+            const { data: insertData, error: insertError } = await supabase
+              .from('subscriptions')
+              .insert({
+                user_id: user.id,
+                plan: 'free',
+                payment_status: 'active',
+                sheets_used_today: 0,
+                sheets_used_week: 0,
+                sheets_used_month: 0,
+              })
+              .select()
+              .single();
+
+            if (insertError) {
+              logger.error('Erro ao criar assinatura via INSERT', insertError, { userId: user.id });
+              trackSubscriptionIssue(user.id, 'insert_subscription_failed', {
+                message: insertError.message,
+              });
+              toast.error('Erro ao criar assinatura', {
+                description: 'Nao foi possivel criar sua assinatura. Entre em contato com o suporte.',
+              });
+              return null;
+            }
+
+            if (insertData) {
+              createdSubscription = true;
+              resolvedSubscription = insertData as SubscriptionState;
+              deps.setSubscription(insertData as SubscriptionState);
+            }
+          } else {
             createdSubscription = true;
-            resolvedSubscription = insertData as SubscriptionState;
-            deps.setSubscription(insertData as SubscriptionState);
-          }
-        } else {
-          createdSubscription = true;
-          const { data: retryData, error: retryError } = await supabase
-            .from('subscriptions')
-            .select('*')
-            .eq('user_id', user.id)
-            .maybeSingle();
+            const { data: retryData, error: retryError } = await supabase
+              .from('subscriptions')
+              .select('*')
+              .eq('user_id', user.id)
+              .maybeSingle();
 
-          if (retryError) {
-            logger.error('Erro ao buscar assinatura apos criacao', retryError, { userId: user.id });
-            trackSubscriptionIssue(user.id, 'subscription_retry_failed', {
-              message: retryError.message,
-            });
-          } else if (retryData) {
-            deps.setSubscription(retryData as SubscriptionState);
-            resolvedSubscription = retryData as SubscriptionState;
-            logger.info('Subscription created successfully', undefined, { userId: user.id });
+            if (retryError) {
+              logger.error('Erro ao buscar assinatura apos criacao', retryError, { userId: user.id });
+              trackSubscriptionIssue(user.id, 'subscription_retry_failed', {
+                message: retryError.message,
+              });
+            } else if (retryData) {
+              deps.setSubscription(retryData as SubscriptionState);
+              resolvedSubscription = retryData as SubscriptionState;
+              logger.info('Subscription created successfully', undefined, { userId: user.id });
+            }
           }
+
+          if (createdSubscription && resolvedSubscription) {
+            toast.success('Assinatura criada com sucesso!');
+          }
+
+          return resolvedSubscription;
         }
 
-        if (createdSubscription && resolvedSubscription) {
-          toast.success('Assinatura criada com sucesso!');
+        deps.setSubscription(data as SubscriptionState);
+        return data as SubscriptionState;
+      } catch (err) {
+        if (attempt === MAX_RETRIES) {
+          logger.error('Erro inesperado ao buscar assinatura', err);
+          toast.error('Erro ao carregar assinatura', {
+            description: 'Ocorreu um erro inesperado. Tente recarregar a pagina.',
+          });
+          deps.setLoading(false);
+          return null;
         }
-
-        return resolvedSubscription;
+        await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * (attempt + 1)));
       }
-
-      deps.setSubscription(data as SubscriptionState);
-      return data as SubscriptionState;
-    } catch (err) {
-      logger.error('Erro inesperado ao buscar assinatura', err);
-      toast.error('Erro ao carregar assinatura', {
-        description: 'Ocorreu um erro inesperado. Tente recarregar a pagina.',
-      });
-      return null;
-    } finally {
-      deps.setLoading(false);
     }
+    deps.setLoading(false);
+    return null;
   };
 
   const getUsageStats = (): UsageStats | null => {
@@ -470,10 +483,10 @@ export const createSubscriptionService = (deps: SubscriptionServiceDeps) => {
         payment_status: newPlan === 'free' ? 'active' : 'pending',
         ...(shouldResetUsage
           ? {
-              sheets_used_today: 0,
-              sheets_used_week: 0,
-              last_sheet_date: null,
-            }
+            sheets_used_today: 0,
+            sheets_used_week: 0,
+            last_sheet_date: null,
+          }
           : {}),
       };
 
