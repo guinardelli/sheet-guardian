@@ -1,0 +1,64 @@
+{
+    "meta": {
+        "brand_name": "Tekla PlaNnix",
+        "description": "Core design tokens for UI implementation based on project config."
+    },
+    "colors": {
+        "brand": {
+            "primary": "#c7643f",
+            "primary-hover": "#b35838",
+            "primary-light": "#d97d56"
+        },
+        "primary": {
+            "DEFAULT": "hsl(215 28% 10%)",
+            "foreground": "hsl(210 40% 98%)"
+        },
+        "secondary": {
+            "DEFAULT": "hsl(210 40% 96%)",
+            "foreground": "hsl(215 28% 10%)"
+        },
+        "background": "hsl(210 40% 98%)",
+        "foreground": "hsl(215 28% 10%)",
+        "card": {
+            "DEFAULT": "hsl(0 0% 100%)",
+            "foreground": "hsl(215 28% 10%)"
+        },
+        "popover": {
+            "DEFAULT": "hsl(0 0% 100%)",
+            "foreground": "hsl(215 28% 10%)"
+        },
+        "muted": {
+            "DEFAULT": "hsl(210 40% 96%)",
+            "foreground": "hsl(215 16% 47%)"
+        },
+        "accent": {
+            "DEFAULT": "hsl(210 40% 96%)",
+            "foreground": "hsl(215 28% 10%)"
+        },
+        "destructive": {
+            "DEFAULT": "hsl(0 84.2% 60.2%)",
+            "foreground": "hsl(210 40% 98%)"
+        },
+        "border": "hsl(214 32% 91%)",
+        "input": "hsl(214 32% 91%)",
+        "ring": "hsl(215 28% 10%)"
+    },
+    "typography": {
+        "font_family_headings": [
+            "Inter",
+            "sans-serif"
+        ],
+        "font_family_body": [
+            "Inter",
+            "sans-serif"
+        ],
+        "font_weight_bold": "700",
+        "font_weight_normal": "400"
+    },
+    "ui": {
+        "border_radius_default": "0.5rem",
+        "border_radius_small": "calc(0.5rem - 2px)",
+        "border_radius_large": "calc(0.5rem - 4px)",
+        "spacing_base_unit": "4px"
+    }
+}
