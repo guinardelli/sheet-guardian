@@ -1,64 +1,58 @@
 {
-    "meta": {
-        "brand_name": "Tekla PlaNnix",
-        "description": "Core design tokens for UI implementation based on project config."
+    "brand": {
+        "name": "Sheet Guardian",
+        "primaryColor": {
+            "name": "Guardian Green",
+            "value": "hsl(153 56% 32%)",
+            "usage": "Primary buttons, headers, key brand elements",
+            "foreground": "hsl(0 0% 100%)"
+        },
+        "accentColor": {
+            "name": "Tech Blue",
+            "value": "hsl(217 91% 50%)",
+            "usage": "Links, highlights, micro-interactions"
+        },
+        "typography": {
+            "fontFamily": "Inter, system-ui, sans-serif",
+            "headings": {
+                "weight": "700",
+                "tracking": "tight"
+            },
+            "body": {
+                "weight": "400",
+                "tracking": "normal"
+            }
+        }
     },
-    "colors": {
-        "brand": {
-            "primary": "#c7643f",
-            "primary-hover": "#b35838",
-            "primary-light": "#d97d56"
+    "theme": {
+        "colors": {
+            "background": "hsl(246 6% 97%)",
+            "foreground": "hsl(220 70% 8%)",
+            "card": "hsl(0 0% 100%)",
+            "popover": "hsl(0 0% 100%)",
+            "muted": "hsl(220 14% 96%)",
+            "destructive": "hsl(0 84% 60%)",
+            "border": "hsl(220 13% 91%)",
+            "input": "hsl(220 13% 91%)"
         },
-        "primary": {
-            "DEFAULT": "hsl(215 28% 10%)",
-            "foreground": "hsl(210 40% 98%)"
-        },
-        "secondary": {
-            "DEFAULT": "hsl(210 40% 96%)",
-            "foreground": "hsl(215 28% 10%)"
-        },
-        "background": "hsl(210 40% 98%)",
-        "foreground": "hsl(215 28% 10%)",
-        "card": {
-            "DEFAULT": "hsl(0 0% 100%)",
-            "foreground": "hsl(215 28% 10%)"
-        },
-        "popover": {
-            "DEFAULT": "hsl(0 0% 100%)",
-            "foreground": "hsl(215 28% 10%)"
-        },
-        "muted": {
-            "DEFAULT": "hsl(210 40% 96%)",
-            "foreground": "hsl(215 16% 47%)"
-        },
-        "accent": {
-            "DEFAULT": "hsl(210 40% 96%)",
-            "foreground": "hsl(215 28% 10%)"
-        },
-        "destructive": {
-            "DEFAULT": "hsl(0 84.2% 60.2%)",
-            "foreground": "hsl(210 40% 98%)"
-        },
-        "border": "hsl(214 32% 91%)",
-        "input": "hsl(214 32% 91%)",
-        "ring": "hsl(215 28% 10%)"
-    },
-    "typography": {
-        "font_family_headings": [
-            "Inter",
-            "sans-serif"
-        ],
-        "font_family_body": [
-            "Inter",
-            "sans-serif"
-        ],
-        "font_weight_bold": "700",
-        "font_weight_normal": "400"
+        "borderRadius": {
+            "DEFAULT": "0.5rem",
+            "lg": "0.5rem",
+            "md": "calc(0.5rem - 2px)",
+            "sm": "calc(0.5rem - 4px)"
+        }
     },
     "ui": {
-        "border_radius_default": "0.5rem",
-        "border_radius_small": "calc(0.5rem - 2px)",
-        "border_radius_large": "calc(0.5rem - 4px)",
-        "spacing_base_unit": "4px"
+        "framework": "Shadcn UI",
+        "icons": "Lucide React",
+        "animations": {
+            "fadeIn": "animate-fade-in",
+            "scaleIn": "animate-scale-in",
+            "pulseGlow": "animate-pulse-glow"
+        },
+        "shadows": {
+            "soft": "0 2px 8px -2px rgba(0, 0, 0, 0.08)",
+            "soft-lg": "0 4px 16px -4px rgba(0, 0, 0, 0.1)"
+        }
     }
 }

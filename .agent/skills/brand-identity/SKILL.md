@@ -1,11 +1,11 @@
 ---
 name: brand-identity
-description: Provides the single source of truth for brand guidelines, design tokens, technology choices, and voice/tone. Use this skill whenever generating UI components, styling applications, writing copy, or creating user-facing assets to ensure brand consistency.
+description: Provides the single source of truth for brand guidelines, design tokens, technology choices, and voice/tone for the Sheet Guardian project. Use this skill whenever generating UI components, styling applications, writing copy, or creating user-facing assets to ensure brand consistency.
 ---
 
 # Brand Identity & Guidelines
 
-**Brand Name:** Tekla PlaNnix
+**Brand Name:** Sheet Guardian (Excel VBA Blocker)
 
 This skill defines the core constraints for visual design and technical implementation for the brand. You must adhere to these guidelines strictly to maintain consistency.
 

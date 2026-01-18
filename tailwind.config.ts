@@ -16,6 +16,13 @@ export default {
     extend: {
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
+        mono: ["JetBrains Mono", "Fira Code", "monospace"],
+      },
+      boxShadow: {
+        prism: "0 8px 32px -8px rgba(16, 185, 129, 0.2)",
+        "prism-lg": "0 16px 48px -12px rgba(16, 185, 129, 0.25)",
+        glass: "0 4px 24px -4px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
+        "glass-dark": "0 4px 24px -4px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
       },
       colors: {
         border: "hsl(var(--border))",

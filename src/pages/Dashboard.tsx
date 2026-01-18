@@ -547,9 +547,15 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pt-20">
+    <div className="min-h-screen bg-background pt-20 relative overflow-hidden">
+      {/* Mesh Gradient Background */}
+      <div className="fixed inset-0 -z-10 pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-accent/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+      </div>
       <NewHeader />
-      <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 sm:px-6 lg:px-8 py-8 lg:py-10">
+      <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 sm:px-6 lg:px-8 py-8 lg:py-10 relative z-10">
         <div className="flex flex-col gap-4 text-center">
           <div className="flex items-center justify-center gap-3">
             <div className="rounded-lg bg-primary/10 p-2">
